@@ -36,6 +36,9 @@
         <a href="index.html" aria-current="page">Home</a>
         <a href="about.html">About</a>
         <a href="contact.html">Contact</a>
+        <button class="mobile-nav-logout" onclick="logoutUser()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+        </button>
       </nav>
 
       <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">
@@ -61,6 +64,23 @@
       </div>
     </div>
   </header>
+
+  <!-- ============ MOBILE BOTTOM NAV ============ -->
+  <nav class="mobile-bottom-nav" aria-label="Quick actions">
+    <a href="index.html" class="mobile-bottom-nav-item active">
+      <i class="fa-solid fa-house"></i><span>Home</span>
+    </a>
+    <button class="mobile-bottom-nav-item" onclick="openWishlist()">
+      <i class="fa-solid fa-heart"></i><span>Wishlist</span>
+    </button>
+    <button class="mobile-bottom-nav-item" onclick="openCart()">
+      <i class="fa-solid fa-basket-shopping"></i><span>Cart</span>
+      <span id="cartCountBottom" class="cart-badge">0</span>
+    </button>
+    <button class="mobile-bottom-nav-item" onclick="openMyOrders()">
+      <i class="fa-solid fa-box"></i><span>Orders</span>
+    </button>
+  </nav>
 
   <!-- ============ PROMO BANNER (admin-editable) ============ -->
   <div id="promoBanner" class="promo-banner hidden"></div>

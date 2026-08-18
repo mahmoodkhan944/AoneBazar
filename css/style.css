@@ -1289,6 +1289,89 @@
 
   .cards { grid-template-columns: 1fr; }
   .footer-container { grid-template-columns: 1fr 1fr; }
+
+  /* Wishlist / Orders / Cart move down to the bottom nav bar on
+     mobile — that's what was crowding the header and pushing the
+     brand name off-screen. Logout moves into the hamburger dropdown. */
+  .header-actions .icon-btn,
+  .header-actions .logout-btn,
+  #userGreeting {
+    display: none;
+  }
+
+  .mobile-nav-logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px 14px;
+    border: none;
+    border-top: 1px solid var(--line);
+    background: none;
+    color: var(--danger-600);
+    font-weight: 600;
+    font-size: 0.92rem;
+    border-radius: 0;
+  }
+
+  .mobile-bottom-nav { display: flex !important; }
+  body { padding-bottom: 66px; }
+  #whatsappFloat { bottom: 76px; }
+  #cartBar { bottom: 76px; }
+}
+
+@media (min-width: 901px) {
+  .mobile-nav-logout { display: none; }
+}
+
+/* ---------------- MOBILE BOTTOM NAV ---------------- */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(28, 27, 24, 0.08);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-bottom-nav-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 6px 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.mobile-bottom-nav-item i { font-size: 1.15rem; }
+
+.mobile-bottom-nav-item.active,
+.mobile-bottom-nav-item:active {
+  color: var(--green-700);
+}
+
+.mobile-bottom-nav-item .cart-badge {
+  position: absolute;
+  top: 0;
+  right: 22%;
+  font-size: 0.6rem;
+  padding: 0 5px;
+}
+
+@media (min-width: 901px) {
+  .mobile-bottom-nav { display: none !important; }
 }
 
 @media (max-width: 560px) {
@@ -1297,24 +1380,6 @@
   .footer-container { grid-template-columns: 1fr; }
   .products { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .cart-box { max-width: 100%; }
-
-  /* Icon-only circular buttons in the header — pill-shaped buttons
-     with their padding were wide enough, combined, to push the
-     whole page into horizontal scroll on real phones. */
-  .header-actions { gap: 4px; }
-  .header-actions .icon-btn {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    gap: 0;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .cart-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-  }
 
   .brand-tagline { display: none; }
   .brand-name { font-size: 1rem; white-space: nowrap; }

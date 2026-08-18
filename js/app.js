@@ -43,11 +43,13 @@ function generateOrderID() {
 function saveCart() {
   localStorage.setItem("cart", JSON.stringify(cart));
 
+  const total = cart.reduce((a, b) => a + (b.qty || 1), 0);
+
   const count = document.getElementById("cartCount");
-  if (count) {
-    count.innerText =
-      cart.reduce((a, b) => a + (b.qty || 1), 0);
-  }
+  if (count) count.innerText = total;
+
+  const countBottom = document.getElementById("cartCountBottom");
+  if (countBottom) countBottom.innerText = total;
 }
 
 /***********************
