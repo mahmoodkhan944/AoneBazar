@@ -12,6 +12,123 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<style id="full-width-responsive-overrides">
+  /* ===== FULL-WIDTH ADMIN LAYOUT ===== */
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .admin-shell {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .admin-main {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+  }
+
+  .admin-view {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* Dashboard stat boxes */
+  .stat-grid {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    box-sizing: border-box;
+  }
+
+  .stat-card {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* All dashboard/content panels */
+  .admin-panel {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .admin-grid-2 {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    box-sizing: border-box;
+  }
+
+  .admin-topbar {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .admin-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Tablet */
+  @media (max-width: 900px) {
+    .stat-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .admin-main {
+      width: 100%;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .stat-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .stat-card {
+      width: 100%;
+      min-height: 84px;
+    }
+
+    .admin-grid-2 {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .admin-panel {
+      width: 100%;
+      padding: 16px;
+    }
+
+    .admin-topbar {
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+
 </head>
 <body class="admin-body">
 
