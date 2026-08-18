@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product — AOne Bazaar</title>
+  <meta name="description" content="Shop at AOne Bazaar, Lahideeh-Azamgarh." />
+  <link rel="icon" href="favicon.ico" />
+
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/style.css" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html" style="text-decoration:none;">
+        <img src="images/logo.png" alt="AOne Bazaar logo" />
+        <span class="brand-text">
+          <span class="brand-name">AOne Bazaar</span>
+          <span class="brand-tagline">Fast • Fresh • Reliable</span>
+        </span>
+      </a>
+
+      <nav class="main-nav" id="mainNav" aria-label="Primary">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+
+      <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <div class="header-actions">
+        <span id="userGreeting"></span>
+        <button class="icon-btn" onclick="openWishlist()">
+          <i class="fa-solid fa-heart"></i><span class="label">Wishlist</span>
+        </button>
+        <button class="icon-btn orders-btn" onclick="openMyOrders()">
+          <i class="fa-solid fa-box"></i><span class="label">My Orders</span>
+        </button>
+        <a href="#" onclick="openCart()" class="icon-btn cart-btn">
+          <i class="fa-solid fa-basket-shopping"></i>
+          <span class="label">Cart</span>
+          <span id="cartCount" class="cart-badge">0</span>
+        </a>
+        <button class="icon-btn logout-btn" onclick="logoutUser()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ PRODUCT PAGE ============ -->
+  <section class="product-page-section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a id="backToStoreLink" href="index.html">⬅ Back to store</a>
+      </div>
+
+      <div id="productPageContent" class="product-page-layout">
+        <div>
+          <div class="imgContainer">
+            <img id="detailImage" class="zoomImg" alt="Product" />
+            <div id="lens"></div>
+            <button id="wishlistHeartBtn" class="wishlist-heart" onclick="toggleWishlistFromModal()">🤍</button>
+          </div>
+          <div id="thumbs"></div>
+        </div>
+
+        <div>
+          <h1 id="detailName" class="page-title"></h1>
+          <p id="detailPrice" class="page-price"></p>
+
+          <div id="variantSelector" class="variant-selector hidden"></div>
+
+          <button class="btn btn-primary" onclick="addCurrentProductToCart()">
+            <i class="fa-solid fa-basket-shopping"></i> Add to Cart
+          </button>
+
+          <div class="review-summary" style="margin-top:20px;">
+            <span id="avgRatingDisplay">No ratings yet</span>
+          </div>
+
+          <div class="review-form">
+            <p style="margin-bottom:6px;font-size:0.85rem;font-weight:600;">Rate this product</p>
+            <div id="starInput" class="star-input">
+              <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+            </div>
+            <textarea id="reviewComment" placeholder="Write a short review (optional)"></textarea>
+            <button class="btn btn-outline btn-sm" onclick="submitReview()">Submit Review</button>
+          </div>
+
+          <div id="reviewsList" class="reviews-list"></div>
+        </div>
+      </div>
+
+      <p id="productNotFound" class="hidden" style="text-align:center;padding:60px 0;">
+        Sorry, we couldn't find that product. <a href="index.html">Go back to the store →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ WHATSAPP FLOAT ============ -->
+  <a id="whatsappFloat" href="https://wa.me/918009555567" target="_blank" rel="noopener noreferrer" aria-label="Order on WhatsApp">
+    <i class="fa-brands fa-whatsapp"></i>
+  </a>
+
+  <!-- ============ CART DRAWER ============ -->
+  <div id="cartModal" class="cart-modal hidden">
+    <div class="cart-box">
+      <div class="cart-header">
+        <h3>Your Cart</h3>
+        <span onclick="closeCart()">✖</span>
+      </div>
+
+      <div id="cartItems" class="cart-items"></div>
+
+      <div class="coupon-row">
+        <input type="text" id="couponCode" placeholder="Coupon code" style="text-transform:uppercase;" />
+        <button class="btn btn-outline btn-sm" onclick="applyCoupon()">Apply</button>
+      </div>
+      <div id="couponMessage" class="coupon-message"></div>
+
+      <div class="cart-summary">
+        <div id="cartSubtotalRow" class="hidden cart-summary-row">
+          <span>Subtotal</span><span>₹<span id="cartSubtotal">0</span></span>
+        </div>
+        <div id="cartDiscountRow" class="hidden cart-summary-row cart-summary-discount">
+          <span>Discount</span><span>−₹<span id="cartDiscount">0</span></span>
+        </div>
+        <b class="cart-summary-row">Total: <span>₹<span id="cartTotal">0</span></span></b>
+      </div>
+
+      <div class="cart-form" id="cartFormStep">
+        <input type="text" id="customerName" placeholder="Your Name" />
+        <textarea id="customerAddress" placeholder="Delivery Address"></textarea>
+      </div>
+
+      <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹250</p>
+
+      <button class="place-order-btn" id="proceedToPaymentBtn" onclick="proceedToPayment()">Continue to Payment</button>
+
+      <div id="paymentStep" class="cart-form hidden" style="text-align:center;">
+        <p style="font-size:0.9rem;margin-bottom:10px;">Choose how much to pay now via UPI:</p>
+        <div class="payment-choice-row">
+          <button type="button" id="chooseHalfBtn" class="active" onclick="choosePaymentOption('half')">
+            Pay Half<br><span id="halfAmountLabel">₹0</span>
+          </button>
+          <button type="button" id="chooseFullBtn" onclick="choosePaymentOption('full')">
+            Pay Full<br><span id="fullAmountLabel">₹0</span>
+          </button>
+        </div>
+        <p style="font-size:0.82rem;margin-top:10px;" id="paymentChoiceNote">Pay the remaining amount on delivery.</p>
+        <img id="upiQrImage" alt="UPI QR code" style="width:180px;height:180px;margin:10px auto;border-radius:8px;border:1px solid var(--line);" />
+        <p style="font-size:0.85rem;">UPI ID: <b id="upiIdLabel"></b></p>
+        <p style="font-size:0.78rem;color:var(--ink-faint);margin-top:6px;">After paying, tap below — your order details will open in WhatsApp. Please attach your payment screenshot there.</p>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="backToCartForm()">⬅ Back</button>
+      </div>
+
+      <button class="place-order-btn hidden" id="confirmOrderBtn" onclick="placeOrder()">I've Paid — Send Order on WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- Full-screen image viewer -->
+  <div id="fullScreenViewer" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeFullScreen()">×</button>
+      <img id="fullImage" alt="Product full view" />
+    </div>
+  </div>
+
+  <!-- ============ MY ORDERS ============ -->
+  <div id="myOrdersModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeMyOrders()">×</button>
+      <h3>My Orders</h3>
+      <div id="myOrdersList"></div>
+    </div>
+  </div>
+
+  <!-- ============ WISHLIST ============ -->
+  <div id="wishlistModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeWishlist()">×</button>
+      <h3>My Wishlist</h3>
+      <div id="wishlistList"></div>
+    </div>
+  </div>
+
+  <div id="loginModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Enter Mobile Number</h3>
+      <input id="phoneNumber" placeholder="Enter 10 digit mobile number" maxlength="10" />
+      <button class="btn btn-primary btn-block" onclick="loginWithPhone()">Continue</button>
+    </div>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-col">
+        <h2>AOne Bazaar</h2>
+        <p>Fast • Fresh • Reliable</p>
+        <p>Your one-stop shop for groceries, cafe & daily needs.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="index.html" style="color:inherit;">Home</a></li>
+          <li><a href="about.html" style="color:inherit;">About</a></li>
+          <li><a href="contact.html" style="color:inherit;">Contact</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <p><a href="tel:+918009555567" style="color:#fff">📞 +91 8009555567</a></p>
+        <p>📍 Master Naseem Complex,<br />Lahideeh Bazar, Azamgarh</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Follow Us</h4>
+        <div class="socials">
+          <a href="https://www.facebook.com/share/18mMKAfYBN/" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="https://www.instagram.com/aonebazar.co.in?igsh=NzRybXhwamV0ZGF6" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2026 AOne Bazaar. All Rights Reserved.</div>
+      <div class="footer-credit">
+        Designed & Powered by
+        <a href="https://wa.me/918830681496?text=Hi, I want a website like yours" target="_blank">Mahmood Khan</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

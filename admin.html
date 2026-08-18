@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — AOne Bazaar</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="favicon.ico" />
+
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="admin-body">
+
+  <!-- ============ LOGIN GATE ============ -->
+  <div id="adminLoginScreen" class="admin-login-screen">
+    <div class="admin-login-card">
+      <img src="images/logo.png" alt="AOne Bazaar" />
+      <h1>Admin Dashboard</h1>
+      <p>Sign in with your admin account to continue.</p>
+      <input id="loginEmail" type="email" placeholder="Admin email" />
+      <input id="loginPassword" type="password" placeholder="Password" />
+      <button class="btn btn-primary btn-block" onclick="adminSignIn()">Sign In</button>
+      <div id="adminLoginError" class="admin-login-error"></div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD SHELL ============ -->
+  <div id="adminShell" class="admin-shell hidden">
+
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="admin-sidebar-brand">
+        <img src="images/logo.png" alt="AOne Bazaar" />
+        <div>
+          <b>AOne Bazaar</b>
+          <span>Admin</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <button class="admin-nav-item active" data-view="dashboard" onclick="showAdminView('dashboard')">
+          <i class="fa-solid fa-gauge"></i> Dashboard
+        </button>
+        <button class="admin-nav-item" data-view="orders" onclick="showAdminView('orders')">
+          <i class="fa-solid fa-box"></i> Orders
+        </button>
+        <button class="admin-nav-item" data-view="products" onclick="showAdminView('products')">
+          <i class="fa-solid fa-basket-shopping"></i> Products
+        </button>
+        <button class="admin-nav-item" data-view="categories" onclick="showAdminView('categories')">
+          <i class="fa-solid fa-tags"></i> Categories
+        </button>
+        <button class="admin-nav-item" data-view="coupons" onclick="showAdminView('coupons')">
+          <i class="fa-solid fa-ticket"></i> Coupons
+        </button>
+        <button class="admin-nav-item" data-view="reviews" onclick="showAdminView('reviews')">
+          <i class="fa-solid fa-star"></i> Reviews
+        </button>
+        <button class="admin-nav-item" data-view="content" onclick="showAdminView('content')">
+          <i class="fa-solid fa-pen"></i> Site Content
+        </button>
+        <button class="admin-nav-item" data-view="users" onclick="showAdminView('users')">
+          <i class="fa-solid fa-users"></i> Users
+        </button>
+      </nav>
+
+      <div class="admin-sidebar-footer">
+        <span id="adminEmailLabel" style="display:block;font-size:0.78rem;color:#a9b4c7;margin-bottom:8px;"></span>
+        <button onclick="adminSignOut()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out</button>
+      </div>
+    </aside>
+
+    <button class="admin-mobile-toggle" onclick="toggleAdminSidebar()" aria-label="Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="toggleAdminSidebar()"></div>
+
+    <main class="admin-main">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section id="view-dashboard" class="admin-view active">
+        <div class="admin-topbar">
+          <h1>Dashboard</h1>
+          <a href="index.html" class="btn btn-outline btn-sm" target="_blank">View Storefront ↗</a>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div><div class="value" id="statTodaySales">₹0</div><div class="label">Sales Today</div></div>
+            <div class="stat-icon green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+          </div>
+          <div class="stat-card">
+            <div><div class="value" id="statTotalOrders">0</div><div class="label">Total Orders</div></div>
+            <div class="stat-icon indigo"><i class="fa-solid fa-box"></i></div>
+          </div>
+          <div class="stat-card">
+            <div><div class="value" id="statTotalRevenue">₹0</div><div class="label">Total Revenue</div></div>
+            <div class="stat-icon amber"><i class="fa-solid fa-chart-line"></i></div>
+          </div>
+          <div class="stat-card">
+            <div><div class="value" id="statPendingOrders">0</div><div class="label">Pending Orders</div></div>
+            <div class="stat-icon danger"><i class="fa-solid fa-clock"></i></div>
+          </div>
+        </div>
+
+        <div class="admin-grid-2">
+          <div class="admin-panel">
+            <h3>Orders — Last 7 Days</h3>
+            <canvas id="ordersChart" height="110"></canvas>
+          </div>
+          <div class="admin-panel">
+            <h3>Top Products</h3>
+            <div id="topProductsList">Loading…</div>
+          </div>
+        </div>
+
+        <div class="admin-grid-2">
+          <div class="admin-panel">
+            <h3>Products by Store</h3>
+            <div id="productsByStoreList">Loading…</div>
+          </div>
+          <div class="admin-panel">
+            <h3>Orders by Status</h3>
+            <div id="ordersByStatusList">Loading…</div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>Recent Orders</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th></tr>
+              </thead>
+              <tbody id="recentOrdersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ORDERS ===== -->
+      <section id="view-orders" class="admin-view">
+        <div class="admin-topbar"><h1>Orders</h1></div>
+
+        <div class="admin-panel">
+          <div class="admin-toolbar">
+            <input type="text" id="orderSearch" placeholder="Search order ID or name…" oninput="filterOrders()" />
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="ordersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PRODUCTS ===== -->
+      <section id="view-products" class="admin-view">
+        <div class="admin-topbar">
+          <h1>Products</h1>
+          <button class="btn btn-primary btn-sm" onclick="toggleProductForm()">+ Add Product</button>
+        </div>
+
+        <div class="admin-panel hidden" id="productFormPanel">
+          <h3>Add a Product</h3>
+          <div class="admin-form-grid">
+            <div>
+              <label>Store</label>
+              <select id="pStore">
+                <option value="supermarket">Supermarket</option>
+                <option value="grocery">Grocery</option>
+                <option value="cafe">Cafe</option>
+              </select>
+            </div>
+            <div>
+              <label>Category</label>
+              <select id="pCategory"></select>
+            </div>
+            <div>
+              <label>Product name</label>
+              <input id="pName" placeholder="e.g. Fresh Apples" />
+            </div>
+            <div>
+              <label>Price (₹) — used if no variants are added below</label>
+              <input id="pPrice" type="number" placeholder="e.g. 120" />
+            </div>
+            <div class="full">
+              <label>Images (you can select 2–3 at once)</label>
+              <input type="file" id="pImage" multiple accept="image/*" />
+            </div>
+            <div class="full">
+              <label>Sizes / Packs (optional) — e.g. 250g, 1kg, Pack of 6</label>
+              <div class="variant-chips">
+                <button type="button" onclick="addVariantRow('pVariants','Quarter')">Quarter</button>
+                <button type="button" onclick="addVariantRow('pVariants','Half')">Half</button>
+                <button type="button" onclick="addVariantRow('pVariants','Full')">Full</button>
+                <button type="button" onclick="addVariantRow('pVariants','100g')">100g</button>
+                <button type="button" onclick="addVariantRow('pVariants','250g')">250g</button>
+                <button type="button" onclick="addVariantRow('pVariants','500g')">500g</button>
+                <button type="button" onclick="addVariantRow('pVariants','1kg')">1kg</button>
+                <button type="button" onclick="addVariantRow('pVariants','100ml')">100ml</button>
+                <button type="button" onclick="addVariantRow('pVariants','250ml')">250ml</button>
+                <button type="button" onclick="addVariantRow('pVariants','500ml')">500ml</button>
+                <button type="button" onclick="addVariantRow('pVariants','1 Litre')">1 Litre</button>
+                <button type="button" onclick="addVariantRow('pVariants','Pack of 3')">Pack of 3</button>
+                <button type="button" onclick="addVariantRow('pVariants','Pack of 4')">Pack of 4</button>
+                <button type="button" onclick="addVariantRow('pVariants','Pack of 6')">Pack of 6</button>
+                <button type="button" onclick="addVariantRow('pVariants','Pack of 12')">Pack of 12</button>
+                <button type="button" onclick="addVariantRow('pVariants','')">+ Custom</button>
+              </div>
+              <div id="pVariants" class="variant-rows"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addProduct()">Save Product</button>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-toolbar">
+            <input type="text" id="productSearch" placeholder="Search products…" oninput="filterProducts()" />
+            <select id="productStoreFilter" onchange="filterProducts()" style="padding:9px 14px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);">
+              <option value="">All Stores</option>
+              <option value="supermarket">Supermarket</option>
+              <option value="grocery">Grocery</option>
+              <option value="cafe">Cafe</option>
+            </select>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th></th><th>Name</th><th>Store</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="productsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CATEGORIES ===== -->
+      <section id="view-categories" class="admin-view">
+        <div class="admin-topbar"><h1>Categories</h1></div>
+
+        <div class="admin-panel">
+          <h3>Add Category</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            The homepage's "All Categories" menu groups these by store automatically, sorted alphabetically — nothing extra to fill in.
+          </p>
+          <div class="admin-form-grid">
+            <div>
+              <label>Store</label>
+              <select id="catStore">
+                <option value="supermarket">Supermarket</option>
+                <option value="grocery">Grocery</option>
+                <option value="cafe">Cafe</option>
+              </select>
+            </div>
+            <div>
+              <label>Category name</label>
+              <input id="catName" placeholder="e.g. Dairy & Eggs" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addCategory()">Add Category</button>
+        </div>
+
+        <div class="admin-panel">
+          <h3>All Categories</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Store</th><th>Actions</th></tr></thead>
+              <tbody id="categoriesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== COUPONS ===== -->
+      <section id="view-coupons" class="admin-view">
+        <div class="admin-topbar"><h1>Coupons</h1></div>
+
+        <div class="admin-panel">
+          <h3>Create Coupon</h3>
+          <div class="admin-form-grid">
+            <div>
+              <label>Code</label>
+              <input id="couponCodeInput" placeholder="e.g. WELCOME50" style="text-transform:uppercase;" />
+            </div>
+            <div>
+              <label>Type</label>
+              <select id="couponType">
+                <option value="flat">Flat ₹ off</option>
+                <option value="percent">% off</option>
+              </select>
+            </div>
+            <div>
+              <label>Value</label>
+              <input id="couponValue" type="number" placeholder="e.g. 50" />
+            </div>
+            <div>
+              <label>Minimum order (₹)</label>
+              <input id="couponMinOrder" type="number" placeholder="0" />
+            </div>
+            <div>
+              <label>Usage limit (optional)</label>
+              <input id="couponUsageLimit" type="number" placeholder="Unlimited if blank" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addCoupon()">Create Coupon</button>
+        </div>
+
+        <div class="admin-panel">
+          <h3>All Coupons</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Code</th><th>Discount</th><th>Min Order</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="couponsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== REVIEWS ===== -->
+      <section id="view-reviews" class="admin-view">
+        <div class="admin-topbar"><h1>Reviews</h1></div>
+        <div class="admin-panel">
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Product</th><th>Rating</th><th>Comment</th><th>By</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="reviewsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SITE CONTENT ===== -->
+      <section id="view-content" class="admin-view">
+        <div class="admin-topbar"><h1>Site Content</h1></div>
+
+        <div class="admin-panel">
+          <h3>Homepage & Banner</h3>
+          <div class="admin-form-grid">
+            <div class="full">
+              <label>Hero title</label>
+              <input id="cf_hero_title" />
+            </div>
+            <div class="full">
+              <label>Hero subtitle</label>
+              <textarea id="cf_hero_subtitle" rows="2"></textarea>
+            </div>
+            <div>
+              <label><input type="checkbox" id="cf_banner_active" style="width:auto;display:inline;margin-right:6px;" />Show promo banner</label>
+              <input id="cf_banner_text" placeholder="e.g. Free delivery this week!" />
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>About Page</h3>
+          <div class="admin-form-grid">
+            <div class="full">
+              <label>About intro paragraph</label>
+              <textarea id="cf_about_intro" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>Contact Info (reference)</h3>
+          <div class="admin-form-grid">
+            <div><label>Phone</label><input id="cf_contact_phone" /></div>
+            <div><label>Address</label><input id="cf_contact_address" /></div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>Checkout — UPI Half-Payment</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Orders below ₹250 are blocked automatically. Every order above that requires the customer to pay half the total via UPI at checkout (a QR code is generated from this UPI ID) before their order is sent to you on WhatsApp — they pay the rest on delivery.
+          </p>
+          <div class="admin-form-grid">
+            <div class="full">
+              <label>Your UPI ID</label>
+              <input id="cf_upi_id" placeholder="e.g. aonebazaar@okhdfcbank" />
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveSiteContent()">Save Changes</button>
+      </section>
+
+      <!-- ===== USERS ===== -->
+      <section id="view-users" class="admin-view">
+        <div class="admin-topbar"><h1>Users</h1></div>
+
+        <div class="admin-panel">
+          <h3>Add User</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            If your project has "Confirm email" turned on (Supabase → Authentication → Sign In / Providers), this new account will need to click a confirmation link before they can log in. For instant access instead, use Supabase Dashboard → Authentication → Users → Add user, then set their role below.
+          </p>
+          <div class="admin-form-grid">
+            <div>
+              <label>Email</label>
+              <input id="newUserEmail" type="email" placeholder="name@example.com" />
+            </div>
+            <div>
+              <label>Password</label>
+              <input id="newUserPassword" type="password" placeholder="At least 6 characters" />
+            </div>
+            <div>
+              <label>Role</label>
+              <select id="newUserRole">
+                <option value="customer">Customer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addUser()">Add User</button>
+        </div>
+
+        <div class="admin-panel">
+          <h3>All Users</h3>
+          <div class="admin-toolbar">
+            <input type="text" id="userSearch" placeholder="Search by email…" oninput="filterUsers()" />
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeEdit()">×</button>
+      <h3>Edit Product</h3>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Store</label>
+      <select id="editStore">
+        <option value="supermarket">Supermarket</option>
+        <option value="grocery">Grocery</option>
+        <option value="cafe">Cafe</option>
+      </select>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category</label>
+      <select id="editCategory"></select>
+
+      <input id="editName" placeholder="Product Name" />
+      <input id="editPrice" placeholder="Price (used if no variants below)" />
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Current images (click × to remove)</label>
+      <div id="editExistingImages" class="edit-existing-images"></div>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Add more images</label>
+      <input type="file" id="editImage" accept="image/*" multiple />
+      <div id="editNewImagePreviews" class="edit-existing-images"></div>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Sizes / Packs (optional)</label>
+      <div class="variant-chips">
+        <button type="button" onclick="addVariantRow('editVariants','Quarter')">Quarter</button>
+        <button type="button" onclick="addVariantRow('editVariants','Half')">Half</button>
+        <button type="button" onclick="addVariantRow('editVariants','Full')">Full</button>
+        <button type="button" onclick="addVariantRow('editVariants','100g')">100g</button>
+        <button type="button" onclick="addVariantRow('editVariants','250g')">250g</button>
+        <button type="button" onclick="addVariantRow('editVariants','500g')">500g</button>
+        <button type="button" onclick="addVariantRow('editVariants','1kg')">1kg</button>
+        <button type="button" onclick="addVariantRow('editVariants','100ml')">100ml</button>
+        <button type="button" onclick="addVariantRow('editVariants','250ml')">250ml</button>
+        <button type="button" onclick="addVariantRow('editVariants','500ml')">500ml</button>
+        <button type="button" onclick="addVariantRow('editVariants','1 Litre')">1 Litre</button>
+        <button type="button" onclick="addVariantRow('editVariants','Pack of 3')">Pack of 3</button>
+        <button type="button" onclick="addVariantRow('editVariants','Pack of 4')">Pack of 4</button>
+        <button type="button" onclick="addVariantRow('editVariants','Pack of 6')">Pack of 6</button>
+        <button type="button" onclick="addVariantRow('editVariants','Pack of 12')">Pack of 12</button>
+        <button type="button" onclick="addVariantRow('editVariants','')">+ Custom</button>
+      </div>
+      <div id="editVariants" class="variant-rows"></div>
+
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="updateProduct()">Save</button>
+    </div>
+  </div>
+
+  <div id="editCategoryModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeCategoryEdit()">×</button>
+      <h3>Edit Category</h3>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Store</label>
+      <select id="editCatStore" style="width:100%;padding:11px 14px;border:1px solid var(--line-strong);border-radius:8px;margin-bottom:12px;">
+        <option value="supermarket">Supermarket</option>
+        <option value="grocery">Grocery</option>
+        <option value="cafe">Cafe</option>
+      </select>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category name</label>
+      <input id="editCatName" placeholder="Category name" />
+      <button class="btn btn-primary" onclick="updateCategory()">Save</button>
+    </div>
+  </div>
+
+  <div id="editCouponModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeCouponEdit()">×</button>
+      <h3>Edit Coupon</h3>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Code</label>
+      <input id="editCouponCode" placeholder="e.g. WELCOME50" style="text-transform:uppercase;" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Type</label>
+      <select id="editCouponType" style="width:100%;padding:11px 14px;border:1px solid var(--line-strong);border-radius:8px;margin-bottom:12px;">
+        <option value="flat">Flat ₹ off</option>
+        <option value="percent">% off</option>
+      </select>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Value</label>
+      <input id="editCouponValue" type="number" placeholder="e.g. 50" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Minimum order (₹)</label>
+      <input id="editCouponMinOrder" type="number" placeholder="0" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Usage limit (optional)</label>
+      <input id="editCouponUsageLimit" type="number" placeholder="Unlimited if blank" />
+      <button class="btn btn-primary" onclick="updateCoupon()">Save</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
