@@ -499,6 +499,10 @@
   background: var(--surface);
   display: flex;
   flex-direction: column;
+  overflow-y: auto; /* the WHOLE drawer scrolls now, not just the items list —
+                        otherwise content added below (like the UPI payment
+                        step) could push the "I've Paid" button out of reach
+                        with no way to scroll down to it */
   box-shadow: var(--shadow-lg);
   transform: translateX(0); /* guaranteed resting position, independent of the animation below */
   animation: slide-in var(--med) var(--ease);
@@ -515,6 +519,11 @@
   justify-content: space-between;
   padding: 20px 22px;
   border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+  flex-shrink: 0;
 }
 
 .cart-header span {
@@ -529,8 +538,6 @@
 }
 
 .cart-items {
-  flex: 1;
-  overflow-y: auto;
   padding: 10px 22px;
 }
 

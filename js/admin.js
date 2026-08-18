@@ -1,6 +1,5 @@
 /***********************************************************
    ADMIN DASHBOARD (admin.html)
-   Self-contained — talks only to Supabase (js/supabase-client.js).
 ***********************************************************/
 
 let adminUser = null;
@@ -202,11 +201,11 @@ async function loadDashboard() {
   const recentBody = document.getElementById("recentOrdersBody");
   recentBody.innerHTML = (recent || []).map(o => `
     <tr>
-      <td>${o.id}</td>
-      <td>${o.customer_name}</td>
-      <td>₹${o.total}</td>
-      <td><span class="status-pill ${o.status}">${o.status}</span></td>
-      <td>${new Date(o.created_at).toLocaleDateString()}</td>
+      <td class="cell-title">${o.id}</td>
+      <td data-label="Customer">${o.customer_name}</td>
+      <td data-label="Total">₹${o.total}</td>
+      <td data-label="Status"><span class="status-pill ${o.status}">${o.status}</span></td>
+      <td data-label="Date">${new Date(o.created_at).toLocaleDateString()}</td>
     </tr>
   `).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);">No orders yet</td></tr>`;
 }
@@ -286,12 +285,12 @@ function renderOrdersTable(list) {
 
   body.innerHTML = list.map(o => `
     <tr>
-      <td>${o.id}</td>
-      <td>${o.name}</td>
-      <td>${o.phone}</td>
-      <td>₹${o.total}</td>
-      <td><span class="status-pill ${o.status}">${o.status}</span></td>
-      <td>${o.date}</td>
+      <td class="cell-title">${o.id}</td>
+      <td data-label="Customer">${o.name}</td>
+      <td data-label="Phone">${o.phone}</td>
+      <td data-label="Total">₹${o.total}</td>
+      <td data-label="Status"><span class="status-pill ${o.status}">${o.status}</span></td>
+      <td data-label="Date">${o.date}</td>
       <td>
         <div class="table-actions">
           <button onclick="updateOrderStatus('${o.id}','PROCESSING')">Processing</button>
@@ -482,11 +481,11 @@ function renderProductsTable(list) {
   body.innerHTML = list.map(p => `
     <tr>
       <td><img class="thumb" src="${p.images && p.images[0] ? p.images[0] : ''}" alt=""></td>
-      <td>${p.name}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);">${p.variants.length} sizes</div>` : ''}</td>
-      <td>${p.store}</td>
-      <td>${p.category}</td>
-      <td>₹${p.price}</td>
-      <td><span class="status-pill ${p.in_stock ? 'DELIVERED' : 'CANCELLED'}">${p.in_stock ? 'Active' : 'Inactive'}</span></td>
+      <td class="cell-title">${p.name}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
+      <td data-label="Store">${p.store}</td>
+      <td data-label="Category">${p.category}</td>
+      <td data-label="Price">₹${p.price}</td>
+      <td data-label="Status"><span class="status-pill ${p.in_stock ? 'DELIVERED' : 'CANCELLED'}">${p.in_stock ? 'Active' : 'Inactive'}</span></td>
       <td>
         <div class="table-actions">
           <button onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
@@ -564,8 +563,6 @@ async function addProduct() {
     return;
   }
 
-  // If only variants were priced (no base price), use the cheapest
-  // variant as the product's headline price for the storefront grid.
   const effectivePrice = price || Math.min(...variants.map(v => v.price));
 
   const { error } = await supabase.from("products").insert({
@@ -798,8 +795,8 @@ async function loadCategoriesView() {
 
   body.innerHTML = rows.map(c => `
     <tr>
-      <td>${c.name}</td>
-      <td>${c.store}</td>
+      <td class="cell-title">${c.name}</td>
+      <td data-label="Store">${c.store}</td>
       <td><div class="table-actions">
         <button onclick='editCategory(${JSON.stringify(c)})'>Edit</button>
         <button class="danger" onclick="deleteCategory('${c.id}')">Delete</button>
@@ -851,10 +848,6 @@ async function updateCategory() {
 
   if (!name) { alert("Enter a category name"); return; }
 
-  // Remember the old store/name so we can re-tag any products that
-  // were filed under it — otherwise renaming a category silently
-  // orphans its products (they'd keep pointing at a name that no
-  // longer exists anywhere).
   const before = allCategoriesCache.find(c => c.id === editingCategoryId);
 
   const { error } = await supabase
@@ -908,11 +901,11 @@ async function loadCoupons() {
 
   body.innerHTML = rows.map(c => `
     <tr>
-      <td><b>${c.code}</b></td>
-      <td>${c.discount_type === "percent" ? c.discount_value + "%" : "₹" + c.discount_value}</td>
-      <td>₹${c.min_order}</td>
-      <td>${c.used_count}${c.usage_limit ? " / " + c.usage_limit : ""}</td>
-      <td><span class="status-pill ${c.active ? 'DELIVERED' : 'CANCELLED'}">${c.active ? "Active" : "Off"}</span></td>
+      <td class="cell-title">${c.code}</td>
+      <td data-label="Discount">${c.discount_type === "percent" ? c.discount_value + "%" : "₹" + c.discount_value}</td>
+      <td data-label="Min Order">₹${c.min_order}</td>
+      <td data-label="Used">${c.used_count}${c.usage_limit ? " / " + c.usage_limit : ""}</td>
+      <td data-label="Status"><span class="status-pill ${c.active ? 'DELIVERED' : 'CANCELLED'}">${c.active ? "Active" : "Off"}</span></td>
       <td>
         <div class="table-actions">
           <button onclick='editCoupon(${JSON.stringify(c)})'>Edit</button>
@@ -1036,11 +1029,11 @@ async function loadReviews() {
 
   body.innerHTML = rows.map(r => `
     <tr>
-      <td>${r.products ? r.products.name : "(deleted product)"}</td>
-      <td>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
-      <td>${r.comment || "—"}</td>
-      <td>${r.customer_name}</td>
-      <td>${new Date(r.created_at).toLocaleDateString()}</td>
+      <td class="cell-title">${r.products ? r.products.name : "(deleted product)"}</td>
+      <td data-label="Rating">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
+      <td data-label="Comment">${r.comment || "—"}</td>
+      <td data-label="By">${r.customer_name}</td>
+      <td data-label="Date">${new Date(r.created_at).toLocaleDateString()}</td>
       <td><button class="danger" onclick="deleteReview('${r.id}')">Delete</button></td>
     </tr>
   `).join("");
@@ -1128,10 +1121,10 @@ function renderUsersTable(list) {
 
   body.innerHTML = list.map(u => `
     <tr>
-      <td>${u.email || "—"}</td>
-      <td>${u.phone || "—"}</td>
-      <td><span class="status-pill ${u.role === 'admin' ? 'DELIVERED' : 'PROCESSING'}">${u.role}</span></td>
-      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+      <td class="cell-title">${u.email || "—"}</td>
+      <td data-label="Phone">${u.phone || "—"}</td>
+      <td data-label="Role"><span class="status-pill ${u.role === 'admin' ? 'DELIVERED' : 'PROCESSING'}">${u.role}</span></td>
+      <td data-label="Joined">${new Date(u.created_at).toLocaleDateString()}</td>
       <td>
         <div class="table-actions">
           ${u.id === adminUser.id
@@ -1178,9 +1171,6 @@ async function addUser() {
     return;
   }
 
-  // Sign this new user up on a throwaway client — persistSession:false
-  // means it never touches localStorage, so it can't disturb the
-  // admin's own logged-in session in the main `supabase` client.
   const tempClient = window.createSupabaseClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
