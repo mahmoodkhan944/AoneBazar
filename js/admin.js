@@ -1,6 +1,5 @@
 /***********************************************************
    ADMIN DASHBOARD (admin.html)
-   Self-contained — talks only to Supabase (js/supabase-client.js).
 ***********************************************************/
 
 let adminUser = null;
@@ -231,12 +230,16 @@ function renderOrdersChart(days) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 100,
       plugins: { legend: { display: false } },
       scales: {
         y: { beginAtZero: true, ticks: { stepSize: 1 } }
       }
     }
   });
+
+  requestAnimationFrame(() => ordersChartInstance && ordersChartInstance.resize());
 }
 
 /***********************
@@ -940,10 +943,6 @@ async function updateCategory() {
 
   if (!name) { alert("Enter a category name"); return; }
 
-  // Remember the old store/name so we can re-tag any products that
-  // were filed under it — otherwise renaming a category silently
-  // orphans its products (they'd keep pointing at a name that no
-  // longer exists anywhere).
   const before = allCategoriesCache.find(c => c.id === editingCategoryId);
 
   const { error } = await supabase
@@ -1341,9 +1340,6 @@ async function addUser() {
     return;
   }
 
-  // Sign this new user up on a throwaway client — persistSession:false
-  // means it never touches localStorage, so it can't disturb the
-  // admin's own logged-in session in the main `supabase` client.
   const tempClient = window.createSupabaseClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -1378,5 +1374,9 @@ async function addUser() {
 /***********************
     BOOT
 ************************/
+
+window.addEventListener("resize", () => {
+  if (ordersChartInstance) ordersChartInstance.resize();
+});
 
 window.addEventListener("DOMContentLoaded", checkAdminSession);

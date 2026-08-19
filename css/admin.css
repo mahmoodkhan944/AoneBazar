@@ -1,7 +1,5 @@
 /* ===========================================================
    ADMIN DASHBOARD — layout, cards, tables
-   Uses the same design tokens as the storefront (design-system.css)
-   so the two feel like one product, not a bolted-on tool.
 =========================================================== */
 
 body.admin-body {
@@ -255,14 +253,28 @@ body.admin-body {
   margin-bottom: 16px;
 }
 
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
 .top-product-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
   font-size: 0.88rem;
 }
+.top-product-row > div:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-product-row .rev { flex-shrink: 0; }
 .top-product-row:last-child { border-bottom: none; }
 .top-product-row .qty { color: var(--ink-faint); font-size: 0.78rem; }
 .top-product-row .rev { font-weight: 700; color: var(--green-700); }
@@ -613,10 +625,6 @@ body.admin-body {
   .admin-main { padding: 16px 16px 40px; }
   .stat-grid { grid-template-columns: 1fr; }
 
-  /* Tables become stacked cards instead of a horizontally-scrolling
-     grid — each row turns into its own card, each cell gets a small
-     label above its value (from data-label, set by admin.js) so it's
-     still clear which value is which. */
   .admin-table-wrap { overflow-x: visible; }
 
   .admin-table, .admin-table thead, .admin-table tbody,
@@ -659,9 +667,6 @@ body.admin-body {
     flex-shrink: 0;
   }
 
-  /* Cells with no meaningful label (thumbnail, or a cell that's
-     already the whole row's "title") span full width, unlabeled,
-     left-aligned — cleaner than a redundant label. */
   .admin-table td:not([data-label]) {
     justify-content: flex-start;
     text-align: left;

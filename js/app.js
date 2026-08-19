@@ -128,7 +128,6 @@ async function openStore(key, jumpToCategory) {
   currentStore = key;
 
   await loadProducts(key);
-  // load this store's products from Supabase
 
   const store = data[key];
   if (!store) return;
@@ -644,9 +643,6 @@ async function placeOrder() {
   });
 
   if (error) {
-    // If this fires, the customer isn't fully logged in via Firebase
-    // yet (RLS needs a verified identity to accept the order). The
-    // order still goes out over WhatsApp so the shop doesn't miss it.
     console.warn("Order not saved to Supabase (needs login):", error.message);
   } else if (appliedCoupon) {
     const { error: redeemError } = await supabase.rpc("redeem_coupon", { p_code: appliedCoupon.code });
@@ -684,10 +680,10 @@ async function placeOrder() {
 }
 
 /***********************
-    CHECKOUT: UPI half-payment step
+    CHECKOUT: UPI "half" | "full" -payment step
 ************************/
 
-let selectedPaymentOption = "half"; // "half" | "full"
+let selectedPaymentOption = "half";
 let currentPayableTotal = 0;
 
 function proceedToPayment() {
@@ -932,8 +928,6 @@ async function loginWithPhone() {
     return;
   }
 
-  // No OTP — the phone number is trusted as typed. We still create a
-  // real (anonymous) Supabase session behind the scenes so orders,
   // wishlist, and reviews can be tied to this customer securely on
   // this device. Logging out keeps that same identity so a return
   // visit with the same number sees the same order history.
@@ -992,8 +986,6 @@ window.onload = function () {
   loadProductPage(); // no-ops unless this is product.html
   loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
 
-  // Coming back from a product page, or from the mega-menu? Jump
-  // straight to that store (and category, if given).
   const backParams = new URLSearchParams(location.search);
   const storeParam = backParams.get("store");
   const categoryParam = backParams.get("category");
@@ -1011,7 +1003,7 @@ window.onload = function () {
 
 async function loadProductPage() {
   const contentEl = document.getElementById("productPageContent");
-  if (!contentEl) return; // not on product.html, nothing to do
+  if (!contentEl) return;
 
   const notFoundEl = document.getElementById("productNotFound");
   const params = new URLSearchParams(location.search);
@@ -1512,8 +1504,6 @@ async function submitReview() {
 
 /***********************
     AUTH STATE
-    Keeps currentSupabaseUser in sync so the rest of the app can
-    check "who's logged in" without an await on every click.
 ************************/
 
 supabase.auth.onAuthStateChange((_event, session) => {
@@ -1528,9 +1518,6 @@ supabase.auth.getSession().then(({ data }) => {
 
 /***********************
     MEGA MENU ("All Categories")
-    Groups every category (across all 3 stores) the way the admin
-    has organized them under Categories → Group, and lets a shopper
-    jump straight into a store already filtered to that category.
 ************************/
 
 let megaMenuLoaded = false;

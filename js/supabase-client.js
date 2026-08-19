@@ -1,21 +1,7 @@
-/***********************************************************
-   SUPABASE CLIENT + SITE CONTENT
-   Everything — data, images, login, and now the editable
-   homepage/about/contact text — runs through Supabase.
-
-   The whole file is wrapped in one guard so it's safe even if
-   accidentally included twice on the page (a common gotcha with
-   plain <script> tags) — without this, the second run would
-   throw "Identifier ... has already been declared" and silently
-   break every function below it on the page.
-***********************************************************/
 
 if (!window.__AONE_SUPABASE_READY__) {
   window.__AONE_SUPABASE_READY__ = true;
 
-  // Mobile nav toggle lives outside the Supabase setup below on purpose —
-  // navigation should keep working even if the Supabase library fails to
-  // load for some reason (flaky network, ad-blocker, etc).
   window.toggleMobileNav = function () {
     const nav = document.getElementById("mainNav");
     if (nav) nav.classList.toggle("mobile-open");
@@ -81,10 +67,6 @@ if (!window.__AONE_SUPABASE_READY__) {
 
   /***********************************************************
      TOAST NOTIFICATIONS
-     A nicer stand-in for window.alert() — used everywhere in the
-     app instead of the browser's native alert box. Lives outside
-     the Supabase setup below so it always works, even if Supabase
-     fails to load.
   ***********************************************************/
 
   const ERROR_HINTS = [
@@ -125,10 +107,6 @@ if (!window.__AONE_SUPABASE_READY__) {
     setTimeout(remove, 4000);
   };
 
-  // Everywhere in the app that used to call alert(...) now calls
-  // window.alert(...) unchanged in the source — this override means
-  // we didn't have to touch every single call site by hand, and any
-  // future alert() call automatically gets the nicer styling too.
   window.alert = window.showToast;
 
   (function () {
@@ -145,17 +123,10 @@ if (!window.__AONE_SUPABASE_READY__) {
       return;
     }
 
-    // Keep a handle on the raw library + credentials before we overwrite
-    // window.supabase below — admin.html uses this to spin up a second,
-    // throwaway client (e.g. for creating a new user) without disturbing
-    // the admin's own logged-in session.
     window.createSupabaseClient = window.supabase.createClient;
     window.SUPABASE_URL = SUPABASE_URL;
     window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
-    // Replace the library namespace (window.supabase) with the actual
-    // client instance — this is the object every other file in the app
-    // refers to as the bare global `supabase`.
     window.supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.PRODUCT_IMAGES_BUCKET = "product-images";
 
@@ -166,16 +137,6 @@ if (!window.__AONE_SUPABASE_READY__) {
 
     /***********************************************************
        SITE CONTENT (mini CMS)
-       Shared by every page (index, about, contact, product) so
-       the homepage hero, promo banner, and about/contact text
-       can be edited from the admin panel without touching code.
-
-       Elements are matched two ways:
-       - By id, for a few specific spots (heroTitle, heroSubtitle,
-         promoBanner) where the default markup has extra styling
-         we don't want to clobber unless the admin changed it.
-       - By [data-content="key"] anywhere else — the element's
-         text is simply replaced with that key's value.
     ***********************************************************/
 
     const SITE_CONTENT_DEFAULTS = {

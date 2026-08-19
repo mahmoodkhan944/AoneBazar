@@ -1437,9 +1437,7 @@
   .cards { grid-template-columns: 1fr; }
   .footer-container { grid-template-columns: 1fr 1fr; }
 
-  /* Wishlist / Orders / Cart move down to the bottom nav bar on
-     mobile — that's what was crowding the header and pushing the
-     brand name off-screen. Logout moves into the hamburger dropdown. */
+  /* Wishlist / Orders / Cart move down to the bottom nav bar on mobile */
   .header-actions .icon-btn,
   .header-actions .logout-btn,
   #userGreeting {
