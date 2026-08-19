@@ -575,9 +575,7 @@ body.admin-body {
 /* ---------------- MOBILE SIDEBAR ---------------- */
 .admin-mobile-toggle {
   display: none;
-  position: fixed;
-  top: 14px;
-  left: 14px;
+  position: static;
   z-index: 55;
   width: 42px;
   height: 42px;
@@ -589,6 +587,7 @@ body.admin-body {
   color: var(--ink);
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .admin-sidebar-overlay {
@@ -610,8 +609,8 @@ body.admin-body {
 @media (max-width: 760px) {
   .admin-sidebar { position: fixed; left: -260px; top: 0; bottom: 0; z-index: 50; transition: left var(--med) var(--ease); }
   .admin-sidebar.open { left: 0; }
-  .admin-mobile-toggle { display: flex; }
-  .admin-main { padding: 18px 18px 18px 70px; }
+  .admin-mobile-toggle { display: flex; margin-bottom: 14px; }
+  .admin-main { padding: 16px 16px 40px; }
   .stat-grid { grid-template-columns: 1fr; }
 
   /* Tables become stacked cards instead of a horizontally-scrolling
