@@ -184,6 +184,9 @@
         <div id="cartDiscountRow" class="hidden cart-summary-row cart-summary-discount">
           <span>Discount</span><span>−₹<span id="cartDiscount">0</span></span>
         </div>
+        <div id="cartDeliveryRow" class="hidden cart-summary-row">
+          <span>Delivery</span><span id="cartDeliveryCharge">Free</span>
+        </div>
         <b class="cart-summary-row">Total: <span>₹<span id="cartTotal">0</span></span></b>
       </div>
 
@@ -192,7 +195,7 @@
         <textarea id="customerAddress" placeholder="Delivery Address"></textarea>
       </div>
 
-      <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹250</p>
+      <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹100 · Free delivery above ₹300 (₹30 delivery charge below that)</p>
 
       <button class="place-order-btn" id="proceedToPaymentBtn" onclick="proceedToPayment()">Continue to Payment</button>
 

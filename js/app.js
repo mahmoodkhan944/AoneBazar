@@ -32,6 +32,43 @@ let currentSupabaseUser = null;
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 const WHATSAPP_NUMBER = "918009555567";
 
+// Defaults used until site_content has loaded (or if the admin
+// hasn't set these yet) — the live values come from window.siteContent,
+// editable from Admin → Site Content → "Minimum Order & Delivery Charges".
+const DEFAULT_MIN_ORDER = 100;
+const DEFAULT_FREE_DELIVERY_THRESHOLD = 300;
+const DEFAULT_DELIVERY_CHARGE = 30;
+
+function getMinOrder() {
+  const v = window.siteContent && Number(window.siteContent.min_order);
+  return v > 0 ? v : DEFAULT_MIN_ORDER;
+}
+
+function getFreeDeliveryThreshold() {
+  const v = window.siteContent && Number(window.siteContent.free_delivery_threshold);
+  return v > 0 ? v : DEFAULT_FREE_DELIVERY_THRESHOLD;
+}
+
+function getDeliveryChargeAmount() {
+  const v = window.siteContent && Number(window.siteContent.delivery_charge);
+  return v >= 0 && window.siteContent && window.siteContent.delivery_charge !== undefined
+    ? v
+    : DEFAULT_DELIVERY_CHARGE;
+}
+
+function calculateDeliveryCharge(goodsTotal) {
+  return goodsTotal >= getFreeDeliveryThreshold() ? 0 : getDeliveryChargeAmount();
+}
+
+function updateMinOrderNotice() {
+  const el = document.getElementById("minOrderNotice");
+  if (!el) return;
+  const charge = getDeliveryChargeAmount();
+  el.innerText = charge > 0
+    ? `Minimum order ₹${getMinOrder()} · Free delivery above ₹${getFreeDeliveryThreshold()} (₹${charge} delivery charge below that)`
+    : `Minimum order ₹${getMinOrder()} · Free delivery on all orders`;
+}
+
 function generateOrderID() {
   return "ORD" + Date.now();
 }
@@ -342,6 +379,7 @@ function openCart() {
   }
 
   modal.classList.remove("hidden");
+  updateMinOrderNotice();
 
   renderCart();
 }
@@ -434,7 +472,9 @@ function renderCart() {
 function updateCartTotals() {
   const subtotal = cartSubtotal();
   const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
-  const total = Math.max(0, subtotal - discount);
+  const goodsTotal = Math.max(0, subtotal - discount);
+  const deliveryCharge = cart.length > 0 ? calculateDeliveryCharge(goodsTotal) : 0;
+  const total = goodsTotal + deliveryCharge;
 
   document.getElementById("cartSubtotal").innerText = subtotal;
   document.getElementById("cartDiscount").innerText = discount;
@@ -442,6 +482,17 @@ function updateCartTotals() {
 
   document.getElementById("cartSubtotalRow").classList.toggle("hidden", !appliedCoupon);
   document.getElementById("cartDiscountRow").classList.toggle("hidden", !appliedCoupon);
+
+  const deliveryRow = document.getElementById("cartDeliveryRow");
+  const deliveryLabel = document.getElementById("cartDeliveryCharge");
+  if (deliveryRow && deliveryLabel) {
+    if (cart.length === 0) {
+      deliveryRow.classList.add("hidden");
+    } else {
+      deliveryRow.classList.remove("hidden");
+      deliveryLabel.innerText = deliveryCharge > 0 ? "₹" + deliveryCharge : "Free";
+    }
+  }
 }
 
 async function applyCoupon() {
@@ -533,12 +584,15 @@ async function placeOrder() {
   });
 
   const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
-  const total = Math.max(0, subtotal - discount);
+  const goodsTotal = Math.max(0, subtotal - discount);
 
-  if (total < 250) {
-    alert("Minimum order is ₹250. Please add more items to your cart.");
+  if (goodsTotal < getMinOrder()) {
+    alert(`Minimum order is ₹${getMinOrder()}. Please add more items to your cart.`);
     return;
   }
+
+  const deliveryCharge = calculateDeliveryCharge(goodsTotal);
+  const total = goodsTotal + deliveryCharge;
 
   const amountPaid = selectedPaymentOption === "full" ? total : Math.ceil(total / 2);
   const balanceDue = total - amountPaid;
@@ -546,6 +600,8 @@ async function placeOrder() {
   if (appliedCoupon) {
     message += `%0ACoupon: ${appliedCoupon.code} (−₹${discount})`;
   }
+  message += `%0ASubtotal: ₹${goodsTotal}`;
+  message += deliveryCharge > 0 ? `%0ADelivery charge: ₹${deliveryCharge}` : `%0ADelivery: Free`;
   message += `%0ATotal: ₹${total}%0APaid via UPI: ₹${amountPaid} (screenshot attached)`;
   message += balanceDue > 0 ? `%0ABalance on delivery: ₹${balanceDue}` : `%0ABalance on delivery: ₹0 (Paid in full)`;
   message += `%0AAddress: ${address}`;
@@ -563,6 +619,7 @@ async function placeOrder() {
     subtotal,
     coupon_code: appliedCoupon ? appliedCoupon.code : null,
     discount,
+    delivery_charge: deliveryCharge,
     total,
     payment: "COD",
     status: "NEW"
@@ -638,12 +695,15 @@ function proceedToPayment() {
   }
 
   const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
-  const total = Math.max(0, cartSubtotal() - discount);
+  const goodsTotal = Math.max(0, cartSubtotal() - discount);
 
-  if (total < 250) {
-    alert("Minimum order is ₹250. Please add more items to your cart.");
+  if (goodsTotal < getMinOrder()) {
+    alert(`Minimum order is ₹${getMinOrder()}. Please add more items to your cart.`);
     return;
   }
+
+  const deliveryCharge = calculateDeliveryCharge(goodsTotal);
+  const total = goodsTotal + deliveryCharge;
 
   const upiId = (window.siteContent && window.siteContent.upi_id) || "";
 

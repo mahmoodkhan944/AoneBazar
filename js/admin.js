@@ -1091,6 +1091,9 @@ async function loadSiteContentForm() {
   document.getElementById("cf_contact_phone").value = content.contact_phone || "";
   document.getElementById("cf_contact_address").value = content.contact_address || "";
   document.getElementById("cf_upi_id").value = content.upi_id || "";
+  document.getElementById("cf_min_order").value = content.min_order || "100";
+  document.getElementById("cf_delivery_charge").value = content.delivery_charge || "30";
+  document.getElementById("cf_free_delivery_threshold").value = content.free_delivery_threshold || "300";
 }
 
 async function saveSiteContent() {
@@ -1102,7 +1105,10 @@ async function saveSiteContent() {
     about_intro: document.getElementById("cf_about_intro").value.trim(),
     contact_phone: document.getElementById("cf_contact_phone").value.trim(),
     contact_address: document.getElementById("cf_contact_address").value.trim(),
-    upi_id: document.getElementById("cf_upi_id").value.trim()
+    upi_id: document.getElementById("cf_upi_id").value.trim(),
+    min_order: document.getElementById("cf_min_order").value.trim() || "100",
+    delivery_charge: document.getElementById("cf_delivery_charge").value.trim() || "30",
+    free_delivery_threshold: document.getElementById("cf_free_delivery_threshold").value.trim() || "300"
   };
 
   const rows = Object.entries(updates).map(([key, value]) => ({ key, value }));

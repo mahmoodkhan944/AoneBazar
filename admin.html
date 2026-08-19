@@ -392,12 +392,30 @@
         <div class="admin-panel">
           <h3>Checkout — UPI Half-Payment</h3>
           <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
-            Orders below ₹250 are blocked automatically. Every order above that requires the customer to pay half the total via UPI at checkout (a QR code is generated from this UPI ID) before their order is sent to you on WhatsApp — they pay the rest on delivery.
+            Every order requires the customer to pay half (or the full amount) via UPI at checkout (a QR code is generated from this UPI ID) before their order is sent to you on WhatsApp — they pay the rest on delivery.
           </p>
           <div class="admin-form-grid">
             <div class="full">
               <label>Your UPI ID</label>
               <input id="cf_upi_id" placeholder="e.g. aonebazaar@okhdfcbank" />
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>Minimum Order & Delivery Charges</h3>
+          <div class="admin-form-grid">
+            <div>
+              <label>Minimum order (₹)</label>
+              <input id="cf_min_order" type="number" placeholder="e.g. 100" />
+            </div>
+            <div>
+              <label>Delivery charge (₹) — below the free-delivery amount</label>
+              <input id="cf_delivery_charge" type="number" placeholder="e.g. 30" />
+            </div>
+            <div>
+              <label>Free delivery above (₹)</label>
+              <input id="cf_free_delivery_threshold" type="number" placeholder="e.g. 300" />
             </div>
           </div>
         </div>
