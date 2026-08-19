@@ -12,123 +12,6 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-<style id="full-width-responsive-overrides">
-  /* ===== FULL-WIDTH ADMIN LAYOUT ===== */
-  html, body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  .admin-shell {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-  }
-
-  .admin-main {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    flex: 1 1 auto;
-    box-sizing: border-box;
-  }
-
-  .admin-view {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  /* Dashboard stat boxes */
-  .stat-grid {
-    width: 100%;
-    max-width: none;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    box-sizing: border-box;
-  }
-
-  .stat-card {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  /* All dashboard/content panels */
-  .admin-panel {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .admin-grid-2 {
-    width: 100%;
-    max-width: none;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    box-sizing: border-box;
-  }
-
-  .admin-topbar {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .admin-table-wrap {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* Tablet */
-  @media (max-width: 900px) {
-    .stat-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .admin-grid-2 {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  /* Mobile */
-  @media (max-width: 600px) {
-    .admin-main {
-      width: 100%;
-      padding-left: 12px;
-      padding-right: 12px;
-    }
-
-    .stat-grid {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .stat-card {
-      width: 100%;
-      min-height: 84px;
-    }
-
-    .admin-grid-2 {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .admin-panel {
-      width: 100%;
-      padding: 16px;
-    }
-
-    .admin-topbar {
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-  }
-</style>
-
 </head>
 <body class="admin-body">
 
@@ -307,9 +190,22 @@
               <label>Price (₹) — used if no variants are added below</label>
               <input id="pPrice" type="number" placeholder="e.g. 120" />
             </div>
+            <div>
+              <label>MRP (₹) — optional, shows a "before discount" price</label>
+              <input id="pMrp" type="number" placeholder="e.g. 150 (leave blank for no discount badge)" />
+            </div>
             <div class="full">
               <label>Images (you can select 2–3 at once)</label>
               <input type="file" id="pImage" multiple accept="image/*" />
+            </div>
+            <div>
+              <label>Homepage section (optional) — e.g. "Best Deal", "Trending Products"</label>
+              <input id="pFeaturedSection" placeholder="Leave blank to not feature on homepage" list="featuredSectionList" />
+              <datalist id="featuredSectionList"></datalist>
+            </div>
+            <div>
+              <label>Order within that section (optional)</label>
+              <input id="pFeaturedOrder" type="number" placeholder="0" />
             </div>
             <div class="full">
               <label>Sizes / Packs (optional) — e.g. 250g, 1kg, Pack of 6</label>
@@ -572,6 +468,11 @@
 
       <input id="editName" placeholder="Product Name" />
       <input id="editPrice" placeholder="Price (used if no variants below)" />
+      <input id="editMrp" type="number" placeholder="MRP (optional, shows a discount badge)" />
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Homepage section (optional)</label>
+      <input id="editFeaturedSection" placeholder='e.g. "Best Deal" — leave blank to not feature' list="featuredSectionList" />
+      <input id="editFeaturedOrder" type="number" placeholder="Order within that section (optional)" />
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Current images (click × to remove)</label>
       <div id="editExistingImages" class="edit-existing-images"></div>

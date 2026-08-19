@@ -172,30 +172,130 @@ function renderProductGrid(items, emptyMessage) {
 
   items.forEach(p => {
     const hasVariants = p.variants && p.variants.length > 0;
-    const priceLabel = hasVariants
-      ? `From ₹${Math.min(...p.variants.map(v => v.price))}`
-      : `₹${p.price}`;
+    const outOfStock = p.in_stock === false;
+
+    const basePrice = hasVariants ? Math.min(...p.variants.map(v => v.price)) : p.price;
+    const priceLabel = hasVariants ? `From ₹${basePrice}` : `₹${p.price}`;
+
+    const hasDiscount = p.mrp && p.mrp > basePrice;
+    const discountPct = hasDiscount ? Math.round(((p.mrp - basePrice) / p.mrp) * 100) : 0;
+
+    const priceHtml = hasDiscount
+      ? `<p>${priceLabel} <span class="mrp-strike">₹${p.mrp}</span></p>`
+      : `<p>${priceLabel}</p>`;
+
+    const variantSelect = hasVariants ? variantDropdownHtml(p, outOfStock) : "";
+
+    const actionHtml = outOfStock
+      ? `<button class="out-of-stock-btn" disabled>Out of Stock</button>`
+      : (hasVariants
+          ? `<button onclick='addFromCardSelect(this, ${JSON.stringify(p)})'>Add to Cart</button>`
+          : `<button onclick='addToCart(${JSON.stringify(p)})'>Add to Cart</button>`);
 
     productGrid.innerHTML += `
-      <div class="product">
+      <div class="product${outOfStock ? " product-out-of-stock" : ""}">
+        ${hasDiscount ? `<span class="discount-badge">-${discountPct}%</span>` : ""}
         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
           <img src="${p.images ? p.images[0] : p.img}">
           <h4>${p.name}</h4>
-          <p>${priceLabel}</p>
+          ${priceHtml}
         </a>
+        ${variantSelect}
         <a class="btn btn-outline btn-sm" href="product.html?id=${p.id}">
           View Details
         </a>
-        <button onclick='${hasVariants ? `openVariantPicker(${JSON.stringify(p)})` : `addToCart(${JSON.stringify(p)})`}'>
-          Add to Cart
-        </button>
+        ${actionHtml}
       </div>`;
   });
+}
+
+/** Compact size/pack dropdown shown on a product card (grid or
+ *  featured row) — cheaper on space than a row of chip buttons. */
+function variantDropdownHtml(p, disabled) {
+  return `
+    <select class="variant-select" ${disabled ? "disabled" : ""}>
+      ${p.variants.map((v, i) => `<option value="${i}">${v.label} — ₹${v.price}</option>`).join("")}
+    </select>
+  `;
+}
+
+/** Reads the <select> right before the clicked "Add to Cart" button
+ *  and adds whichever size/pack is currently chosen. */
+function addFromCardSelect(button, product) {
+  const select = button.parentElement.querySelector(".variant-select");
+  const index = select ? Number(select.value) : 0;
+  addToCart(product, product.variants[index]);
 }
 
 function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
+}
+
+/***********************
+    FEATURED HOMEPAGE SECTIONS (admin-curated)
+    Products with a `featured_section` set (e.g. "Best Deal",
+    "Trending Products") show up here in their own named row on
+    the homepage — separate from browsing a specific store.
+************************/
+
+async function loadFeaturedSections() {
+  const container = document.getElementById("featuredSections");
+  if (!container) return; // not on the homepage
+
+  const { data: rows, error } = await supabase
+    .from("products")
+    .select("*")
+    .not("featured_section", "is", null)
+    .eq("in_stock", true)
+    .order("featured_section")
+    .order("featured_order", { ascending: true });
+
+  if (error || !rows || rows.length === 0) {
+    if (error) console.error(error);
+    return;
+  }
+
+  const sections = {};
+  rows.forEach(p => {
+    if (!sections[p.featured_section]) sections[p.featured_section] = [];
+    sections[p.featured_section].push(p);
+  });
+
+  container.innerHTML = Object.entries(sections).map(([title, items]) => `
+    <section class="featured-section">
+      <div class="container">
+        <h2 class="featured-section-title">${title}</h2>
+        <div class="featured-row">
+          ${items.map(p => featuredProductCardHtml(p)).join("")}
+        </div>
+      </div>
+    </section>
+  `).join("");
+}
+
+function featuredProductCardHtml(p) {
+  const hasVariants = p.variants && p.variants.length > 0;
+  const basePrice = hasVariants ? Math.min(...p.variants.map(v => v.price)) : p.price;
+  const priceLabel = hasVariants ? `From ₹${basePrice}` : `₹${p.price}`;
+  const hasDiscount = p.mrp && p.mrp > basePrice;
+  const discountPct = hasDiscount ? Math.round(((p.mrp - basePrice) / p.mrp) * 100) : 0;
+
+  return `
+    <div class="featured-card">
+      ${hasDiscount ? `<span class="discount-badge">-${discountPct}%</span>` : ""}
+      <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
+        <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
+        <h4>${p.name}</h4>
+        <p>${priceLabel}${hasDiscount ? ` <span class="mrp-strike">₹${p.mrp}</span>` : ""}</p>
+      </a>
+      ${hasVariants ? variantDropdownHtml(p, false) : ""}
+      ${hasVariants
+        ? `<button onclick='addFromCardSelect(this, ${JSON.stringify(p)})'>Add to Cart</button>`
+        : `<button onclick='addToCart(${JSON.stringify(p)})'>Add to Cart</button>`
+      }
+    </div>
+  `;
 }
 
 /***********************
@@ -720,7 +820,6 @@ async function loadProducts(store) {
     .from("products")
     .select("*")
     .eq("store", store)
-    .eq("in_stock", true)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -813,6 +912,7 @@ window.onload = function () {
   saveCart(); // cart count refresh
   updateWhatsAppCTA();
   loadProductPage(); // no-ops unless this is product.html
+  loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
 
   // Coming back from a product page, or from the mega-menu? Jump
   // straight to that store (and category, if given).
@@ -851,7 +951,7 @@ async function loadProductPage() {
     .eq("id", id)
     .maybeSingle();
 
-  if (error || !p || !p.in_stock) {
+  if (error || !p) {
     contentEl.classList.add("hidden");
     notFoundEl.classList.remove("hidden");
     return;
@@ -871,6 +971,18 @@ async function loadProductPage() {
 
   document.getElementById("detailName").innerText = p.name;
   renderVariantSelector(p);
+
+  const addBtn = document.getElementById("addToCartBtn");
+  if (p.in_stock === false) {
+    addBtn.disabled = true;
+    addBtn.innerHTML = "Out of Stock";
+    addBtn.classList.add("out-of-stock-btn");
+    document.getElementById("variantSelector").classList.add("hidden");
+  } else {
+    addBtn.disabled = false;
+    addBtn.innerHTML = '<i class="fa-solid fa-basket-shopping"></i> Add to Cart';
+    addBtn.classList.remove("out-of-stock-btn");
+  }
 
   currentImages = (p.images && p.images.length) ? p.images : (p.img ? [p.img] : []);
   currentIndex = 0;
@@ -917,7 +1029,7 @@ function renderVariantSelector(p) {
     selectedVariant = null;
     wrap.classList.add("hidden");
     wrap.innerHTML = "";
-    priceEl.innerText = "₹" + p.price;
+    setDetailPrice(p.price, p.mrp);
     return;
   }
 
@@ -930,7 +1042,17 @@ function renderVariantSelector(p) {
     </button>
   `).join("");
 
-  priceEl.innerText = "₹" + selectedVariant.price;
+  setDetailPrice(selectedVariant.price, p.mrp);
+}
+
+function setDetailPrice(price, mrp) {
+  const priceEl = document.getElementById("detailPrice");
+  if (mrp && mrp > price) {
+    const pct = Math.round(((mrp - price) / mrp) * 100);
+    priceEl.innerHTML = `₹${price} <span class="mrp-strike">₹${mrp}</span> <span class="discount-badge" style="position:static;display:inline-block;">-${pct}%</span>`;
+  } else {
+    priceEl.innerText = "₹" + price;
+  }
 }
 
 function selectVariant(index) {
@@ -942,11 +1064,11 @@ function selectVariant(index) {
     btn.classList.toggle("active", i === index);
   });
 
-  document.getElementById("detailPrice").innerText = "₹" + selectedVariant.price;
+  setDetailPrice(selectedVariant.price, currentProduct.mrp);
 }
 
 function addCurrentProductToCart() {
-  if (!currentProduct) return;
+  if (!currentProduct || currentProduct.in_stock === false) return;
   addToCart(currentProduct, selectedVariant);
   alert("Added to cart");
 }

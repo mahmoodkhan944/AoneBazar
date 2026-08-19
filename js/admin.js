@@ -1,5 +1,6 @@
 /***********************************************************
    ADMIN DASHBOARD (admin.html)
+   Self-contained — talks only to Supabase (js/supabase-client.js).
 ***********************************************************/
 
 let adminUser = null;
@@ -468,6 +469,12 @@ async function loadProducts() {
   allProductsCache = rows || [];
   renderProductsTable(allProductsCache);
   loadCategoryOptions(document.getElementById("pStore").value);
+
+  // Populate the "homepage section" datalist so the admin can reuse an
+  // existing section name (e.g. "Best Deal") instead of typo-ing a new one.
+  const sections = [...new Set(allProductsCache.map(p => p.featured_section).filter(Boolean))];
+  const listEl = document.getElementById("featuredSectionList");
+  if (listEl) listEl.innerHTML = sections.map(s => `<option value="${s}">`).join("");
 }
 
 function renderProductsTable(list) {
@@ -525,6 +532,9 @@ async function addProduct() {
   const category = document.getElementById("pCategory").value;
   const name = document.getElementById("pName").value.trim();
   const price = Number(document.getElementById("pPrice").value) || 0;
+  const mrp = Number(document.getElementById("pMrp").value) || null;
+  const featured_section = document.getElementById("pFeaturedSection").value.trim() || null;
+  const featured_order = Number(document.getElementById("pFeaturedOrder").value) || 0;
   const files = document.getElementById("pImage").files;
   const variants = collectVariants("pVariants");
 
@@ -563,10 +573,13 @@ async function addProduct() {
     return;
   }
 
+  // If only variants were priced (no base price), use the cheapest
+  // variant as the product's headline price for the storefront grid.
   const effectivePrice = price || Math.min(...variants.map(v => v.price));
 
   const { error } = await supabase.from("products").insert({
-    store, category, name, price: effectivePrice, images: imageURLs, variants
+    store, category, name, price: effectivePrice, mrp, images: imageURLs, variants,
+    featured_section, featured_order
   });
 
   if (error) {
@@ -577,6 +590,9 @@ async function addProduct() {
   alert("Product added!");
   document.getElementById("pName").value = "";
   document.getElementById("pPrice").value = "";
+  document.getElementById("pMrp").value = "";
+  document.getElementById("pFeaturedSection").value = "";
+  document.getElementById("pFeaturedOrder").value = "";
   document.getElementById("pImage").value = "";
   document.getElementById("pVariants").innerHTML = "";
   loadProducts();
@@ -588,6 +604,9 @@ async function editProduct(p) {
   editingProductId = p.id;
   document.getElementById("editName").value = p.name;
   document.getElementById("editPrice").value = p.price;
+  document.getElementById("editMrp").value = p.mrp || "";
+  document.getElementById("editFeaturedSection").value = p.featured_section || "";
+  document.getElementById("editFeaturedOrder").value = p.featured_order || "";
   document.getElementById("editStore").value = p.store;
 
   editRemainingImages = p.images ? [...p.images] : [];
@@ -713,6 +732,9 @@ function collectVariants(containerId) {
 async function updateProduct() {
   const name = document.getElementById("editName").value;
   const price = Number(document.getElementById("editPrice").value);
+  const mrp = Number(document.getElementById("editMrp").value) || null;
+  const featured_section = document.getElementById("editFeaturedSection").value.trim() || null;
+  const featured_order = Number(document.getElementById("editFeaturedOrder").value) || 0;
   const store = document.getElementById("editStore").value;
   const category = document.getElementById("editCategory").value;
   const variants = collectVariants("editVariants");
@@ -740,7 +762,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, price, store, category, images, variants };
+  const updateData = { name, price, mrp, store, category, images, variants, featured_section, featured_order };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 
@@ -848,6 +870,10 @@ async function updateCategory() {
 
   if (!name) { alert("Enter a category name"); return; }
 
+  // Remember the old store/name so we can re-tag any products that
+  // were filed under it — otherwise renaming a category silently
+  // orphans its products (they'd keep pointing at a name that no
+  // longer exists anywhere).
   const before = allCategoriesCache.find(c => c.id === editingCategoryId);
 
   const { error } = await supabase
@@ -1171,6 +1197,9 @@ async function addUser() {
     return;
   }
 
+  // Sign this new user up on a throwaway client — persistSession:false
+  // means it never touches localStorage, so it can't disturb the
+  // admin's own logged-in session in the main `supabase` client.
   const tempClient = window.createSupabaseClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
