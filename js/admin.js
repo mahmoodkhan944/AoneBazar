@@ -273,18 +273,26 @@ async function loadOrders() {
   }
 
   cachedOrders = (rows || []).map(mapOrderRow);
+  ordersPage = 1;
   renderOrdersTable(cachedOrders);
 }
 
+let ordersPage = 1;
+let currentOrdersList = [];
+
 function renderOrdersTable(list) {
+  currentOrdersList = list;
   const body = document.getElementById("ordersBody");
 
   if (list.length === 0) {
     body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No orders found</td></tr>`;
+    document.getElementById("ordersPagination").innerHTML = "";
     return;
   }
 
-  body.innerHTML = list.map(o => `
+  const pageItems = paginateArray(list, ordersPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(o => `
     <tr>
       <td class="cell-title">${o.id}</td>
       <td data-label="Customer">${o.name}</td>
@@ -301,6 +309,13 @@ function renderOrdersTable(list) {
       </td>
     </tr>
   `).join("");
+
+  renderPagination("ordersPagination", list.length, ordersPage, PAGE_SIZE, "goToOrdersPage");
+}
+
+function goToOrdersPage(n) {
+  ordersPage = n;
+  renderOrdersTable(currentOrdersList);
 }
 
 function filterOrders() {
@@ -308,6 +323,7 @@ function filterOrders() {
   const filtered = cachedOrders.filter(o =>
     o.id.toLowerCase().includes(q) || o.name.toLowerCase().includes(q)
   );
+  ordersPage = 1;
   renderOrdersTable(filtered);
 }
 
@@ -467,6 +483,7 @@ async function loadProducts() {
   }
 
   allProductsCache = rows || [];
+  productsPage = 1;
   renderProductsTable(allProductsCache);
   loadCategoryOptions(document.getElementById("pStore").value);
 
@@ -477,15 +494,22 @@ async function loadProducts() {
   if (listEl) listEl.innerHTML = sections.map(s => `<option value="${s}">`).join("");
 }
 
+let productsPage = 1;
+let currentProductsList = [];
+
 function renderProductsTable(list) {
+  currentProductsList = list;
   const body = document.getElementById("productsBody");
 
   if (list.length === 0) {
     body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No products yet</td></tr>`;
+    document.getElementById("productsPagination").innerHTML = "";
     return;
   }
 
-  body.innerHTML = list.map(p => `
+  const pageItems = paginateArray(list, productsPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(p => `
     <tr>
       <td><img class="thumb" src="${p.images && p.images[0] ? p.images[0] : ''}" alt=""></td>
       <td class="cell-title">${p.name}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
@@ -502,6 +526,13 @@ function renderProductsTable(list) {
       </td>
     </tr>
   `).join("");
+
+  renderPagination("productsPagination", list.length, productsPage, PAGE_SIZE, "goToProductsPage");
+}
+
+function goToProductsPage(n) {
+  productsPage = n;
+  renderProductsTable(currentProductsList);
 }
 
 function filterProducts() {
@@ -513,6 +544,7 @@ function filterProducts() {
     (!storeFilter || p.store === storeFilter)
   );
 
+  productsPage = 1;
   renderProductsTable(filtered);
 }
 
@@ -814,8 +846,26 @@ async function loadCategoriesView() {
   }
 
   allCategoriesCache = rows;
+  categoriesPage = 1;
+  renderCategoriesTable(rows);
+}
 
-  body.innerHTML = rows.map(c => `
+let categoriesPage = 1;
+let currentCategoriesList = [];
+
+function renderCategoriesTable(list) {
+  currentCategoriesList = list;
+  const body = document.getElementById("categoriesBody");
+
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);">No categories yet</td></tr>`;
+    document.getElementById("categoriesPagination").innerHTML = "";
+    return;
+  }
+
+  const pageItems = paginateArray(list, categoriesPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(c => `
     <tr>
       <td class="cell-title">${c.name}</td>
       <td data-label="Store">${c.store}</td>
@@ -825,6 +875,13 @@ async function loadCategoriesView() {
       </div></td>
     </tr>
   `).join("");
+
+  renderPagination("categoriesPagination", list.length, categoriesPage, PAGE_SIZE, "goToCategoriesPage");
+}
+
+function goToCategoriesPage(n) {
+  categoriesPage = n;
+  renderCategoriesTable(currentCategoriesList);
 }
 
 async function addCategory() {
@@ -925,7 +982,26 @@ async function loadCoupons() {
     return;
   }
 
-  body.innerHTML = rows.map(c => `
+  couponsPage = 1;
+  renderCouponsTable(rows);
+}
+
+let couponsPage = 1;
+let currentCouponsList = [];
+
+function renderCouponsTable(list) {
+  currentCouponsList = list;
+  const body = document.getElementById("couponsBody");
+
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No coupons yet</td></tr>`;
+    document.getElementById("couponsPagination").innerHTML = "";
+    return;
+  }
+
+  const pageItems = paginateArray(list, couponsPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(c => `
     <tr>
       <td class="cell-title">${c.code}</td>
       <td data-label="Discount">${c.discount_type === "percent" ? c.discount_value + "%" : "₹" + c.discount_value}</td>
@@ -941,6 +1017,13 @@ async function loadCoupons() {
       </td>
     </tr>
   `).join("");
+
+  renderPagination("couponsPagination", list.length, couponsPage, PAGE_SIZE, "goToCouponsPage");
+}
+
+function goToCouponsPage(n) {
+  couponsPage = n;
+  renderCouponsTable(currentCouponsList);
 }
 
 async function addCoupon() {
@@ -1053,7 +1136,26 @@ async function loadReviews() {
     return;
   }
 
-  body.innerHTML = rows.map(r => `
+  reviewsPage = 1;
+  renderReviewsTable(rows);
+}
+
+let reviewsPage = 1;
+let currentReviewsList = [];
+
+function renderReviewsTable(list) {
+  currentReviewsList = list;
+  const body = document.getElementById("reviewsBody");
+
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No reviews yet</td></tr>`;
+    document.getElementById("reviewsPagination").innerHTML = "";
+    return;
+  }
+
+  const pageItems = paginateArray(list, reviewsPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(r => `
     <tr>
       <td class="cell-title">${r.products ? r.products.name : "(deleted product)"}</td>
       <td data-label="Rating">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
@@ -1063,6 +1165,13 @@ async function loadReviews() {
       <td><button class="danger" onclick="deleteReview('${r.id}')">Delete</button></td>
     </tr>
   `).join("");
+
+  renderPagination("reviewsPagination", list.length, reviewsPage, PAGE_SIZE, "goToReviewsPage");
+}
+
+function goToReviewsPage(n) {
+  reviewsPage = n;
+  renderReviewsTable(currentReviewsList);
 }
 
 async function deleteReview(id) {
@@ -1140,18 +1249,26 @@ async function loadUsers() {
   }
 
   allUsersCache = rows || [];
+  usersPage = 1;
   renderUsersTable(allUsersCache);
 }
 
+let usersPage = 1;
+let currentUsersList = [];
+
 function renderUsersTable(list) {
+  currentUsersList = list;
   const body = document.getElementById("usersBody");
 
   if (list.length === 0) {
     body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);">No users yet</td></tr>`;
+    document.getElementById("usersPagination").innerHTML = "";
     return;
   }
 
-  body.innerHTML = list.map(u => `
+  const pageItems = paginateArray(list, usersPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(u => `
     <tr>
       <td class="cell-title">${u.email || "—"}</td>
       <td data-label="Phone">${u.phone || "—"}</td>
@@ -1169,10 +1286,18 @@ function renderUsersTable(list) {
       </td>
     </tr>
   `).join("");
+
+  renderPagination("usersPagination", list.length, usersPage, PAGE_SIZE, "goToUsersPage");
+}
+
+function goToUsersPage(n) {
+  usersPage = n;
+  renderUsersTable(currentUsersList);
 }
 
 function filterUsers() {
   const q = document.getElementById("userSearch").value.toLowerCase();
+  usersPage = 1;
   renderUsersTable(allUsersCache.filter(u => (u.email || "").toLowerCase().includes(q)));
 }
 

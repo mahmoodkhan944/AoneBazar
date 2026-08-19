@@ -276,6 +276,32 @@
   gap: 18px;
 }
 
+/* ---------------- PAGINATION ---------------- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 24px 0 6px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pagination button:hover:not(:disabled) { background: var(--green-100); border-color: var(--green-700); }
+.pagination button.active { background: var(--green-700); border-color: var(--green-700); color: #fff; }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .product {
   position: relative;
   background: var(--surface);

@@ -191,23 +191,39 @@ function searchStoreProducts() {
   const matches = allItems.filter(p => p.name.toLowerCase().includes(q));
 
   categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  storeProductsPage = 1;
   renderProductGrid(matches, `No products match "${q}"`);
 }
 
 function showProducts(store, cat) {
   const items = data[store].categories[cat] || [];
+  storeProductsPage = 1;
   renderProductGrid(items, "No products in this category");
 }
 
+let storeProductsPage = 1;
+let currentStoreProductsList = [];
+
+function goToStoreProductsPage(n) {
+  storeProductsPage = n;
+  renderProductGrid(currentStoreProductsList, "No products in this category");
+  window.scrollTo({ top: productGrid.offsetTop - 100, behavior: "smooth" });
+}
+
 function renderProductGrid(items, emptyMessage) {
+  currentStoreProductsList = items;
   productGrid.innerHTML = "";
 
   if (items.length === 0) {
     productGrid.innerHTML = `<p>${emptyMessage}</p>`;
+    const pagEl = document.getElementById("storeProductsPagination");
+    if (pagEl) pagEl.innerHTML = "";
     return;
   }
 
-  items.forEach(p => {
+  const pageItems = paginateArray(items, storeProductsPage, PAGE_SIZE);
+
+  pageItems.forEach(p => {
     const hasVariants = p.variants && p.variants.length > 0;
     const outOfStock = p.in_stock === false;
 
@@ -244,6 +260,8 @@ function renderProductGrid(items, emptyMessage) {
         ${actionHtml}
       </div>`;
   });
+
+  renderPagination("storeProductsPagination", items.length, storeProductsPage, PAGE_SIZE, "goToStoreProductsPage");
 }
 
 /** Compact size/pack dropdown shown on a product card (grid or
