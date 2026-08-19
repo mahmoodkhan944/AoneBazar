@@ -884,6 +884,19 @@ function goToCategoriesPage(n) {
   renderCategoriesTable(currentCategoriesList);
 }
 
+function filterCategories() {
+  const q = document.getElementById("categorySearch").value.toLowerCase();
+  const storeFilter = document.getElementById("categoryStoreFilter").value;
+
+  const filtered = allCategoriesCache.filter(c =>
+    c.name.toLowerCase().includes(q) &&
+    (!storeFilter || c.store === storeFilter)
+  );
+
+  categoriesPage = 1;
+  renderCategoriesTable(filtered);
+}
+
 async function addCategory() {
   const store = document.getElementById("catStore").value;
   const name = document.getElementById("catName").value.trim();
