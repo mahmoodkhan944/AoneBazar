@@ -7,6 +7,17 @@
   <meta name="description" content="AOne Bazaar, Lahideeh-Azamgarh — supermarket, kirana store and cafe under one roof. Order online, pay on delivery." />
   <link rel="icon" href="favicon.ico" />
 
+  <!-- Default share preview — a specific store's own image takes
+       over instead of this when the link includes ?store=... -->
+  <meta property="og:title" content="AOne Bazaar — Fast • Fresh • Reliable" />
+  <meta property="og:description" content="Supermarket, kirana store and cafe under one roof. Order online, pay on delivery." />
+  <meta property="og:image" content="https://aonebazar.co.in/images/logo512.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="AOne Bazaar" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AOne Bazaar — Fast • Fresh • Reliable" />
+  <meta name="twitter:image" content="https://aonebazar.co.in/images/logo512.png" />
+
   <link rel="stylesheet" href="css/design-system.css" />
   <link rel="stylesheet" href="css/style.css" />
 
@@ -137,7 +148,12 @@
   <section id="storeSection" class="store hidden">
     <div class="container">
       <button class="backBtn" onclick="closeStore()">⬅ Back</button>
-      <h2 id="storeTitle"></h2>
+      <div class="store-title-row">
+        <h2 id="storeTitle"></h2>
+        <button class="btn btn-outline btn-sm" onclick="shareCurrentStore()">
+          <i class="fa-solid fa-share-nodes"></i> Share
+        </button>
+      </div>
       <input
         type="text"
         id="storeSearch"
@@ -300,6 +316,9 @@
           <a href="https://www.facebook.com/share/18mMKAfYBN/" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
           <a href="https://www.instagram.com/aonebazar.co.in?igsh=NzRybXhwamV0ZGF6" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
         </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:14px;border-color:rgba(255,255,255,0.3);color:#fff;" onclick="shareSite()">
+          <i class="fa-solid fa-share-nodes"></i> Share AOne Bazaar
+        </button>
       </div>
     </div>
 

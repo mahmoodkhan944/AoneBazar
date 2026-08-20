@@ -7,6 +7,18 @@
   <meta name="description" content="Shop at AOne Bazaar, Lahideeh-Azamgarh." />
   <link rel="icon" href="favicon.ico" />
 
+  <!-- Default share preview — the real product's own photo takes
+       over instead of this (via /api/product) when the link has
+       ?id=... -->
+  <meta property="og:title" content="Product — AOne Bazaar" />
+  <meta property="og:description" content="Shop at AOne Bazaar, Lahideeh-Azamgarh." />
+  <meta property="og:image" content="https://aonebazar.co.in/images/logo512.png" />
+  <meta property="og:type" content="product" />
+  <meta property="og:site_name" content="AOne Bazaar" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Product — AOne Bazaar" />
+  <meta name="twitter:image" content="https://aonebazar.co.in/images/logo512.png" />
+
   <link rel="stylesheet" href="css/design-system.css" />
   <link rel="stylesheet" href="css/style.css" />
 
@@ -101,6 +113,9 @@
 
           <button class="btn btn-primary" id="addToCartBtn" onclick="addCurrentProductToCart()">
             <i class="fa-solid fa-basket-shopping"></i> Add to Cart
+          </button>
+          <button class="btn btn-outline" style="margin-left:8px;" onclick="shareCurrentProduct()">
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
 
           <div id="reviewSummary" class="review-summary" style="margin-top:20px;">

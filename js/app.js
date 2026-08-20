@@ -322,6 +322,57 @@ function addFromCardSelect(button, product) {
   addToCart(product, product.variants[index]);
 }
 
+/***********************
+    SHARE
+    Uses the device's native share sheet (WhatsApp, etc.) where
+    available; falls back to copying the link on desktop browsers
+    that don't support it.
+************************/
+
+async function shareContent(title, text, url) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+    } catch (e) {
+      // user backed out of the share sheet — nothing to do
+    }
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("Link copied! Paste it anywhere to share.");
+  } catch (e) {
+    prompt("Copy this link to share:", url);
+  }
+}
+
+function shareSite() {
+  shareContent(
+    "AOne Bazaar",
+    "Supermarket, kirana store and cafe under one roof — order online from AOne Bazaar!",
+    location.origin + "/index.html"
+  );
+}
+
+function shareCurrentStore() {
+  if (!currentStore || !data[currentStore]) return;
+  shareContent(
+    data[currentStore].title,
+    `Check out ${data[currentStore].title} on AOne Bazaar!`,
+    `${location.origin}/index.html?store=${currentStore}`
+  );
+}
+
+function shareCurrentProduct() {
+  if (!currentProduct) return;
+  shareContent(
+    currentProduct.name,
+    `${currentProduct.name} — ₹${currentProduct.price} on AOne Bazaar`,
+    `${location.origin}/product.html?id=${currentProduct.id}`
+  );
+}
+
 function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
