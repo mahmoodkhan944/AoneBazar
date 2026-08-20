@@ -329,7 +329,8 @@ body.admin-body {
 .admin-table img.thumb {
   width: 40px;
   height: 40px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
 }
 
@@ -717,3 +718,73 @@ body.admin-body {
 
   .table-actions { justify-content: flex-end; }
 }
+
+/* ---------------- ON-SCREEN HINDI KEYBOARD ---------------- */
+.hindi-keyboard {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 20px rgba(28, 27, 24, 0.15);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  max-width: 620px;
+  margin: 0 auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.hindi-keyboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.hindi-keyboard-header button {
+  border: none;
+  background: var(--surface-sunken);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.hindi-keyboard-rows { display: flex; flex-direction: column; gap: 6px; }
+
+.hk-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+
+.hk-row button {
+  min-width: 34px;
+  height: 36px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.hk-row button:hover, .hk-row button:active { background: var(--green-100); border-color: var(--green-700); }
+
+.hindi-keyboard-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.hindi-keyboard-controls button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.hk-space { background: var(--surface-sunken); color: var(--ink); }
+.hk-back { background: var(--danger-100); color: var(--danger-600); }
+.hk-done { background: var(--green-700); color: #fff; }

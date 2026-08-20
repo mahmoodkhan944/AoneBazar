@@ -526,7 +526,7 @@ function renderProductsTable(list) {
   body.innerHTML = pageItems.map(p => `
     <tr>
       <td><img class="thumb" src="${p.images && p.images[0] ? p.images[0] : ''}" alt=""></td>
-      <td class="cell-title">${p.name}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
+      <td class="cell-title">${p.name}${p.name_hi ? `<div style="font-size:0.78rem;color:var(--ink-faint);font-weight:400;">${p.name_hi}</div>` : ''}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
       <td data-label="Store">${p.store}</td>
       <td data-label="Category">${p.category}</td>
       <td data-label="Price">₹${p.price}</td>
@@ -577,6 +577,7 @@ async function addProduct() {
   const store = document.getElementById("pStore").value;
   const category = document.getElementById("pCategory").value;
   const name = document.getElementById("pName").value.trim();
+  const name_hi = document.getElementById("pNameHi").value.trim() || null;
   const price = Number(document.getElementById("pPrice").value) || 0;
   const mrp = Number(document.getElementById("pMrp").value) || null;
   const featured_section = document.getElementById("pFeaturedSection").value.trim() || null;
@@ -624,7 +625,7 @@ async function addProduct() {
   const effectivePrice = price || Math.min(...variants.map(v => v.price));
 
   const { error } = await supabase.from("products").insert({
-    store, category, name, price: effectivePrice, mrp, images: imageURLs, variants,
+    store, category, name, name_hi, price: effectivePrice, mrp, images: imageURLs, variants,
     featured_section, featured_order
   });
 
@@ -635,6 +636,7 @@ async function addProduct() {
 
   alert("Product added!");
   document.getElementById("pName").value = "";
+  document.getElementById("pNameHi").value = "";
   document.getElementById("pPrice").value = "";
   document.getElementById("pMrp").value = "";
   document.getElementById("pFeaturedSection").value = "";
@@ -649,6 +651,7 @@ let editRemainingImages = [];
 async function editProduct(p) {
   editingProductId = p.id;
   document.getElementById("editName").value = p.name;
+  document.getElementById("editNameHi").value = p.name_hi || "";
   document.getElementById("editPrice").value = p.price;
   document.getElementById("editMrp").value = p.mrp || "";
   document.getElementById("editFeaturedSection").value = p.featured_section || "";
@@ -670,6 +673,7 @@ async function editProduct(p) {
 
 function closeEdit() {
   document.getElementById("editModal").classList.add("hidden");
+  closeHindiKeyboard();
 }
 
 function renderEditExistingImages() {
@@ -735,6 +739,106 @@ async function loadEditCategoryOptions(store, selectedCategory) {
     VARIANTS (sizes / packs) — shared by Add + Edit forms
 ************************/
 
+/** Auto-fills the Hindi name field from the English one, using a free
+ *  translation API — the admin can still edit or clear the result
+ *  before saving, since translations of brand/product names aren't
+ *  always perfect. */
+/***********************
+    ON-SCREEN HINDI KEYBOARD
+    Click-to-type Devanagari keyboard for the "Hindi name" fields —
+    handy for fixing an imperfect auto-translation without needing a
+    physical Hindi keyboard.
+************************/
+
+let hindiKeyboardTarget = null;
+
+const HINDI_KEYBOARD_ROWS = [
+  ["अ", "आ", "इ", "ई", "उ", "ऊ", "ऋ", "ए", "ऐ", "ओ", "औ", "अं", "अः"],
+  ["क", "ख", "ग", "घ", "ङ", "च", "छ", "ज", "झ", "ञ"],
+  ["ट", "ठ", "ड", "ढ", "ण", "त", "थ", "द", "ध", "न"],
+  ["प", "फ", "ब", "भ", "म", "य", "र", "ल", "व"],
+  ["श", "ष", "स", "ह", "़", "्", "ॉ"],
+  ["ा", "ि", "ी", "ु", "ू", "े", "ै", "ो", "ौ", "ं", "ः"],
+  ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"]
+];
+
+function openHindiKeyboard(fieldId) {
+  hindiKeyboardTarget = document.getElementById(fieldId);
+
+  const kb = document.getElementById("hindiKeyboard");
+  const rowsEl = document.getElementById("hindiKeyboardRows");
+
+  if (!rowsEl.dataset.built) {
+    rowsEl.innerHTML = HINDI_KEYBOARD_ROWS.map(row => `
+      <div class="hk-row">
+        ${row.map(ch => `<button type="button" onclick="hindiKeyPress('${ch}')">${ch}</button>`).join("")}
+      </div>
+    `).join("");
+    rowsEl.dataset.built = "1";
+  }
+
+  kb.classList.remove("hidden");
+}
+
+function closeHindiKeyboard() {
+  document.getElementById("hindiKeyboard").classList.add("hidden");
+  hindiKeyboardTarget = null;
+}
+
+function hindiKeyPress(char) {
+  if (!hindiKeyboardTarget) return;
+  const el = hindiKeyboardTarget;
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+
+  el.value = el.value.slice(0, start) + char + el.value.slice(end);
+
+  const newPos = start + char.length;
+  el.focus();
+  el.setSelectionRange(newPos, newPos);
+}
+
+function hindiBackspace() {
+  if (!hindiKeyboardTarget) return;
+  const el = hindiKeyboardTarget;
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+
+  if (start === end && start > 0) {
+    el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+    el.focus();
+    el.setSelectionRange(start - 1, start - 1);
+  } else {
+    el.value = el.value.slice(0, start) + el.value.slice(end);
+    el.focus();
+    el.setSelectionRange(start, start);
+  }
+}
+
+async function autoTranslateToHindi(englishFieldId, hindiFieldId) {
+  const englishEl = document.getElementById(englishFieldId);
+  const hindiEl = document.getElementById(hindiFieldId);
+  const text = englishEl.value.trim();
+
+  if (!text || hindiEl.value.trim()) return; // don't overwrite a name the admin already typed/edited
+
+  const originalPlaceholder = hindiEl.placeholder;
+  hindiEl.placeholder = "Translating…";
+
+  try {
+    const resp = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|hi`
+    );
+    const data = await resp.json();
+    const translated = data && data.responseData && data.responseData.translatedText;
+    if (translated) hindiEl.value = translated;
+  } catch (e) {
+    console.error("Translation failed:", e);
+  } finally {
+    hindiEl.placeholder = originalPlaceholder;
+  }
+}
+
 function addVariantRow(containerId, label) {
   const container = document.getElementById(containerId);
   const row = document.createElement("div");
@@ -780,6 +884,7 @@ function collectVariants(containerId) {
 
 async function updateProduct() {
   const name = document.getElementById("editName").value;
+  const name_hi = document.getElementById("editNameHi").value.trim() || null;
   const price = Number(document.getElementById("editPrice").value);
   const mrp = Number(document.getElementById("editMrp").value) || null;
   const featured_section = document.getElementById("editFeaturedSection").value.trim() || null;
@@ -811,7 +916,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, price, mrp, store, category, images, variants, featured_section, featured_order };
+  const updateData = { name, name_hi, price, mrp, store, category, images, variants, featured_section, featured_order };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 

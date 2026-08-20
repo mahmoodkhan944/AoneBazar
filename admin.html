@@ -188,7 +188,11 @@
             </div>
             <div>
               <label>Product name</label>
-              <input id="pName" placeholder="e.g. Fresh Apples" />
+              <input id="pName" placeholder="e.g. Fresh Apples" onblur="autoTranslateToHindi('pName','pNameHi')" />
+            </div>
+            <div>
+              <label>Hindi name (auto — edit or clear if needed)</label>
+              <input id="pNameHi" placeholder="Type English name above, Hindi fills in automatically" onfocus="openHindiKeyboard('pNameHi')" />
             </div>
             <div>
               <label>Price (₹) — used if no variants are added below</label>
@@ -502,7 +506,8 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category</label>
       <select id="editCategory"></select>
 
-      <input id="editName" placeholder="Product Name" />
+      <input id="editName" placeholder="Product Name" onblur="autoTranslateToHindi('editName','editNameHi')" />
+      <input id="editNameHi" placeholder="Hindi name (auto — edit or clear if needed)" onfocus="openHindiKeyboard('editNameHi')" />
       <input id="editPrice" placeholder="Price (used if no variants below)" />
       <input id="editMrp" type="number" placeholder="MRP (optional, shows a discount badge)" />
 
@@ -576,6 +581,20 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Usage limit (optional)</label>
       <input id="editCouponUsageLimit" type="number" placeholder="Unlimited if blank" />
       <button class="btn btn-primary" onclick="updateCoupon()">Save</button>
+    </div>
+  </div>
+
+  <!-- ===== ON-SCREEN HINDI KEYBOARD ===== -->
+  <div id="hindiKeyboard" class="hindi-keyboard hidden">
+    <div class="hindi-keyboard-header">
+      <span>Hindi Keyboard</span>
+      <button type="button" onclick="closeHindiKeyboard()">×</button>
+    </div>
+    <div class="hindi-keyboard-rows" id="hindiKeyboardRows"></div>
+    <div class="hindi-keyboard-controls">
+      <button type="button" class="hk-space" onclick="hindiKeyPress(' ')">Space</button>
+      <button type="button" class="hk-back" onclick="hindiBackspace()">⌫ Backspace</button>
+      <button type="button" class="hk-done" onclick="closeHindiKeyboard()">Done</button>
     </div>
   </div>
 

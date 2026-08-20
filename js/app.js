@@ -215,6 +215,12 @@ function goToStoreProductsPage(n) {
   window.scrollTo({ top: productGrid.offsetTop - 100, behavior: "smooth" });
 }
 
+/** "Sabji Masala" → "Sabji Masala (सब्ज़ी मसाला)" when a Hindi name
+ *  is set — used everywhere a product name is shown to customers. */
+function displayProductName(p) {
+  return p.name_hi ? `${p.name} <span class="name-hi">(${p.name_hi})</span>` : p.name;
+}
+
 function renderProductGrid(items, emptyMessage) {
   currentStoreProductsList = items;
   productGrid.innerHTML = "";
@@ -257,7 +263,7 @@ function renderProductGrid(items, emptyMessage) {
         <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
           <img src="${p.images ? p.images[0] : p.img}">
-          <h4>${p.name}</h4>
+          <h4>${displayProductName(p)}</h4>
           <p id="price-${p.id}">${priceHtml}</p>
         </a>
         ${variantSelect}
@@ -444,7 +450,7 @@ function featuredProductCardHtml(p) {
       <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
       <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
-        <h4>${p.name}</h4>
+        <h4>${displayProductName(p)}</h4>
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}
@@ -1150,7 +1156,7 @@ async function loadProductPage() {
   const backLink = document.getElementById("backToStoreLink");
   if (backLink) backLink.href = `index.html?store=${p.store}`;
 
-  document.getElementById("detailName").innerText = p.name;
+  document.getElementById("detailName").innerHTML = displayProductName(p);
   renderVariantSelector(p);
 
   const addBtn = document.getElementById("addToCartBtn");
@@ -1174,7 +1180,7 @@ async function loadProductPage() {
   currentImages.forEach((img, i) => {
     thumbsEl.innerHTML += `
       <img src="${img}"
-        style="width:60px;margin:4px;cursor:pointer"
+        style="width:60px;height:60px;object-fit:contain;background:var(--surface-sunken);border-radius:6px;margin:4px;cursor:pointer"
         onclick="setImage(${i})">
     `;
   });
@@ -1487,7 +1493,7 @@ async function openWishlist() {
 
   const { data: rows, error } = await supabase
     .from("wishlists")
-    .select("product_id, products(id, name, price, images, store, category)")
+    .select("product_id, products(id, name, name_hi, price, images, store, category)")
     .eq("customer_id", fbUser.id)
     .order("created_at", { ascending: false });
 
@@ -1512,7 +1518,7 @@ async function openWishlist() {
       <div class="wishlist-item">
         <img src="${img}" alt="${p.name}">
         <div class="info">
-          <b>${p.name}</b>
+          <b>${displayProductName(p)}</b>
           <span>₹${p.price}</span>
         </div>
         <button class="btn btn-primary btn-sm" onclick='addToCart(${JSON.stringify(p)})'>Add</button>
