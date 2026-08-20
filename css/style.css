@@ -100,13 +100,14 @@
   align-items: center;
   gap: 6px;
   background: var(--surface-sunken);
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   border-radius: 999px;
   padding: 9px 14px;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--ink);
-  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
 .icon-btn:hover { background: var(--green-100); transform: translateY(-1px); }
 
@@ -251,18 +252,17 @@
   margin-bottom: 20px;
 }
 
+.store-search-input {
+  max-width: 360px;
+  margin-bottom: 14px;
+}
+
 .brand-filter {
   display: block;
-  width: 100%;
   max-width: 280px;
-  padding: 10px 14px;
-  margin-bottom: 16px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface);
+  margin-bottom: 20px;
   font-weight: 600;
   font-size: 0.88rem;
-  color: var(--ink);
 }
 
 .categories {
@@ -278,19 +278,26 @@
   flex: 0 0 auto;
   padding: 9px 18px;
   border-radius: 999px;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink-soft);
   font-weight: 600;
   font-size: 0.86rem;
+  cursor: pointer;
   transition: all var(--fast) var(--ease);
 }
 
-.categories button:hover,
+.categories button:hover {
+  border-color: var(--green-700);
+  color: var(--green-700);
+  background: var(--green-100);
+}
+
 .categories button.active {
   background: var(--green-700);
   border-color: var(--green-700);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(15, 74, 43, 0.2);
 }
 
 .products {
@@ -313,16 +320,18 @@
   min-width: 36px;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
   border-radius: 999px;
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--ink);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
 
-.pagination button:hover:not(:disabled) { background: var(--green-100); border-color: var(--green-700); }
-.pagination button.active { background: var(--green-700); border-color: var(--green-700); color: #fff; }
+.pagination button:hover:not(:disabled) { background: var(--green-100); border-color: var(--green-700); color: var(--green-700); }
+.pagination button.active { background: var(--green-700); border-color: var(--green-700); color: #fff; box-shadow: 0 2px 6px rgba(15, 74, 43, 0.2); }
 .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .product {
@@ -399,12 +408,9 @@
 }
 
 .variant-select {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-  color: var(--ink);
+  padding: 8px 34px 8px 12px;
+  background-position: right 10px center;
+  background-size: 12px;
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -426,10 +432,12 @@
 .product button {
   border: none;
   border-radius: 999px;
-  padding: 9px 0;
+  padding: 10px 0;
   font-weight: 600;
   font-size: 0.82rem;
   width: 100%;
+  cursor: pointer;
+  transition: filter var(--fast) var(--ease), box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
 
 .product button:first-of-type ~ button {
@@ -444,9 +452,11 @@
 .product > button + button {
   background: var(--green-700);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 74, 43, 0.15), 0 3px 8px rgba(15, 74, 43, 0.14);
 }
 
-.product > button:hover { filter: brightness(0.95); }
+.product > button:hover { filter: brightness(0.96); transform: translateY(-1px); }
+.product > button:active { transform: translateY(0); }
 
 /* ---------------- FLOATING CART BAR ---------------- */
 #cartBar {
@@ -538,18 +548,7 @@
 .modal-content input,
 .modal-content textarea,
 .modal-content select {
-  width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
   margin-bottom: 12px;
-  background: var(--paper);
-}
-
-.modal-content input:focus,
-.modal-content textarea:focus,
-.modal-content select:focus {
-  border-color: var(--green-700);
 }
 
 .modal-content > button,
@@ -569,8 +568,10 @@
   background: var(--surface-sunken);
   font-size: 1.1rem;
   line-height: 1;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
-.modal-content button[onclick^="close"]:hover { background: var(--danger-100); color: var(--danger-600); }
+.modal-content button[onclick^="close"]:hover { background: var(--danger-100); color: var(--danger-600); transform: rotate(90deg); }
 
 .closeTop {
   position: absolute;
@@ -681,12 +682,7 @@
 
 .cart-form input,
 .cart-form textarea {
-  width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
   margin-bottom: 10px;
-  background: var(--paper);
 }
 
 .place-order-btn {
@@ -698,8 +694,12 @@
   padding: 13px;
   font-weight: 700;
   font-size: 0.98rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(201, 112, 26, 0.18), 0 4px 12px rgba(201, 112, 26, 0.16);
+  transition: all var(--fast) var(--ease);
 }
-.place-order-btn:hover { background: var(--marigold-700); color: #fff; }
+.place-order-btn:hover { background: var(--marigold-700); color: #fff; box-shadow: 0 2px 6px rgba(201, 112, 26, 0.22), 0 10px 22px rgba(201, 112, 26, 0.2); transform: translateY(-1px); }
+.place-order-btn:active { transform: translateY(0); }
 
 /* ---------------- PRODUCT DETAIL MODAL ---------------- */
 #productModal .modal-content { max-width: 420px; }
@@ -1115,10 +1115,6 @@
 .coupon-row input {
   flex: 1;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
 }
 .coupon-row .btn {
   flex-shrink: 0;
@@ -1419,7 +1415,11 @@
   font-weight: 600;
   color: var(--ink);
   line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
+
+.payment-choice-row button:hover { border-color: var(--green-600); }
 
 .payment-choice-row button span {
   font-size: 1rem;
@@ -1430,6 +1430,7 @@
 .payment-choice-row button.active {
   border-color: var(--green-700);
   background: var(--green-100);
+  box-shadow: 0 2px 8px rgba(15, 74, 43, 0.12);
 }
 
 /* ---------------- MOBILE NAV ---------------- */

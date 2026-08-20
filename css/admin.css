@@ -44,12 +44,7 @@ body.admin-body {
 }
 
 .admin-login-card input {
-  width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
   margin-bottom: 12px;
-  background: var(--paper);
 }
 
 .admin-login-error {
@@ -137,6 +132,7 @@ body.admin-body {
 .admin-nav-item.active {
   background: var(--green-700);
   color: #fff;
+  box-shadow: inset 3px 0 0 var(--marigold-600);
 }
 
 .admin-sidebar-footer {
@@ -335,11 +331,12 @@ body.admin-body {
 }
 
 .status-pill {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   display: inline-block;
 }
 .status-pill.NEW { background: var(--marigold-100); color: var(--marigold-700); }
@@ -349,14 +346,18 @@ body.admin-body {
 
 .table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .table-actions button {
-  border: none;
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 6px 13px;
   font-size: 0.76rem;
   font-weight: 600;
   background: var(--surface-sunken);
+  color: var(--ink);
+  cursor: pointer;
+  transition: filter var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
-.table-actions button:hover { filter: brightness(0.95); }
+.table-actions button:hover { filter: brightness(0.95); transform: translateY(-1px); }
+.table-actions button:active { transform: translateY(0); }
 .table-actions .danger { background: var(--danger-100); color: var(--danger-600); }
 
 .admin-toolbar {
@@ -366,6 +367,17 @@ body.admin-body {
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.admin-toolbar input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+  max-width: 340px;
+}
+
+.admin-toolbar select {
+  width: auto;
+  min-width: 160px;
 }
 
 /* ---------------- PAGINATION ---------------- */
@@ -382,16 +394,18 @@ body.admin-body {
   min-width: 34px;
   height: 34px;
   padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--ink);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
 
-.pagination button:hover:not(:disabled) { background: var(--green-100); border-color: var(--green-700); }
-.pagination button.active { background: var(--green-700); border-color: var(--green-700); color: #fff; }
+.pagination button:hover:not(:disabled) { background: var(--green-100); border-color: var(--green-700); color: var(--green-700); }
+.pagination button.active { background: var(--green-700); border-color: var(--green-700); color: #fff; box-shadow: 0 2px 6px rgba(15, 74, 43, 0.2); }
 .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .pagination-info {
@@ -401,13 +415,6 @@ body.admin-body {
   margin-top: 6px;
 }
 
-.admin-toolbar input[type="text"] {
-  padding: 9px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  min-width: 240px;
-  background: var(--surface);
-}
 
 /* ---------------- FORMS ---------------- */
 .admin-form-grid {
@@ -429,11 +436,7 @@ body.admin-body {
 .admin-form-grid input,
 .admin-form-grid select,
 .admin-form-grid textarea {
-  width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
 }
 
 /* ---------------- MODAL (Edit Product / Category / Coupon) ---------------- */
@@ -477,18 +480,7 @@ body.admin-body {
 .modal-content input,
 .modal-content textarea,
 .modal-content select {
-  width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
   margin-bottom: 12px;
-  background: var(--paper);
-}
-
-.modal-content input:focus,
-.modal-content textarea:focus,
-.modal-content select:focus {
-  border-color: var(--green-700);
 }
 
 .modal-content > button,
@@ -508,8 +500,10 @@ body.admin-body {
   background: var(--surface-sunken);
   font-size: 1.1rem;
   line-height: 1;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
-.modal-content button[onclick^="close"]:hover { background: var(--danger-100); color: var(--danger-600); }
+.modal-content button[onclick^="close"]:hover { background: var(--danger-100); color: var(--danger-600); transform: rotate(90deg); }
 
 .edit-preview {
   width: 90px;
@@ -529,15 +523,17 @@ body.admin-body {
 }
 
 .variant-chips button {
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface-sunken);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink-soft);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
 }
-.variant-chips button:hover { background: var(--green-100); color: var(--green-900); }
+.variant-chips button:hover { background: var(--green-100); color: var(--green-900); border-color: var(--green-700); }
 
 .variant-rows { display: flex; flex-direction: column; gap: 8px; }
 
@@ -550,9 +546,6 @@ body.admin-body {
 
 .variant-row input {
   padding: 9px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
 }
 
 .variant-row button {
@@ -560,6 +553,8 @@ body.admin-body {
   height: 32px;
   border-radius: 50%;
   border: none;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
   background: var(--danger-100);
   color: var(--danger-600);
   font-size: 1rem;
@@ -743,7 +738,9 @@ body.admin-body {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
   background: var(--surface-sunken);
   border-radius: var(--radius-sm);
   font-size: 1.05rem;
