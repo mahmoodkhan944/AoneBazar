@@ -766,6 +766,7 @@ function openHindiKeyboard(fieldId) {
   hindiKeyboardTarget = document.getElementById(fieldId);
 
   const kb = document.getElementById("hindiKeyboard");
+  const overlay = document.getElementById("hindiKeyboardOverlay");
   const rowsEl = document.getElementById("hindiKeyboardRows");
 
   if (!rowsEl.dataset.built) {
@@ -777,11 +778,13 @@ function openHindiKeyboard(fieldId) {
     rowsEl.dataset.built = "1";
   }
 
+  overlay.classList.remove("hidden");
   kb.classList.remove("hidden");
 }
 
 function closeHindiKeyboard() {
   document.getElementById("hindiKeyboard").classList.add("hidden");
+  document.getElementById("hindiKeyboardOverlay").classList.add("hidden");
   hindiKeyboardTarget = null;
 }
 
