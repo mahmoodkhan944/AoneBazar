@@ -143,6 +143,10 @@ async function openStore(key, jumpToCategory) {
 
   storeTitle.innerText = store.title;
 
+  // Keep the URL in sync so refreshing (or sharing the link) lands
+  // back on this same store/category instead of the homepage.
+  updateStoreUrl(key, jumpToCategory || null);
+
   categoryBar.innerHTML = "";
 
   const storeSearch = document.getElementById("storeSearch");
@@ -162,6 +166,7 @@ async function openStore(key, jumpToCategory) {
       categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       currentCategory = cat;
+      updateStoreUrl(key, cat);
       if (storeSearch) storeSearch.value = "";
       showProducts(key, cat);
     };
@@ -320,6 +325,18 @@ function addFromCardSelect(button, product) {
 function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
+  history.replaceState(null, "", location.pathname);
+}
+
+/** Keeps ?store=&category= in the URL in sync with what's on screen,
+ *  without adding a new history entry for every click — so refreshing
+ *  the page (or sharing the link) lands back on the same view. */
+function updateStoreUrl(store, category) {
+  const params = new URLSearchParams();
+  if (store) params.set("store", store);
+  if (category) params.set("category", category);
+  const query = params.toString();
+  history.replaceState(null, "", query ? `${location.pathname}?${query}` : location.pathname);
 }
 
 /***********************

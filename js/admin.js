@@ -111,6 +111,11 @@ function showAdminView(name) {
   document.getElementById("view-" + name).classList.add("active");
   document.querySelector(`.admin-nav-item[data-view="${name}"]`).classList.add("active");
 
+  // Remember which section is open in the URL — so refreshing (or
+  // bookmarking) the admin panel lands back here instead of always
+  // resetting to the dashboard.
+  history.replaceState(null, "", "#" + name);
+
   if (VIEW_LOADERS[name]) VIEW_LOADERS[name]();
 
   closeAdminSidebar(); // tapping a nav item on mobile should close the drawer
@@ -127,7 +132,9 @@ function closeAdminSidebar() {
 }
 
 function initDashboard() {
-  showAdminView("dashboard");
+  const hashView = location.hash.replace("#", "");
+  const target = VIEW_LOADERS.hasOwnProperty(hashView) ? hashView : "dashboard";
+  showAdminView(target);
 }
 
 /***********************
