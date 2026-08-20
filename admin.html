@@ -184,7 +184,7 @@
             </div>
             <div>
               <label>Category</label>
-              <select id="pCategory"></select>
+              <select id="pCategory" onchange="handleCategorySelectChange(this, 'pStore')"></select>
             </div>
             <div>
               <label>Brand (optional) — powers "Shop by Brand"</label>
@@ -514,7 +514,7 @@
       </select>
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category</label>
-      <select id="editCategory"></select>
+      <select id="editCategory" onchange="handleCategorySelectChange(this, 'editStore')"></select>
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Brand (optional)</label>
       <input id="editBrand" placeholder="e.g. Tata, Everest, Kohinoor" list="brandList" />

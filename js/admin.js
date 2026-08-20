@@ -473,12 +473,48 @@ async function loadCategoryOptions(store) {
     .eq("store", store)
     .order("name");
 
-  if (error || !rows || rows.length === 0) {
-    sel.innerHTML = "<option value=''>No categories yet</option>";
+  if (error) {
+    sel.innerHTML = "<option value=''>Could not load categories</option>";
     return;
   }
 
-  sel.innerHTML = rows.map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+  const options = (rows || []).map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+  sel.innerHTML = (options || "") + `<option value="__add_new__">+ Add New Category…</option>`;
+  sel.dataset.prevValue = sel.value;
+}
+
+/** Fires when the admin picks "+ Add New Category…" in a category
+ *  dropdown (Add Product form, or the Edit Product modal) — lets
+ *  them create the category right there instead of leaving the page. */
+async function handleCategorySelectChange(selectEl, storeFieldId) {
+  if (selectEl.value !== "__add_new__") {
+    selectEl.dataset.prevValue = selectEl.value;
+    return;
+  }
+
+  const store = document.getElementById(storeFieldId).value;
+  const name = (prompt("New category name:") || "").trim();
+  const prevValue = selectEl.dataset.prevValue || "";
+
+  if (!name) { selectEl.value = prevValue; return; }
+
+  const { error } = await supabase.from("categories").insert({ store, name });
+
+  if (error) {
+    alert(error.code === "23505" ? "That category already exists" : "Could not add: " + error.message);
+    selectEl.value = prevValue;
+    return;
+  }
+
+  alert(`"${name}" category added!`);
+
+  if (selectEl.id === "editCategory") {
+    await loadEditCategoryOptions(store, name);
+  } else {
+    await loadCategoryOptions(store);
+    selectEl.value = name;
+  }
+  selectEl.dataset.prevValue = name;
 }
 
 async function loadProducts() {
@@ -732,16 +768,18 @@ async function loadEditCategoryOptions(store, selectedCategory) {
     .eq("store", store)
     .order("name");
 
-  if (error || !rows || rows.length === 0) {
-    sel.innerHTML = "<option value=''>No categories yet</option>";
+  if (error) {
+    sel.innerHTML = "<option value=''>Could not load categories</option>";
     return;
   }
 
-  sel.innerHTML = rows.map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+  const options = (rows || []).map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+  sel.innerHTML = (options || "") + `<option value="__add_new__">+ Add New Category…</option>`;
 
-  if (selectedCategory && rows.some(c => c.name === selectedCategory)) {
+  if (selectedCategory && (rows || []).some(c => c.name === selectedCategory)) {
     sel.value = selectedCategory;
   }
+  sel.dataset.prevValue = sel.value;
 }
 
 /***********************
