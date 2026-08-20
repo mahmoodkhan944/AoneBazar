@@ -172,6 +172,21 @@ body.admin-body {
   margin-bottom: 24px;
 }
 
+/* Sticky on laptop/desktop only — keeps the page title and its
+   action button (e.g. "View Storefront", "+ Add Product") in view
+   while scrolling a long list. Left as normal (non-sticky) on
+   mobile, where screen space is already tight. */
+@media (min-width: 761px) {
+  .admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--paper);
+    padding: 26px 0 14px;
+    margin: -26px 0 10px;
+  }
+}
+
 .admin-topbar h1 {
   font-size: 1.5rem;
 }
