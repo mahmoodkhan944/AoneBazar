@@ -1242,6 +1242,48 @@ async function loadRelatedProducts(p) {
 
   row.innerHTML = rows.map(item => featuredProductCardHtml(item)).join("");
   section.classList.remove("hidden");
+  setupAutoScroll("relatedProductsRow");
+}
+
+/***********************
+    AUTO-SCROLL for horizontal product rows
+    Slowly advances the row on its own; pauses while the shopper is
+    actually browsing it (hovering with a mouse, or mid-swipe on
+    touch), and loops back to the start once it reaches the end.
+************************/
+
+const autoScrollTimers = {};
+
+function setupAutoScroll(containerId, intervalMs = 500, scrollAmount = 260) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (autoScrollTimers[containerId]) {
+    clearInterval(autoScrollTimers[containerId]);
+  }
+
+  if (!container.dataset.autoScrollBound) {
+    container.addEventListener("mouseenter", () => { container._autoScrollPaused = true; });
+    container.addEventListener("mouseleave", () => { container._autoScrollPaused = false; });
+    container.addEventListener("touchstart", () => { container._autoScrollPaused = true; }, { passive: true });
+    container.addEventListener("touchend", () => {
+      setTimeout(() => { container._autoScrollPaused = false; }, 2500);
+    }, { passive: true });
+    container.dataset.autoScrollBound = "1";
+  }
+
+  autoScrollTimers[containerId] = setInterval(() => {
+    if (container._autoScrollPaused || document.hidden) return;
+
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (maxScroll <= 0) return; // everything already fits, nothing to scroll
+
+    if (container.scrollLeft >= maxScroll - 5) {
+      container.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      container.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  }, intervalMs);
 }
 
 let selectedVariant = null;
