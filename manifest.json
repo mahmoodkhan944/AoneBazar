@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "AOne Bazaar",
+  "name": "AOne Bazaar — Fast, Fresh, Reliable",
+  "description": "Supermarket, kirana store and cafe under one roof in Lahideeh, Azamgarh. Order online, pay on delivery.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,18 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "images/logo192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "images/logo512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/index.html",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#1e7a46",
+  "background_color": "#fbf9f4"
 }

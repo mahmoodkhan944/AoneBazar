@@ -800,6 +800,79 @@
   margin-bottom: 8px;
 }
 
+/* ---------------- ORDER STATUS TRACKER ---------------- */
+.order-tracker {
+  display: flex;
+  align-items: flex-start;
+  margin: 12px 0 16px;
+}
+
+.tracker-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  width: 68px;
+}
+
+.tracker-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  border: 2px solid var(--line-strong);
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.tracker-step span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.tracker-step.completed .tracker-dot {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: #fff;
+}
+.tracker-step.completed span { color: var(--green-700); }
+
+.tracker-step.current .tracker-dot {
+  background: var(--marigold-600);
+  border-color: var(--marigold-600);
+  color: var(--indigo-900);
+  box-shadow: 0 0 0 4px var(--marigold-100);
+}
+.tracker-step.current span { color: var(--marigold-700); font-weight: 700; }
+
+.tracker-line {
+  flex: 1;
+  height: 3px;
+  background: var(--line-strong);
+  margin-top: 12px;
+  border-radius: 2px;
+}
+.tracker-line.completed { background: var(--green-700); }
+
+.order-cancelled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--danger-100);
+  color: var(--danger-600);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 7px 14px;
+  border-radius: 999px;
+  margin: 10px 0 14px;
+}
+
 .order-id { font-weight: 700; }
 
 .order-status {
@@ -876,6 +949,34 @@
 
 .page-hero h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); }
 
+.legal-page {
+  padding: 20px 0 60px;
+}
+
+.legal-content {
+  max-width: 760px;
+}
+
+.legal-content h3 {
+  font-size: 1.15rem;
+  margin-top: 32px;
+  margin-bottom: 10px;
+  color: var(--green-900);
+}
+
+.legal-content p,
+.legal-content li {
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.legal-content ul {
+  padding-left: 22px;
+  margin-bottom: 1em;
+}
+
+.legal-content li { margin-bottom: 6px; }
+
 .section {
   padding: 46px 0;
 }
@@ -948,8 +1049,8 @@
   margin: 0 auto;
   padding: 0 20px;
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1.2fr 0.8fr;
-  gap: 32px;
+  grid-template-columns: 1.3fr 1fr 0.9fr 1.1fr 0.8fr;
+  gap: 28px;
 }
 
 .footer-col h2 {

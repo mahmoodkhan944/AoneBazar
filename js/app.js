@@ -1474,6 +1474,8 @@ async function openMyOrders() {
         <span>₹${o.total}</span>
       </div>
 
+      ${orderTrackerHtml(o.status)}
+
       <div class="order-items">
         ${itemsHTML}
       </div>
@@ -1486,6 +1488,35 @@ async function openMyOrders() {
   `;
     });
   }
+}
+
+/** A small "Order Placed → Processing → Delivered" step tracker for
+ *  the customer's own order history — cancelled orders get a plain
+ *  badge instead, since the step tracker doesn't make sense there. */
+function orderTrackerHtml(status) {
+  if (status === "CANCELLED") {
+    return `<div class="order-cancelled-badge"><i class="fa-solid fa-circle-xmark"></i> Order Cancelled</div>`;
+  }
+
+  const steps = [
+    { key: "NEW", label: "Placed", icon: "fa-clipboard-check" },
+    { key: "PROCESSING", label: "Processing", icon: "fa-box" },
+    { key: "DELIVERED", label: "Delivered", icon: "fa-house" }
+  ];
+
+  const activeIndex = Math.max(0, steps.findIndex(s => s.key === status));
+
+  return `
+    <div class="order-tracker">
+      ${steps.map((s, i) => `
+        ${i > 0 ? `<div class="tracker-line ${i <= activeIndex ? "completed" : ""}"></div>` : ""}
+        <div class="tracker-step ${i < activeIndex ? "completed" : ""} ${i === activeIndex ? "current" : ""}">
+          <div class="tracker-dot"><i class="fa-solid ${i < activeIndex ? "fa-check" : s.icon}"></i></div>
+          <span>${s.label}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function closeMyOrders() {

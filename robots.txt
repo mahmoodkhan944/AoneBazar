@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aonebazar.co.in/sitemap.xml

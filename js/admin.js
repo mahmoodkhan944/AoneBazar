@@ -349,12 +349,35 @@ async function updateOrderStatus(id, newStatus) {
     return;
   }
 
+  const order = cachedOrders.find(o => o.id === id);
+
   cachedOrders = cachedOrders.map(o => {
     if (o.id === id) o.status = newStatus;
     return o;
   });
 
   renderOrdersTable(cachedOrders);
+
+  if (order) notifyCustomerOnWhatsApp(order, newStatus);
+}
+
+/** Opens a pre-filled WhatsApp message to the customer whenever the
+ *  admin marks an order Processing or Delivered — admin just has to
+ *  hit send. Nothing sends automatically in the background (there's
+ *  no paid WhatsApp Business API wired up), this just saves typing. */
+function notifyCustomerOnWhatsApp(order, status) {
+  const templates = {
+    PROCESSING: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) is now being prepared. We'll message you again once it's out for delivery. 🛍️`,
+    DELIVERED: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) has been delivered. Thank you for shopping with us — see you again soon! 🙏`
+  };
+
+  const message = templates[status];
+  if (!message || !order.phone) return;
+
+  const digitsOnly = String(order.phone).replace(/\D/g, "");
+  const fullNumber = digitsOnly.length === 10 ? "91" + digitsOnly : digitsOnly;
+
+  window.open(`https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`, "_blank");
 }
 
 function downloadInvoiceById(id) {
