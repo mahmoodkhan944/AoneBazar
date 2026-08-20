@@ -1,19 +1,8 @@
 {
-  "rewrites": [
-    {
-      "source": "/product.html",
-      "has": [{ "type": "query", "key": "id" }],
-      "destination": "/api/product"
-    },
-    {
-      "source": "/index.html",
-      "has": [{ "type": "query", "key": "store" }],
-      "destination": "/api/home"
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "store" }],
-      "destination": "/api/home"
-    }
+  "routes": [
+    { "src": "^/product\\.html$", "dest": "/api/product" },
+    { "src": "^/index\\.html$", "dest": "/api/home" },
+    { "src": "^/$", "dest": "/api/home" },
+    { "handle": "filesystem" }
   ]
 }
