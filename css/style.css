@@ -338,7 +338,7 @@
 .product img {
   width: 100%;
   height: 130px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
 }
@@ -693,7 +693,8 @@
 .zoomImg {
   width: 100%;
   height: 260px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--surface-sunken);
   cursor: zoom-in;
 }
 
@@ -836,7 +837,8 @@
 .edit-preview {
   width: 90px;
   height: 90px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
   display: none;
   margin-bottom: 10px;
@@ -1137,7 +1139,8 @@
 .wishlist-item img {
   width: 52px;
   height: 52px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
 }
 .wishlist-item .info { flex: 1; }
@@ -1182,7 +1185,7 @@
 .featured-card img {
   width: 100%;
   height: 120px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
 }
