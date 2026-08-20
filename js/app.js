@@ -148,6 +148,7 @@ async function openStore(key, jumpToCategory) {
   updateStoreUrl(key, jumpToCategory || null);
 
   categoryBar.innerHTML = "";
+  populateBrandFilter(key);
 
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
@@ -168,6 +169,8 @@ async function openStore(key, jumpToCategory) {
       currentCategory = cat;
       updateStoreUrl(key, cat);
       if (storeSearch) storeSearch.value = "";
+      const brandFilter = document.getElementById("brandFilter");
+      if (brandFilter) brandFilter.value = "";
       showProducts(key, cat);
     };
     categoryBar.appendChild(btn);
@@ -183,6 +186,48 @@ async function openStore(key, jumpToCategory) {
 }
 
 /** Search box on the store page: filters the active category by name. */
+/** Fills the "Shop by Brand" dropdown with whatever distinct brands
+ *  exist in this store — and hides it entirely for stores where no
+ *  product has a brand set yet, so it doesn't clutter the page. */
+function populateBrandFilter(key) {
+  const select = document.getElementById("brandFilter");
+  if (!select || !data[key]) return;
+
+  const allItems = Object.values(data[key].categories).flat();
+  const brands = [...new Set(allItems.map(p => p.brand).filter(Boolean))].sort();
+
+  if (brands.length === 0) {
+    select.classList.add("hidden");
+    return;
+  }
+
+  select.innerHTML = `<option value="">Shop by Brand — All Brands</option>` +
+    brands.map(b => `<option value="${b}">${b}</option>`).join("");
+  select.value = "";
+  select.classList.remove("hidden");
+}
+
+/** Picking a brand shows every matching product in this store across
+ *  all categories (a brand can span more than one) — picking "All
+ *  Brands" again goes back to normal category browsing. */
+function filterByBrand() {
+  const brand = document.getElementById("brandFilter").value;
+
+  if (!brand) {
+    showProducts(currentStore, currentCategory);
+    return;
+  }
+
+  const allItems = Object.values(data[currentStore].categories).flat();
+  const matches = allItems.filter(p => p.brand === brand);
+
+  categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  const storeSearch = document.getElementById("storeSearch");
+  if (storeSearch) storeSearch.value = "";
+  storeProductsPage = 1;
+  renderProductGrid(matches, `No products from ${brand} in this store yet`);
+}
+
 function searchStoreProducts() {
   const q = (document.getElementById("storeSearch")?.value || "").trim().toLowerCase();
 
@@ -1254,12 +1299,12 @@ async function loadRelatedProducts(p) {
 
 const autoScrollTimers = {};
 
-function setupAutoScroll(containerId, intervalMs = 500, scrollAmount = 260) {
+function setupAutoScroll(containerId, pixelsPerSecond = 180) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   if (autoScrollTimers[containerId]) {
-    clearInterval(autoScrollTimers[containerId]);
+    cancelAnimationFrame(autoScrollTimers[containerId]);
   }
 
   if (!container.dataset.autoScrollBound) {
@@ -1272,18 +1317,27 @@ function setupAutoScroll(containerId, intervalMs = 500, scrollAmount = 260) {
     container.dataset.autoScrollBound = "1";
   }
 
-  autoScrollTimers[containerId] = setInterval(() => {
-    if (container._autoScrollPaused || document.hidden) return;
+  let lastTimestamp = null;
 
-    const maxScroll = container.scrollWidth - container.clientWidth;
-    if (maxScroll <= 0) return; // everything already fits, nothing to scroll
+  function step(timestamp) {
+    if (lastTimestamp === null) lastTimestamp = timestamp;
+    const deltaSeconds = (timestamp - lastTimestamp) / 1000;
+    lastTimestamp = timestamp;
 
-    if (container.scrollLeft >= maxScroll - 5) {
-      container.scrollTo({ left: 0, behavior: "smooth" });
-    } else {
-      container.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    if (!container._autoScrollPaused && !document.hidden) {
+      const maxScroll = container.scrollWidth - container.clientWidth;
+
+      if (maxScroll > 0) {
+        let next = container.scrollLeft + pixelsPerSecond * deltaSeconds;
+        if (next >= maxScroll) next = 0; // loop back to the start
+        container.scrollLeft = next;
+      }
     }
-  }, intervalMs);
+
+    autoScrollTimers[containerId] = requestAnimationFrame(step);
+  }
+
+  autoScrollTimers[containerId] = requestAnimationFrame(step);
 }
 
 let selectedVariant = null;

@@ -506,6 +506,12 @@ async function loadProducts() {
   const sections = [...new Set(allProductsCache.map(p => p.featured_section).filter(Boolean))];
   const listEl = document.getElementById("featuredSectionList");
   if (listEl) listEl.innerHTML = sections.map(s => `<option value="${s}">`).join("");
+
+  // Same idea for brand names — reuse "Tata" instead of accidentally
+  // creating "tata" / "TATA" / "Tata " as separate brands.
+  const brands = [...new Set(allProductsCache.map(p => p.brand).filter(Boolean))].sort();
+  const brandListEl = document.getElementById("brandList");
+  if (brandListEl) brandListEl.innerHTML = brands.map(b => `<option value="${b}">`).join("");
 }
 
 let productsPage = 1;
@@ -526,7 +532,7 @@ function renderProductsTable(list) {
   body.innerHTML = pageItems.map(p => `
     <tr>
       <td><img class="thumb" src="${p.images && p.images[0] ? p.images[0] : ''}" alt=""></td>
-      <td class="cell-title">${p.name}${p.name_hi ? `<div style="font-size:0.78rem;color:var(--ink-faint);font-weight:400;">${p.name_hi}</div>` : ''}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
+      <td class="cell-title">${p.name}${p.brand ? `<div style="font-size:0.75rem;color:var(--green-700);font-weight:600;">${p.brand}</div>` : ''}${p.name_hi ? `<div style="font-size:0.78rem;color:var(--ink-faint);font-weight:400;">${p.name_hi}</div>` : ''}${p.variants && p.variants.length ? `<div style="font-size:0.75rem;color:var(--ink-faint);font-weight:400;">${p.variants.length} sizes</div>` : ''}</td>
       <td data-label="Store">${p.store}</td>
       <td data-label="Category">${p.category}</td>
       <td data-label="Price">₹${p.price}</td>
@@ -576,6 +582,7 @@ async function toggleProductStock(id, newStatus) {
 async function addProduct() {
   const store = document.getElementById("pStore").value;
   const category = document.getElementById("pCategory").value;
+  const brand = document.getElementById("pBrand").value.trim() || null;
   const name = document.getElementById("pName").value.trim();
   const name_hi = document.getElementById("pNameHi").value.trim() || null;
   const price = Number(document.getElementById("pPrice").value) || 0;
@@ -625,7 +632,7 @@ async function addProduct() {
   const effectivePrice = price || Math.min(...variants.map(v => v.price));
 
   const { error } = await supabase.from("products").insert({
-    store, category, name, name_hi, price: effectivePrice, mrp, images: imageURLs, variants,
+    store, category, brand, name, name_hi, price: effectivePrice, mrp, images: imageURLs, variants,
     featured_section, featured_order
   });
 
@@ -637,6 +644,7 @@ async function addProduct() {
   alert("Product added!");
   document.getElementById("pName").value = "";
   document.getElementById("pNameHi").value = "";
+  document.getElementById("pBrand").value = "";
   document.getElementById("pPrice").value = "";
   document.getElementById("pMrp").value = "";
   document.getElementById("pFeaturedSection").value = "";
@@ -652,6 +660,7 @@ async function editProduct(p) {
   editingProductId = p.id;
   document.getElementById("editName").value = p.name;
   document.getElementById("editNameHi").value = p.name_hi || "";
+  document.getElementById("editBrand").value = p.brand || "";
   document.getElementById("editPrice").value = p.price;
   document.getElementById("editMrp").value = p.mrp || "";
   document.getElementById("editFeaturedSection").value = p.featured_section || "";
@@ -888,6 +897,7 @@ function collectVariants(containerId) {
 async function updateProduct() {
   const name = document.getElementById("editName").value;
   const name_hi = document.getElementById("editNameHi").value.trim() || null;
+  const brand = document.getElementById("editBrand").value.trim() || null;
   const price = Number(document.getElementById("editPrice").value);
   const mrp = Number(document.getElementById("editMrp").value) || null;
   const featured_section = document.getElementById("editFeaturedSection").value.trim() || null;
@@ -919,7 +929,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, name_hi, price, mrp, store, category, images, variants, featured_section, featured_order };
+  const updateData = { name, name_hi, brand, price, mrp, store, category, images, variants, featured_section, featured_order };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 
