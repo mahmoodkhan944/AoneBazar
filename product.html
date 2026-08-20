@@ -101,6 +101,9 @@
             <img id="detailImage" class="zoomImg" alt="Product" />
             <div id="lens"></div>
             <button id="wishlistHeartBtn" class="wishlist-heart" onclick="toggleWishlistFromModal()">🤍</button>
+            <button class="share-icon-btn" onclick="shareCurrentProduct()" aria-label="Share">
+              <i class="fa-solid fa-share-nodes"></i>
+            </button>
           </div>
           <div id="thumbs"></div>
         </div>
@@ -113,9 +116,6 @@
 
           <button class="btn btn-primary" id="addToCartBtn" onclick="addCurrentProductToCart()">
             <i class="fa-solid fa-basket-shopping"></i> Add to Cart
-          </button>
-          <button class="btn btn-outline" style="margin-left:8px;" onclick="shareCurrentProduct()">
-            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
 
           <div id="reviewSummary" class="review-summary" style="margin-top:20px;">

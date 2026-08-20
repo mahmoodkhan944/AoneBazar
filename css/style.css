@@ -1015,6 +1015,25 @@
 .wishlist-heart:hover { transform: scale(1.1); }
 .wishlist-heart.active { color: var(--danger-600); }
 
+.share-icon-btn {
+  position: absolute;
+  top: 56px;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--fast) var(--ease);
+}
+.share-icon-btn:hover { transform: scale(1.1); background: var(--green-100); color: var(--green-700); }
+
 .product-card-heart {
   position: absolute;
   top: 8px;
