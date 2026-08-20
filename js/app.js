@@ -1188,6 +1188,7 @@ async function loadProductPage() {
   setTimeout(enableMagnifier, 200);
   resetStarInput();
   loadReviews(p.id);
+  loadRelatedProducts(p);
 
   // Reflect saved-wishlist state for just this one product
   if (currentSupabaseUser) {
@@ -1201,6 +1202,46 @@ async function loadProductPage() {
     if (existing) myWishlistIds.add(p.id);
   }
   updateWishlistHeart(p.id);
+}
+
+/** Shows a horizontal-scrolling row of other products from the same
+ *  category (falling back to the same store) — skips the product
+ *  being viewed and anything out of stock. */
+async function loadRelatedProducts(p) {
+  const section = document.getElementById("relatedProductsSection");
+  const row = document.getElementById("relatedProductsRow");
+  if (!section || !row) return;
+
+  let { data: rows, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("store", p.store)
+    .eq("category", p.category)
+    .eq("in_stock", true)
+    .neq("id", p.id)
+    .limit(12);
+
+  // Same category is usually empty only for a very small catalog —
+  // fall back to "anything else in this store" so the section still
+  // has something worth showing.
+  if ((!rows || rows.length === 0) && !error) {
+    const fallback = await supabase
+      .from("products")
+      .select("*")
+      .eq("store", p.store)
+      .eq("in_stock", true)
+      .neq("id", p.id)
+      .limit(12);
+    rows = fallback.data;
+  }
+
+  if (error || !rows || rows.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  row.innerHTML = rows.map(item => featuredProductCardHtml(item)).join("");
+  section.classList.remove("hidden");
 }
 
 let selectedVariant = null;
