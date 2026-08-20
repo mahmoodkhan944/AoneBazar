@@ -128,6 +128,7 @@ async function openStore(key, jumpToCategory) {
   currentStore = key;
 
   await loadProducts(key);
+  // load this store's products from Supabase
 
   const store = data[key];
   if (!store) return;
@@ -226,15 +227,17 @@ function renderProductGrid(items, emptyMessage) {
     const hasVariants = p.variants && p.variants.length > 0;
     const outOfStock = p.in_stock === false;
 
-    const basePrice = hasVariants ? Math.min(...p.variants.map(v => v.price)) : p.price;
-    const priceLabel = hasVariants ? `From ₹${basePrice}` : `₹${p.price}`;
-
-    const hasDiscount = p.mrp && p.mrp > basePrice;
-    const discountPct = hasDiscount ? Math.round(((p.mrp - basePrice) / p.mrp) * 100) : 0;
+    // Shown price always matches whichever variant is currently
+    // selected in the dropdown (defaults to the first one) — not
+    // just "from the cheapest", so it stays accurate as you pick sizes.
+    const initial = hasVariants ? p.variants[0] : { price: p.price, mrp: p.mrp };
+    const initialMrp = hasVariants ? (initial.mrp || p.mrp) : initial.mrp;
+    const hasDiscount = initialMrp && initialMrp > initial.price;
+    const discountPct = hasDiscount ? Math.round(((initialMrp - initial.price) / initialMrp) * 100) : 0;
 
     const priceHtml = hasDiscount
-      ? `<p>${priceLabel} <span class="mrp-strike">₹${p.mrp}</span></p>`
-      : `<p>${priceLabel}</p>`;
+      ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>`
+      : `₹${initial.price}`;
 
     const variantSelect = hasVariants ? variantDropdownHtml(p, outOfStock) : "";
 
@@ -246,11 +249,11 @@ function renderProductGrid(items, emptyMessage) {
 
     productGrid.innerHTML += `
       <div class="product${outOfStock ? " product-out-of-stock" : ""}">
-        ${hasDiscount ? `<span class="discount-badge">-${discountPct}%</span>` : ""}
+        <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
           <img src="${p.images ? p.images[0] : p.img}">
           <h4>${p.name}</h4>
-          ${priceHtml}
+          <p id="price-${p.id}">${priceHtml}</p>
         </a>
         ${variantSelect}
         <a class="btn btn-outline btn-sm" href="product.html?id=${p.id}">
@@ -266,11 +269,44 @@ function renderProductGrid(items, emptyMessage) {
 /** Compact size/pack dropdown shown on a product card (grid or
  *  featured row) — cheaper on space than a row of chip buttons. */
 function variantDropdownHtml(p, disabled) {
+  const variantsJson = JSON.stringify(p.variants).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
   return `
-    <select class="variant-select" ${disabled ? "disabled" : ""}>
+    <select class="variant-select" ${disabled ? "disabled" : ""}
+      data-product-id="${p.id}" data-variants='${variantsJson}' data-product-mrp="${p.mrp || ""}"
+      onchange="updateCardPrice(this)">
       ${p.variants.map((v, i) => `<option value="${i}">${v.label} — ₹${v.price}</option>`).join("")}
     </select>
   `;
+}
+
+/** Keeps the price / MRP strike-through / discount badge on a product
+ *  card in sync with whichever size the shopper just picked. */
+function updateCardPrice(selectEl) {
+  const productId = selectEl.dataset.productId;
+  const variants = JSON.parse(selectEl.dataset.variants.replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
+  const v = variants[Number(selectEl.value)];
+  if (!v) return;
+
+  const mrp = v.mrp || Number(selectEl.dataset.productMrp) || null;
+  const priceEl = document.getElementById("price-" + productId);
+  const badgeEl = document.getElementById("badge-" + productId);
+  const hasDiscount = mrp && mrp > v.price;
+
+  if (priceEl) {
+    priceEl.innerHTML = hasDiscount
+      ? `₹${v.price} <span class="mrp-strike">₹${mrp}</span>`
+      : `₹${v.price}`;
+  }
+
+  if (badgeEl) {
+    if (hasDiscount) {
+      const pct = Math.round(((mrp - v.price) / mrp) * 100);
+      badgeEl.textContent = `-${pct}%`;
+      badgeEl.style.display = "";
+    } else {
+      badgeEl.style.display = "none";
+    }
+  }
 }
 
 /** Reads the <select> right before the clicked "Add to Cart" button
@@ -330,18 +366,18 @@ async function loadFeaturedSections() {
 
 function featuredProductCardHtml(p) {
   const hasVariants = p.variants && p.variants.length > 0;
-  const basePrice = hasVariants ? Math.min(...p.variants.map(v => v.price)) : p.price;
-  const priceLabel = hasVariants ? `From ₹${basePrice}` : `₹${p.price}`;
-  const hasDiscount = p.mrp && p.mrp > basePrice;
-  const discountPct = hasDiscount ? Math.round(((p.mrp - basePrice) / p.mrp) * 100) : 0;
+  const initial = hasVariants ? p.variants[0] : { price: p.price, mrp: p.mrp };
+  const initialMrp = hasVariants ? (initial.mrp || p.mrp) : initial.mrp;
+  const hasDiscount = initialMrp && initialMrp > initial.price;
+  const discountPct = hasDiscount ? Math.round(((initialMrp - initial.price) / initialMrp) * 100) : 0;
 
   return `
     <div class="featured-card">
-      ${hasDiscount ? `<span class="discount-badge">-${discountPct}%</span>` : ""}
+      <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
       <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
         <h4>${p.name}</h4>
-        <p>${priceLabel}${hasDiscount ? ` <span class="mrp-strike">₹${p.mrp}</span>` : ""}</p>
+        <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}
       ${hasVariants
@@ -643,6 +679,9 @@ async function placeOrder() {
   });
 
   if (error) {
+    // If this fires, the customer isn't fully logged in via Firebase
+    // yet (RLS needs a verified identity to accept the order). The
+    // order still goes out over WhatsApp so the shop doesn't miss it.
     console.warn("Order not saved to Supabase (needs login):", error.message);
   } else if (appliedCoupon) {
     const { error: redeemError } = await supabase.rpc("redeem_coupon", { p_code: appliedCoupon.code });
@@ -680,10 +719,10 @@ async function placeOrder() {
 }
 
 /***********************
-    CHECKOUT: UPI "half" | "full" -payment step
+    CHECKOUT: UPI half-payment step
 ************************/
 
-let selectedPaymentOption = "half";
+let selectedPaymentOption = "half"; // "half" | "full"
 let currentPayableTotal = 0;
 
 function proceedToPayment() {
@@ -928,6 +967,8 @@ async function loginWithPhone() {
     return;
   }
 
+  // No OTP — the phone number is trusted as typed. We still create a
+  // real (anonymous) Supabase session behind the scenes so orders,
   // wishlist, and reviews can be tied to this customer securely on
   // this device. Logging out keeps that same identity so a return
   // visit with the same number sees the same order history.
@@ -986,6 +1027,8 @@ window.onload = function () {
   loadProductPage(); // no-ops unless this is product.html
   loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
 
+  // Coming back from a product page, or from the mega-menu? Jump
+  // straight to that store (and category, if given).
   const backParams = new URLSearchParams(location.search);
   const storeParam = backParams.get("store");
   const categoryParam = backParams.get("category");
@@ -1003,7 +1046,7 @@ window.onload = function () {
 
 async function loadProductPage() {
   const contentEl = document.getElementById("productPageContent");
-  if (!contentEl) return;
+  if (!contentEl) return; // not on product.html, nothing to do
 
   const notFoundEl = document.getElementById("productNotFound");
   const params = new URLSearchParams(location.search);
@@ -1112,7 +1155,7 @@ function renderVariantSelector(p) {
     </button>
   `).join("");
 
-  setDetailPrice(selectedVariant.price, p.mrp);
+  setDetailPrice(selectedVariant.price, selectedVariant.mrp || p.mrp);
 }
 
 function setDetailPrice(price, mrp) {
@@ -1134,7 +1177,7 @@ function selectVariant(index) {
     btn.classList.toggle("active", i === index);
   });
 
-  setDetailPrice(selectedVariant.price, currentProduct.mrp);
+  setDetailPrice(selectedVariant.price, selectedVariant.mrp || currentProduct.mrp);
 }
 
 function addCurrentProductToCart() {
@@ -1504,6 +1547,8 @@ async function submitReview() {
 
 /***********************
     AUTH STATE
+    Keeps currentSupabaseUser in sync so the rest of the app can
+    check "who's logged in" without an await on every click.
 ************************/
 
 supabase.auth.onAuthStateChange((_event, session) => {
@@ -1518,6 +1563,9 @@ supabase.auth.getSession().then(({ data }) => {
 
 /***********************
     MEGA MENU ("All Categories")
+    Groups every category (across all 3 stores) the way the admin
+    has organized them under Categories → Group, and lets a shopper
+    jump straight into a store already filtered to that category.
 ************************/
 
 let megaMenuLoaded = false;

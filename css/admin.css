@@ -1,5 +1,7 @@
 /* ===========================================================
    ADMIN DASHBOARD — layout, cards, tables
+   Uses the same design tokens as the storefront (design-system.css)
+   so the two feel like one product, not a bolted-on tool.
 =========================================================== */
 
 body.admin-body {
@@ -525,7 +527,7 @@ body.admin-body {
 
 .variant-row {
   display: grid;
-  grid-template-columns: 1fr 120px 32px;
+  grid-template-columns: 1fr 100px 100px 32px;
   gap: 8px;
   align-items: center;
 }
@@ -622,9 +624,18 @@ body.admin-body {
   .admin-sidebar { position: fixed; left: -260px; top: 0; bottom: 0; z-index: 50; transition: left var(--med) var(--ease); }
   .admin-sidebar.open { left: 0; }
   .admin-mobile-toggle { display: flex; margin-bottom: 14px; }
+  .variant-row { grid-template-columns: 1fr 1fr; grid-template-areas: "label label" "price mrp" "remove remove"; }
+  .variant-row .variant-label { grid-area: label; }
+  .variant-row .variant-price { grid-area: price; }
+  .variant-row .variant-mrp { grid-area: mrp; }
+  .variant-row button { grid-area: remove; width: 100%; border-radius: var(--radius-sm); }
   .admin-main { padding: 16px 16px 40px; }
   .stat-grid { grid-template-columns: 1fr; }
 
+  /* Tables become stacked cards instead of a horizontally-scrolling
+     grid — each row turns into its own card, each cell gets a small
+     label above its value (from data-label, set by admin.js) so it's
+     still clear which value is which. */
   .admin-table-wrap { overflow-x: visible; }
 
   .admin-table, .admin-table thead, .admin-table tbody,
@@ -667,6 +678,9 @@ body.admin-body {
     flex-shrink: 0;
   }
 
+  /* Cells with no meaningful label (thumbnail, or a cell that's
+     already the whole row's "title") span full width, unlabeled,
+     left-aligned — cleaner than a redundant label. */
   .admin-table td:not([data-label]) {
     justify-content: flex-start;
     text-align: left;

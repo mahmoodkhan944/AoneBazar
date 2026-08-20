@@ -1,5 +1,6 @@
 /***********************************************************
    ADMIN DASHBOARD (admin.html)
+   Self-contained — talks only to Supabase (js/supabase-client.js).
 ***********************************************************/
 
 let adminUser = null;
@@ -239,6 +240,9 @@ function renderOrdersChart(days) {
     }
   });
 
+  // Chart.js can under-measure its container on the very first paint
+  // (especially right after the dashboard becomes visible) — nudging
+  // a resize one frame later fixes the "chart looks cut off" glitch.
   requestAnimationFrame(() => ordersChartInstance && ordersChartInstance.resize());
 }
 
@@ -731,6 +735,7 @@ function addVariantRow(containerId, label) {
   row.innerHTML = `
     <input class="variant-label" placeholder="e.g. 250g" value="${label || ""}">
     <input class="variant-price" type="number" placeholder="Price (₹)">
+    <input class="variant-mrp" type="number" placeholder="MRP (optional)">
     <button type="button" onclick="this.closest('.variant-row').remove()">×</button>
   `;
   container.appendChild(row);
@@ -745,6 +750,7 @@ function renderVariantRows(containerId, variants) {
     row.innerHTML = `
       <input class="variant-label" placeholder="e.g. 250g" value="${v.label || ""}">
       <input class="variant-price" type="number" placeholder="Price (₹)" value="${v.price ?? ""}">
+      <input class="variant-mrp" type="number" placeholder="MRP (optional)" value="${v.mrp ?? ""}">
       <button type="button" onclick="this.closest('.variant-row').remove()">×</button>
     `;
     container.appendChild(row);
@@ -758,7 +764,8 @@ function collectVariants(containerId) {
   rows.forEach(row => {
     const label = row.querySelector(".variant-label").value.trim();
     const price = Number(row.querySelector(".variant-price").value);
-    if (label && price > 0) variants.push({ label, price });
+    const mrp = Number(row.querySelector(".variant-mrp").value) || null;
+    if (label && price > 0) variants.push({ label, price, ...(mrp ? { mrp } : {}) });
   });
 
   return variants;
@@ -943,6 +950,10 @@ async function updateCategory() {
 
   if (!name) { alert("Enter a category name"); return; }
 
+  // Remember the old store/name so we can re-tag any products that
+  // were filed under it — otherwise renaming a category silently
+  // orphans its products (they'd keep pointing at a name that no
+  // longer exists anywhere).
   const before = allCategoriesCache.find(c => c.id === editingCategoryId);
 
   const { error } = await supabase
@@ -1340,6 +1351,9 @@ async function addUser() {
     return;
   }
 
+  // Sign this new user up on a throwaway client — persistSession:false
+  // means it never touches localStorage, so it can't disturb the
+  // admin's own logged-in session in the main `supabase` client.
   const tempClient = window.createSupabaseClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -1375,6 +1389,9 @@ async function addUser() {
     BOOT
 ************************/
 
+// Keep the dashboard chart correctly sized through phone rotation /
+// browser window resizing — Chart.js's own auto-resize can lag or
+// miss this on some mobile browsers.
 window.addEventListener("resize", () => {
   if (ordersChartInstance) ordersChartInstance.resize();
 });
