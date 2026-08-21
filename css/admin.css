@@ -644,6 +644,12 @@ body.admin-body {
   .admin-sidebar.open { left: 0; }
   .admin-mobile-toggle { display: flex; margin-bottom: 14px; }
 
+  .stat-card { padding: 16px 18px; border-radius: 16px; }
+  .stat-card .value { font-size: 1.35rem; }
+  .admin-panel { border-radius: 16px; padding: 18px; }
+  .admin-nav-item:active { transform: scale(0.98); }
+  .table-actions button:active { transform: scale(0.94); }
+
   .hindi-keyboard { max-height: 70vh; padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
   .hk-row { gap: 4px; }
   .hk-row button {
