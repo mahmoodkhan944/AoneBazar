@@ -516,7 +516,7 @@ async function handleCategorySelectChange(selectEl, storeFieldId) {
   }
 
   const store = document.getElementById(storeFieldId).value;
-  const name = (prompt("New category name:") || "").trim();
+  const name = ((await customPrompt("New category name:")) || "").trim();
   const prevValue = selectEl.dataset.prevValue || "";
 
   if (!name) { selectEl.value = prevValue; return; }
@@ -1005,7 +1005,7 @@ async function updateProduct() {
 }
 
 async function deleteProduct(id) {
-  if (!confirm("Delete this product?")) return;
+  if (!(await customConfirm("Delete this product? This can't be undone.", "Delete"))) return;
 
   const { error } = await supabase.from("products").delete().eq("id", id);
 
@@ -1111,7 +1111,7 @@ async function addCategory() {
 }
 
 async function deleteCategory(id) {
-  if (!confirm("Delete this category? Products already in it are unaffected.")) return;
+  if (!(await customConfirm("Delete this category? Products already in it are unaffected.", "Delete"))) return;
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadCategoriesView();
@@ -1315,7 +1315,7 @@ async function updateCoupon() {
 }
 
 async function deleteCoupon(id) {
-  if (!confirm("Delete this coupon?")) return;
+  if (!(await customConfirm("Delete this coupon?", "Delete"))) return;
   const { error } = await supabase.from("coupons").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadCoupons();
@@ -1384,7 +1384,7 @@ function goToReviewsPage(n) {
 }
 
 async function deleteReview(id) {
-  if (!confirm("Delete this review?")) return;
+  if (!(await customConfirm("Delete this review?", "Delete"))) return;
   const { error } = await supabase.from("reviews").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadReviews();
@@ -1511,7 +1511,7 @@ function filterUsers() {
 }
 
 async function toggleUserRole(id, newRole) {
-  if (newRole === "admin" && !confirm("Give this user admin access to the dashboard?")) return;
+  if (newRole === "admin" && !(await customConfirm("Give this user admin access to the dashboard?", "Make Admin"))) return;
 
   const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", id);
 

@@ -243,6 +243,7 @@ select {
   background: var(--surface);
   color: var(--ink);
   font-size: 0.92rem;
+  resize: none;
   line-height: 1.4;
   transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
@@ -261,6 +262,15 @@ input:disabled, select:disabled, textarea:disabled {
   background: var(--surface-sunken);
   color: var(--ink-faint);
   cursor: not-allowed;
+}
+
+/* File inputs render their own native "Choose File" button + filename
+   text, which isn't covered by the width:100% rule above — without
+   this, they can overflow narrow mobile containers since the browser
+   doesn't shrink that native text on its own. */
+input[type="file"] {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 select {
@@ -351,4 +361,83 @@ select.input-pill { padding-right: 42px; }
 @keyframes toast-out {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(-8px); }
+}
+
+/* ---------------- CUSTOM CONFIRM / PROMPT DIALOG ---------------- */
+.custom-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(18, 32, 58, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: dialog-fade-in 160ms ease;
+}
+
+.custom-dialog {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 380px;
+  animation: dialog-pop-in 160ms ease;
+}
+
+.custom-dialog-message {
+  font-size: 0.98rem;
+  color: var(--ink);
+  line-height: 1.5;
+  margin: 0 0 16px;
+  white-space: pre-line;
+}
+
+.custom-dialog-input {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.custom-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.custom-dialog-actions button {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+
+.custom-dialog-cancel:hover { background: var(--surface-sunken); }
+
+.custom-dialog-ok {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: #fff;
+}
+.custom-dialog-ok:hover { background: var(--green-900); }
+
+.custom-dialog-ok.danger {
+  background: var(--danger-600);
+  border-color: var(--danger-600);
+}
+.custom-dialog-ok.danger:hover { background: #b32e2e; }
+
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }

@@ -394,7 +394,11 @@ async function shareContent(title, text, url) {
     await navigator.clipboard.writeText(url);
     alert("Link copied! Paste it anywhere to share.");
   } catch (e) {
-    prompt("Copy this link to share:", url);
+    if (window.customPrompt) {
+      customPrompt("Copy this link to share:", url);
+    } else {
+      prompt("Copy this link to share:", url);
+    }
   }
 }
 
