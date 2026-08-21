@@ -265,6 +265,10 @@ function mapOrderRow(row) {
     phone: row.customer_phone,
     address: row.address,
     items: row.items || [],
+    subtotal: row.subtotal,
+    couponCode: row.coupon_code,
+    discount: row.discount || 0,
+    deliveryCharge: row.delivery_charge || 0,
     total: row.total,
     status: row.status,
     date: new Date(row.created_at).toLocaleString()
@@ -397,75 +401,165 @@ async function downloadInvoice(order) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.setFillColor(0, 150, 136);
-  doc.rect(0, 0, 210, 28, "F");
+  const GREEN = [30, 122, 70];        // brand green
+  const GREEN_DARK = [15, 74, 43];    // brand dark green
+  const INK = [28, 27, 24];
+  const INK_SOFT = [91, 88, 79];
+  const LINE = [231, 224, 207];
+  const PAPER = [250, 248, 243];
+
+  // ---- Header band ----
+  doc.setFillColor(...GREEN_DARK);
+  doc.rect(0, 0, 210, 32, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text("AOne Bazaar", 14, 16);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(210, 228, 217);
+  doc.text("Supermarket - Kirana - Cafe, Lahideeh, Azamgarh", 14, 23);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text("AOne Bazaar", 105, 12, { align: "center" });
+  doc.text("INVOICE", 196, 14, { align: "right" });
 
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Fast Delivery | Quality Products", 105, 18, { align: "center" });
+  doc.text(order.invoiceNo || order.id, 196, 21, { align: "right" });
+  doc.text(order.date, 196, 27, { align: "right" });
 
+  doc.setTextColor(...INK);
+  let y = 44;
+
+  // ---- Bill To box ----
+  const addrLines = doc.splitTextToSize(order.address || "-", 168);
+  const billBoxH = 22 + addrLines.length * 5;
+
+  doc.setDrawColor(...LINE);
+  doc.setFillColor(...PAPER);
+  doc.roundedRect(14, y, 182, billBoxH, 2, 2, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...INK_SOFT);
+  doc.text("BILL TO", 20, y + 8);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...INK);
+  doc.text(order.name || "-", 20, y + 15);
+
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text("INVOICE", 200, 10, { align: "right" });
-  doc.text("ID: " + order.id, 200, 15, { align: "right" });
-  doc.text(order.date, 200, 20, { align: "right" });
+  doc.setTextColor(...INK_SOFT);
+  doc.text("Phone: " + (order.phone || "-"), 20, y + 21);
+  doc.text(addrLines, 20, y + 26);
 
-  doc.setTextColor(0, 0, 0);
-  let y = 35;
+  y += billBoxH + 12;
 
-  doc.setDrawColor(200);
-  doc.rect(10, y, 190, 35);
+  // ---- Items table ----
+  doc.setFillColor(...GREEN);
+  doc.rect(14, y, 182, 9, "F");
   doc.setFont("helvetica", "bold");
-  doc.text("Bill To:", 12, y + 7);
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("ITEM", 18, y + 6);
+  doc.text("QTY", 130, y + 6, { align: "right" });
+  doc.text("PRICE", 160, y + 6, { align: "right" });
+  doc.text("TOTAL", 192, y + 6, { align: "right" });
+
+  y += 9;
   doc.setFont("helvetica", "normal");
-  doc.text(order.name, 12, y + 14);
-  doc.text("Phone: " + (order.phone || "-"), 12, y + 20);
-  doc.text(order.address, 12, y + 26);
+  doc.setFontSize(9.5);
+  doc.setTextColor(...INK);
 
-  y += 35;
-  doc.setFillColor(230, 230, 230);
-  doc.rect(10, y, 190, 8, "F");
-  doc.setFont("helvetica", "bold");
-  doc.text("Item", 12, y + 6);
-  doc.text("Qty", 120, y + 6, { align: "right" });
-  doc.text("Price", 160, y + 6, { align: "right" });
-  doc.text("Total", 200, y + 6, { align: "right" });
-
-  y += 12;
-  doc.setFont("helvetica", "normal");
-  let total = 0;
-
+  let rowIndex = 0;
   order.items.forEach(p => {
-    let price = p.price * p.qty;
-    total += price;
-    doc.text(p.name, 12, y);
-    doc.text(String(p.qty), 120, y, { align: "right" });
-    doc.text("Rs. " + p.price, 160, y, { align: "right" });
-    doc.text("Rs. " + price, 200, y, { align: "right" });
-    y += 8;
-    if (y > 260) { doc.addPage(); y = 20; }
+    const lineTotal = p.price * p.qty;
+    const rowH = 9;
+
+    if (y > 255) { doc.addPage(); y = 20; rowIndex = 0; }
+
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(...PAPER);
+      doc.rect(14, y, 182, rowH, "F");
+    }
+
+    doc.setTextColor(...INK);
+    doc.text(String(p.name), 18, y + 6);
+    doc.text(String(p.qty), 130, y + 6, { align: "right" });
+    doc.text("Rs. " + p.price, 160, y + 6, { align: "right" });
+    doc.text("Rs. " + lineTotal, 192, y + 6, { align: "right" });
+
+    y += rowH;
+    rowIndex++;
   });
 
-  y += 5;
-  doc.line(10, y, 200, y);
-  y += 10;
+  doc.setDrawColor(...LINE);
+  doc.line(14, y, 196, y);
+  y += 8;
 
-  doc.setFillColor(0, 150, 136);
-  doc.rect(120, y, 80, 12, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("TOTAL: Rs. " + total, 160, y + 8, { align: "center" });
-  doc.setTextColor(0, 0, 0);
+  // ---- Summary — subtotal, discount, delivery, grand total ----
+  if (y > 240) { doc.addPage(); y = 20; }
 
-  y += 25;
-  doc.setFontSize(9);
+  const subtotal = order.subtotal || order.items.reduce((s, p) => s + p.price * p.qty, 0);
+  const discount = order.discount || 0;
+  const delivery = order.deliveryCharge || 0;
+  const sx1 = 130, sx2 = 192;
+
   doc.setFont("helvetica", "normal");
-  doc.text("Thank you for shopping with us!", 105, y, { align: "center" });
+  doc.setFontSize(9.5);
+  doc.setTextColor(...INK_SOFT);
+  doc.text("Subtotal", sx1, y);
+  doc.text("Rs. " + subtotal, sx2, y, { align: "right" });
+  y += 7;
+
+  if (discount > 0) {
+    doc.setTextColor(198, 62, 62);
+    doc.text("Discount" + (order.couponCode ? ` (${order.couponCode})` : ""), sx1, y);
+    doc.text("- Rs. " + discount, sx2, y, { align: "right" });
+    y += 7;
+    doc.setTextColor(...INK_SOFT);
+  }
+
+  doc.text("Delivery", sx1, y);
+  doc.text(delivery > 0 ? "Rs. " + delivery : "Free", sx2, y, { align: "right" });
+  y += 4;
+
+  doc.setDrawColor(...LINE);
+  doc.line(sx1 - 6, y, sx2, y);
+  y += 9;
+
+  doc.setFillColor(...GREEN_DARK);
+  doc.rect(sx1 - 6, y - 7, 68, 12, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text("TOTAL", sx1, y + 1);
+  doc.text("Rs. " + order.total, sx2, y + 1, { align: "right" });
+
+  y += 24;
+  if (y > 270) { doc.addPage(); y = 30; }
+
+  // ---- Footer ----
+  doc.setDrawColor(...LINE);
+  doc.line(14, y, 196, y);
+  y += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...GREEN);
+  doc.text("Thank you for shopping with AOne Bazaar!", 105, y, { align: "center" });
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...INK_SOFT);
+  doc.text("Master Naseem Complex, Lahideeh Bazar, Azamgarh  |  +91 8009555567", 105, y, { align: "center" });
   y += 5;
   doc.text("This is a computer generated invoice.", 105, y, { align: "center" });
 
