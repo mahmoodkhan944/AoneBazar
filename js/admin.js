@@ -1412,6 +1412,15 @@ async function loadSiteContentForm() {
   document.getElementById("cf_min_order").value = content.min_order || "100";
   document.getElementById("cf_delivery_charge").value = content.delivery_charge || "30";
   document.getElementById("cf_free_delivery_threshold").value = content.free_delivery_threshold || "300";
+  document.getElementById("cf_social_facebook").value = content.social_facebook || "";
+  document.getElementById("cf_social_instagram").value = content.social_instagram || "";
+  document.getElementById("cf_social_whatsapp").value = content.social_whatsapp || "";
+  document.getElementById("cf_social_youtube").value = content.social_youtube || "";
+  document.getElementById("cf_social_twitter").value = content.social_twitter || "";
+  document.getElementById("cf_social_linkedin").value = content.social_linkedin || "";
+  document.getElementById("cf_legal_privacy").value = content.legal_privacy_html || "";
+  document.getElementById("cf_legal_terms").value = content.legal_terms_html || "";
+  document.getElementById("cf_legal_refund").value = content.legal_refund_html || "";
 }
 
 async function saveSiteContent() {
@@ -1426,7 +1435,16 @@ async function saveSiteContent() {
     upi_id: document.getElementById("cf_upi_id").value.trim(),
     min_order: document.getElementById("cf_min_order").value.trim() || "100",
     delivery_charge: document.getElementById("cf_delivery_charge").value.trim() || "30",
-    free_delivery_threshold: document.getElementById("cf_free_delivery_threshold").value.trim() || "300"
+    free_delivery_threshold: document.getElementById("cf_free_delivery_threshold").value.trim() || "300",
+    social_facebook: document.getElementById("cf_social_facebook").value.trim(),
+    social_instagram: document.getElementById("cf_social_instagram").value.trim(),
+    social_whatsapp: document.getElementById("cf_social_whatsapp").value.trim(),
+    social_youtube: document.getElementById("cf_social_youtube").value.trim(),
+    social_twitter: document.getElementById("cf_social_twitter").value.trim(),
+    social_linkedin: document.getElementById("cf_social_linkedin").value.trim(),
+    legal_privacy_html: document.getElementById("cf_legal_privacy").value.trim(),
+    legal_terms_html: document.getElementById("cf_legal_terms").value.trim(),
+    legal_refund_html: document.getElementById("cf_legal_refund").value.trim()
   };
 
   const rows = Object.entries(updates).map(([key, value]) => ({ key, value }));

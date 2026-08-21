@@ -451,6 +451,60 @@
           </div>
         </div>
 
+        <div class="admin-panel">
+          <h3>Social Links</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Leave any of these blank and that icon simply won't show up in the footer — only fill in the ones you actually use.
+          </p>
+          <div class="admin-form-grid">
+            <div>
+              <label>Facebook</label>
+              <input id="cf_social_facebook" placeholder="https://facebook.com/..." />
+            </div>
+            <div>
+              <label>Instagram</label>
+              <input id="cf_social_instagram" placeholder="https://instagram.com/..." />
+            </div>
+            <div>
+              <label>WhatsApp</label>
+              <input id="cf_social_whatsapp" placeholder="https://wa.me/91..." />
+            </div>
+            <div>
+              <label>YouTube</label>
+              <input id="cf_social_youtube" placeholder="https://youtube.com/@..." />
+            </div>
+            <div>
+              <label>Twitter / X</label>
+              <input id="cf_social_twitter" placeholder="https://x.com/..." />
+            </div>
+            <div>
+              <label>LinkedIn</label>
+              <input id="cf_social_linkedin" placeholder="https://linkedin.com/..." />
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h3>Legal Pages</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Plain text is fine — leave a blank line between paragraphs to start a new one, and start a line with <code>## </code> to make it a sub-heading (like "What we collect").
+          </p>
+          <div class="admin-form-grid">
+            <div class="full">
+              <label>Privacy Policy</label>
+              <textarea id="cf_legal_privacy" rows="8"></textarea>
+            </div>
+            <div class="full">
+              <label>Terms &amp; Conditions</label>
+              <textarea id="cf_legal_terms" rows="8"></textarea>
+            </div>
+            <div class="full">
+              <label>Refund &amp; Returns Policy</label>
+              <textarea id="cf_legal_refund" rows="8"></textarea>
+            </div>
+          </div>
+        </div>
+
         <button class="btn btn-primary" onclick="saveSiteContent()">Save Changes</button>
       </section>
 

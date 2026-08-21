@@ -281,7 +281,72 @@ if (!window.__AONE_SUPABASE_READY__) {
         const key = el.getAttribute("data-content");
         if (content[key]) el.textContent = content[key];
       });
+
+      // Legal pages (Privacy/Terms/Refund) — admin writes plain text
+      // in a big textarea; blank lines become new paragraphs, and a
+      // line starting with "## " becomes a small bold sub-heading.
+      document.querySelectorAll("[data-content-html]").forEach(el => {
+        const key = el.getAttribute("data-content-html");
+        if (content[key]) el.innerHTML = renderLegalText(content[key]);
+      });
+
+      renderSocialLinks(content);
     };
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderLegalText(raw) {
+      return raw
+        .split(/\n\s*\n/)
+        .map(block => {
+          const trimmed = block.trim();
+          if (!trimmed) return "";
+          if (trimmed.startsWith("## ")) {
+            const lines = trimmed.split("\n");
+            const heading = lines[0].slice(3).trim();
+            const rest = lines.slice(1).join("\n").trim();
+            let html = `<h3>${escapeHtml(heading)}</h3>`;
+            if (rest) html += `<p>${escapeHtml(rest).replace(/\n/g, "<br>")}</p>`;
+            return html;
+          }
+          return `<p>${escapeHtml(trimmed).replace(/\n/g, "<br>")}</p>`;
+        })
+        .join("\n");
+    }
+
+    // Every social platform we support a link for — admin can leave
+    // any of these blank in Site Content, and that icon simply won't
+    // appear in the footer at all.
+    const SOCIAL_PLATFORMS = [
+      { key: "social_facebook", icon: "fab fa-facebook-f", label: "Facebook" },
+      { key: "social_instagram", icon: "fab fa-instagram", label: "Instagram" },
+      { key: "social_whatsapp", icon: "fab fa-whatsapp", label: "WhatsApp" },
+      { key: "social_youtube", icon: "fab fa-youtube", label: "YouTube" },
+      { key: "social_twitter", icon: "fab fa-x-twitter", label: "Twitter / X" },
+      { key: "social_linkedin", icon: "fab fa-linkedin-in", label: "LinkedIn" }
+    ];
+
+    function renderSocialLinks(content) {
+      document.querySelectorAll("[data-social-links]").forEach(container => {
+        const links = SOCIAL_PLATFORMS.filter(p => content[p.key] && content[p.key].trim());
+
+        if (links.length === 0) {
+          container.style.display = "none";
+          return;
+        }
+
+        container.style.display = "";
+        container.innerHTML = links.map(p => `
+          <a href="${escapeHtml(content[p.key].trim())}" target="_blank" rel="noopener noreferrer" aria-label="${p.label}">
+            <i class="${p.icon}"></i>
+          </a>
+        `).join("");
+      });
+    }
 
     document.addEventListener("DOMContentLoaded", window.loadSiteContent);
   })();
