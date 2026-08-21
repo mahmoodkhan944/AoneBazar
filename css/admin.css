@@ -443,6 +443,7 @@ body.admin-body {
 .admin-form-grid select,
 .admin-form-grid textarea {
   padding: 10px 12px;
+  min-width: 0;
 }
 
 /* ---------------- MODAL (Edit Product / Category / Coupon) ---------------- */
