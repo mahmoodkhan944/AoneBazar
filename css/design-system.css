@@ -227,16 +227,12 @@ button:focus-visible {
 .btn-block { width: 100%; }
 
 /* ---- Text inputs, textareas & selects (shared everywhere) ---- */
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="number"],
-input[type="password"],
-input[type="search"],
-input[type="date"],
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="range"]),
 textarea,
 select {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 11px 16px;
   border: 1.5px solid var(--line-strong);
   border-radius: var(--radius-sm);
