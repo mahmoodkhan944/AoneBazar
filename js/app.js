@@ -7,7 +7,6 @@
 const heroSection = document.getElementById("heroSection");
 const storeSection = document.getElementById("storeSection");
 const storeTitle = document.getElementById("storeTitle");
-const categoryBar = document.getElementById("categoryBar");
 const productGrid = document.getElementById("productGrid");
 
 const cartBox = document.getElementById("cartBox");
@@ -174,8 +173,6 @@ async function openStore(key, jumpToCategory) {
   // back on this same store/category instead of the homepage.
   updateStoreUrl(key, jumpToCategory || null);
 
-  categoryBar.innerHTML = "";
-  categoryBar.classList.add("categories-collapsed");
   populateBrandFilter(key);
 
   const storeSearch = document.getElementById("storeSearch");
@@ -185,86 +182,38 @@ async function openStore(key, jumpToCategory) {
 
   if (cats.length === 0) {
     productGrid.innerHTML = "<p>No products yet</p>";
+    document.getElementById("categoryTiles").innerHTML = "";
     return;
   }
 
-  const allCount = Object.values(store.categories).flat().length;
+  renderCategoryTiles(key, store, cats);
 
-  // "All Categories" always comes first, showing every product in
-  // the store regardless of which category it's in.
-  const allBtn = document.createElement("button");
-  allBtn.innerHTML = `All Categories <span class="cat-count">(${allCount})</span>`;
-  allBtn.onclick = () => {
-    categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
-    allBtn.classList.add("active");
-    currentCategory = null;
-    updateStoreUrl(key, null);
-    if (storeSearch) storeSearch.value = "";
-    const brandFilter = document.getElementById("brandFilter");
-    if (brandFilter) brandFilter.value = "";
-    storeProductsPage = 1;
-    renderProductGrid(Object.values(store.categories).flat(), "No products in this store yet");
-  };
-  categoryBar.appendChild(allBtn);
+  const startCategory = (jumpToCategory && cats.includes(jumpToCategory)) ? jumpToCategory : null;
+  selectStoreCategory(key, store, startCategory);
+}
 
-  cats.forEach(cat => {
-    const count = store.categories[cat].length;
-    const btn = document.createElement("button");
-    btn.dataset.category = cat;
-    btn.innerHTML = `${displayCategoryName(cat)} <span class="cat-count">(${count})</span>`;
-    btn.onclick = () => {
-      categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentCategory = cat;
-      updateStoreUrl(key, cat);
-      if (storeSearch) storeSearch.value = "";
-      const brandFilter = document.getElementById("brandFilter");
-      if (brandFilter) brandFilter.value = "";
-      showProducts(key, cat);
-    };
-    categoryBar.appendChild(btn);
+/** The one place that actually applies a category choice — used by
+ *  both the "All Categories" tile and every specific-category tile,
+ *  so there's a single source of truth for what happens on selection
+ *  instead of duplicating this in every click handler. */
+function selectStoreCategory(key, store, cat) {
+  currentCategory = cat;
+  updateStoreUrl(key, cat);
+
+  const storeSearch = document.getElementById("storeSearch");
+  if (storeSearch) storeSearch.value = "";
+  const brandFilter = document.getElementById("brandFilter");
+  if (brandFilter) brandFilter.value = "";
+
+  document.querySelectorAll(".category-tile").forEach(t => {
+    t.classList.toggle("active", (t.dataset.tileCategory || null) === cat);
   });
 
-  // Only worth a "Show All" toggle once there are enough categories
-  // that they'd otherwise wrap into a wall of chips.
-  const showAllBtn = document.getElementById("categoriesShowAllBtn");
-  if (showAllBtn) {
-    if (cats.length > 6) {
-      showAllBtn.textContent = `Show All (${cats.length})`;
-      showAllBtn.classList.remove("hidden");
-    } else {
-      showAllBtn.classList.add("hidden");
-      categoryBar.classList.remove("categories-collapsed");
-    }
-  }
-
-  if (jumpToCategory && cats.includes(jumpToCategory)) {
-    categoryBar.querySelectorAll("button").forEach(b => {
-      b.classList.toggle("active", b.dataset.category === jumpToCategory);
-    });
-    currentCategory = jumpToCategory;
-    showProducts(key, jumpToCategory);
-  } else {
-    // No specific category requested — start on "All Categories",
-    // same as how this pattern usually defaults to "All" first.
-    allBtn.classList.add("active");
-    currentCategory = null;
-    storeProductsPage = 1;
-    renderProductGrid(Object.values(store.categories).flat(), "No products in this store yet");
-  }
+  storeProductsPage = 1;
+  const items = cat ? store.categories[cat] : Object.values(store.categories).flat();
+  renderProductGrid(items, "No products in this category");
 }
 
-/** Expands the category-chip row past its initial collapsed height
- *  once there are enough categories to be worth a "Show All". */
-function toggleCategoriesExpanded() {
-  const bar = document.getElementById("categoryBar");
-  const btn = document.getElementById("categoriesShowAllBtn");
-  const collapsed = bar.classList.toggle("categories-collapsed");
-  const count = bar.querySelectorAll("button").length - 1; // minus "All Categories"
-  btn.textContent = collapsed ? `Show All (${count})` : "Show Less";
-}
-
-/** Search box on the store page: filters the active category by name. */
 /** Fills the "Shop by Brand" dropdown with whatever distinct brands
  *  exist in this store — and hides it entirely for stores where no
  *  product has a brand set yet, so it doesn't clutter the page. */
@@ -300,7 +249,7 @@ function filterByBrand() {
   const allItems = Object.values(data[currentStore].categories).flat();
   const matches = allItems.filter(p => p.brand === brand);
 
-  categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
   storeProductsPage = 1;
@@ -319,7 +268,7 @@ function searchStoreProducts() {
   const allItems = Object.values(data[currentStore].categories).flat();
   const matches = allItems.filter(p => p.name.toLowerCase().includes(q));
 
-  categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
   storeProductsPage = 1;
   renderProductGrid(matches, `No products match "${q}"`);
 }
@@ -505,6 +454,51 @@ function shareCurrentProduct() {
     `${currentProduct.name} — ₹${currentProduct.price} on AOne Bazaar`,
     `${location.origin}/product.html?id=${currentProduct.id}`
   );
+}
+
+/** A visual "Shop by Category" tile grid, shown right under the
+ *  store title — each tile borrows its thumbnail from the first
+ *  product filed under that category, so no separate category-image
+ *  upload is needed. Tapping a tile just clicks the matching chip in
+ *  the existing category bar, so all the filtering logic stays in
+ *  one place. */
+function renderCategoryTiles(key, store, cats) {
+  const container = document.getElementById("categoryTiles");
+  if (!container) return;
+
+  const escapeAttr = str => String(str).replace(/"/g, "&quot;");
+
+  const allTile = `
+    <button type="button" class="category-tile" data-tile-category="">
+      <span class="category-tile-img-wrap category-tile-all">
+        <i class="fa-solid fa-border-all"></i>
+      </span>
+      <span class="category-tile-label">All Categories</span>
+    </button>
+  `;
+
+  const catTiles = cats.map(cat => {
+    const items = store.categories[cat];
+    const thumb = (items[0] && items[0].images && items[0].images[0]) || "images/logo192.png";
+
+    return `
+      <button type="button" class="category-tile" data-tile-category="${escapeAttr(cat)}">
+        <span class="category-tile-img-wrap">
+          <img src="${thumb}" alt="${escapeAttr(cat)}" loading="lazy" />
+        </span>
+        <span class="category-tile-label">${displayCategoryName(cat)}</span>
+      </button>
+    `;
+  }).join("");
+
+  container.innerHTML = allTile + catTiles;
+
+  container.querySelectorAll(".category-tile").forEach(tile => {
+    tile.onclick = () => {
+      const cat = tile.dataset.tileCategory || null;
+      selectStoreCategory(key, store, cat);
+    };
+  });
 }
 
 function closeStore() {

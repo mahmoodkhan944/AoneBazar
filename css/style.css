@@ -265,61 +265,70 @@
   font-size: 0.88rem;
 }
 
-.categories {
+/* ---------------- CATEGORY TILE GRID ---------------- */
+.category-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.category-tile {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.categories-collapsed {
-  max-height: 96px;
-  overflow: hidden;
-}
-
-.categories-show-all {
-  display: block;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   background: none;
   border: none;
-  color: var(--green-700);
-  font-weight: 700;
-  font-size: 0.86rem;
-  text-decoration: underline;
-  padding: 4px 0 20px;
   cursor: pointer;
-}
-.categories-show-all:hover { color: var(--green-900); }
-
-.cat-count {
-  font-weight: 500;
-  opacity: 0.75;
-  font-size: 0.92em;
+  padding: 0;
 }
 
-.categories button {
-  flex: 0 0 auto;
-  padding: 9px 18px;
-  border-radius: 999px;
-  border: 1.5px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-weight: 600;
-  font-size: 0.86rem;
-  cursor: pointer;
-  transition: all var(--fast) var(--ease);
+.category-tile-img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  transition: transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
 
-.categories button:hover {
+.category-tile:hover .category-tile-img-wrap {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
   border-color: var(--green-700);
-  color: var(--green-700);
-  background: var(--green-100);
 }
+.category-tile:active .category-tile-img-wrap { transform: scale(0.96); }
 
-.categories button.active {
+.category-tile.active .category-tile-img-wrap {
+  border-color: var(--green-700);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--green-100);
+}
+.category-tile.active .category-tile-label { color: var(--green-700); }
+
+.category-tile-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--green-700);
-  border-color: var(--green-700);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(15, 74, 43, 0.2);
+  font-size: 1.6rem;
+}
+
+.category-tile-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.category-tile-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.25;
 }
 
 .products {
