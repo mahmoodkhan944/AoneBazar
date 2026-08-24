@@ -92,6 +92,31 @@ function saveCart() {
 /***********************
     STORE DATA
 ************************/
+// Category name → Hindi name lookup, fetched per store from the
+// `categories` table (the product-derived category groups in `data`
+// only carry the plain English name, so this fills in the Hindi
+// half for the chip labels).
+let categoryHindiMap = {};
+
+async function loadCategoryHindiMap(store) {
+  categoryHindiMap = {};
+  const { data: rows, error } = await supabase
+    .from("categories")
+    .select("name, name_hi")
+    .eq("store", store);
+
+  if (error || !rows) return;
+  rows.forEach(c => {
+    if (c.name_hi) categoryHindiMap[c.name] = c.name_hi;
+  });
+}
+
+/** "Masalas & Spices" → "Masalas & Spices (मसाले)" when a Hindi
+ *  translation is on file for that category. */
+function displayCategoryName(cat) {
+  return categoryHindiMap[cat] ? `${cat} (${categoryHindiMap[cat]})` : cat;
+}
+
 const defaultStores = {
   supermarket: {
     title: "AOne Bazaar",
@@ -129,6 +154,7 @@ async function openStore(key, jumpToCategory) {
 
   await loadProducts(key);
   // load this store's products from Supabase
+  await loadCategoryHindiMap(key);
 
   const store = data[key];
   if (!store) return;
@@ -148,6 +174,7 @@ async function openStore(key, jumpToCategory) {
   updateStoreUrl(key, jumpToCategory || null);
 
   categoryBar.innerHTML = "";
+  categoryBar.classList.add("categories-collapsed");
   populateBrandFilter(key);
 
   const storeSearch = document.getElementById("storeSearch");
@@ -160,9 +187,30 @@ async function openStore(key, jumpToCategory) {
     return;
   }
 
+  const allCount = Object.values(store.categories).flat().length;
+
+  // "All Categories" always comes first, showing every product in
+  // the store regardless of which category it's in.
+  const allBtn = document.createElement("button");
+  allBtn.innerHTML = `All Categories <span class="cat-count">(${allCount})</span>`;
+  allBtn.onclick = () => {
+    categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    allBtn.classList.add("active");
+    currentCategory = null;
+    updateStoreUrl(key, null);
+    if (storeSearch) storeSearch.value = "";
+    const brandFilter = document.getElementById("brandFilter");
+    if (brandFilter) brandFilter.value = "";
+    storeProductsPage = 1;
+    renderProductGrid(Object.values(store.categories).flat(), "No products in this store yet");
+  };
+  categoryBar.appendChild(allBtn);
+
   cats.forEach(cat => {
+    const count = store.categories[cat].length;
     const btn = document.createElement("button");
-    btn.innerText = cat;
+    btn.dataset.category = cat;
+    btn.innerHTML = `${displayCategoryName(cat)} <span class="cat-count">(${count})</span>`;
     btn.onclick = () => {
       categoryBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
@@ -176,13 +224,43 @@ async function openStore(key, jumpToCategory) {
     categoryBar.appendChild(btn);
   });
 
-  const startCat = (jumpToCategory && cats.includes(jumpToCategory)) ? jumpToCategory : cats[0];
+  // Only worth a "Show All" toggle once there are enough categories
+  // that they'd otherwise wrap into a wall of chips.
+  const showAllBtn = document.getElementById("categoriesShowAllBtn");
+  if (showAllBtn) {
+    if (cats.length > 6) {
+      showAllBtn.textContent = `Show All (${cats.length})`;
+      showAllBtn.classList.remove("hidden");
+    } else {
+      showAllBtn.classList.add("hidden");
+      categoryBar.classList.remove("categories-collapsed");
+    }
+  }
 
-  categoryBar.querySelectorAll("button").forEach(b => {
-    b.classList.toggle("active", b.innerText === startCat);
-  });
-  currentCategory = startCat;
-  showProducts(key, startCat);
+  if (jumpToCategory && cats.includes(jumpToCategory)) {
+    categoryBar.querySelectorAll("button").forEach(b => {
+      b.classList.toggle("active", b.dataset.category === jumpToCategory);
+    });
+    currentCategory = jumpToCategory;
+    showProducts(key, jumpToCategory);
+  } else {
+    // No specific category requested — start on "All Categories",
+    // same as how this pattern usually defaults to "All" first.
+    allBtn.classList.add("active");
+    currentCategory = null;
+    storeProductsPage = 1;
+    renderProductGrid(Object.values(store.categories).flat(), "No products in this store yet");
+  }
+}
+
+/** Expands the category-chip row past its initial collapsed height
+ *  once there are enough categories to be worth a "Show All". */
+function toggleCategoriesExpanded() {
+  const bar = document.getElementById("categoryBar");
+  const btn = document.getElementById("categoriesShowAllBtn");
+  const collapsed = bar.classList.toggle("categories-collapsed");
+  const count = bar.querySelectorAll("button").length - 1; // minus "All Categories"
+  btn.textContent = collapsed ? `Show All (${count})` : "Show Less";
 }
 
 /** Search box on the store page: filters the active category by name. */
@@ -1835,7 +1913,7 @@ async function loadMegaMenu() {
 
   const { data: rows, error } = await supabase
     .from("categories")
-    .select("store, name")
+    .select("store, name, name_hi")
     .order("name");
 
   if (error || !rows || rows.length === 0) {
@@ -1864,7 +1942,7 @@ async function loadMegaMenu() {
       <h4>${group}</h4>
       <ul>
         ${items.map(c => `
-          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}">${c.name}</a></li>
+          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}">${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
         `).join("")}
       </ul>
     </div>
