@@ -161,6 +161,7 @@ async function openStore(key, jumpToCategory) {
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
+  setHomepageFeaturedVisible(false);
 
   window.scrollTo({
   top: 0,
@@ -509,6 +510,7 @@ function shareCurrentProduct() {
 function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
+  setHomepageFeaturedVisible(true);
   history.replaceState(null, "", location.pathname);
 }
 
@@ -529,6 +531,15 @@ function updateStoreUrl(store, category) {
     "Trending Products") show up here in their own named row on
     the homepage — separate from browsing a specific store.
 ************************/
+
+/** The homepage's "Best Deal" / "Trending" rows pull featured
+ *  products from every store at once — they should only ever show
+ *  on the homepage itself, so this hides them entirely once a store
+ *  is opened, and brings them back when the shopper backs out. */
+function setHomepageFeaturedVisible(visible) {
+  const homeContainer = document.getElementById("featuredSections");
+  if (homeContainer) homeContainer.style.display = visible ? "" : "none";
+}
 
 async function loadFeaturedSections() {
   const container = document.getElementById("featuredSections");
