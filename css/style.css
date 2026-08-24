@@ -268,9 +268,9 @@
 /* ---------------- CATEGORY TILE GRID ---------------- */
 .category-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
 }
 
 .category-tile {
@@ -287,7 +287,7 @@
 .category-tile-img-wrap {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 18px;
+  border-radius: 50%;
   overflow: hidden;
   background: var(--surface-sunken);
   border: 1px solid var(--line);
@@ -314,7 +314,7 @@
   justify-content: center;
   background: var(--green-700);
   color: #fff;
-  font-size: 1.6rem;
+  font-size: 1.15rem;
 }
 
 .category-tile-img-wrap img {
@@ -324,11 +324,11 @@
 }
 
 .category-tile-label {
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--ink);
   text-align: center;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .products {
