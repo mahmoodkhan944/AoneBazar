@@ -351,3 +351,47 @@ if (!window.__AONE_SUPABASE_READY__) {
     document.addEventListener("DOMContentLoaded", window.loadSiteContent);
   })();
 }
+
+// ---- PWA: register the service worker so the site becomes
+// installable ("Add to Home Screen") on phones and desktops. Only
+// runs on http/https origins (skips file:// during local testing,
+// where service workers aren't allowed anyway). ----
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Non-fatal — the site still works perfectly without it, it
+      // just won't be installable on this particular browser.
+    });
+  });
+}
+
+// Capture the browser's install prompt so we can trigger it from
+// our own "Install App" button instead of waiting for the browser's
+// own (often-missed) mini-infobar.
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.querySelectorAll("[data-install-app-btn]").forEach(btn => {
+    btn.classList.remove("hidden");
+  });
+});
+
+window.installAoneBazaarApp = async function () {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.querySelectorAll("[data-install-app-btn]").forEach(btn => {
+    btn.classList.add("hidden");
+  });
+};
+
+// Once actually installed, hide the button everywhere for good.
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  document.querySelectorAll("[data-install-app-btn]").forEach(btn => {
+    btn.classList.add("hidden");
+  });
+});

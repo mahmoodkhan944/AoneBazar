@@ -6,6 +6,12 @@
   <title>Product — AOne Bazaar</title>
   <meta name="description" content="Shop at AOne Bazaar, Lahideeh-Azamgarh." />
   <link rel="icon" href="favicon.ico" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1e7a46" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AOne Bazaar" />
 
   <!-- Default share preview — the real product's own photo takes
        over instead of this (via /api/product) when the link has
@@ -188,8 +194,15 @@
       </div>
 
       <div class="cart-form" id="cartFormStep">
+        <select id="savedAddressSelect" class="saved-address-select hidden" onchange="selectSavedAddress()">
+          <option value="">+ Use a new address</option>
+        </select>
         <input type="text" id="customerName" placeholder="Your Name" />
         <textarea id="customerAddress" placeholder="Delivery Address"></textarea>
+        <label class="save-address-row">
+          <input type="checkbox" id="saveAddressCheckbox" checked />
+          Save this address for next time
+        </label>
       </div>
 
       <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹100 · Free delivery above ₹300 (₹30 delivery charge below that)</p>
@@ -290,6 +303,9 @@
           <a href="https://www.facebook.com/share/18mMKAfYBN/" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
           <a href="https://www.instagram.com/aonebazar.co.in?igsh=NzRybXhwamV0ZGF6" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
         </div>
+        <button class="footer-share-btn hidden" data-install-app-btn onclick="installAoneBazaarApp()" style="margin-top:12px;">
+          <i class="fa-solid fa-download"></i> Install App
+        </button>
       </div>
     </div>
 

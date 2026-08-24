@@ -639,8 +639,96 @@ function openCart() {
 
   modal.classList.remove("hidden");
   updateMinOrderNotice();
+  loadSavedAddresses();
 
   renderCart();
+}
+
+/***********************
+    SAVED ADDRESSES
+    So a repeat customer doesn't have to retype "Master Naseem
+    Complex, Lahideeh Bazar..." every single time they order.
+************************/
+
+let savedAddressesCache = [];
+
+async function loadSavedAddresses() {
+  const select = document.getElementById("savedAddressSelect");
+  if (!select) return;
+
+  // Only makes sense once someone's actually signed in (their phone
+  // number lookup created a Supabase session) — a first-time visitor
+  // won't have one yet, so just leave the dropdown hidden.
+  if (!currentSupabaseUser) {
+    select.classList.add("hidden");
+    return;
+  }
+
+  const { data: rows, error } = await supabase
+    .from("addresses")
+    .select("*")
+    .eq("customer_id", currentSupabaseUser.id)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error || !rows || rows.length === 0) {
+    savedAddressesCache = [];
+    select.classList.add("hidden");
+    return;
+  }
+
+  savedAddressesCache = rows;
+  select.innerHTML = `<option value="">+ Use a new address</option>` +
+    rows.map(a => `<option value="${a.id}">${a.label} — ${a.address_text.slice(0, 40)}${a.address_text.length > 40 ? "…" : ""}</option>`).join("");
+  select.classList.remove("hidden");
+
+  // Auto-fill the most recent (or default) saved address the first
+  // time the cart opens, so returning customers barely have to type.
+  if (!document.getElementById("customerAddress").value.trim()) {
+    select.value = rows[0].id;
+    selectSavedAddress();
+  }
+}
+
+function selectSavedAddress() {
+  const select = document.getElementById("savedAddressSelect");
+  const addr = savedAddressesCache.find(a => a.id === select.value);
+  const addressField = document.getElementById("customerAddress");
+  const saveCheckbox = document.getElementById("saveAddressCheckbox");
+
+  if (addr) {
+    addressField.value = addr.address_text;
+    if (addr.full_name) document.getElementById("customerName").value = addr.full_name;
+    // It's already saved — no need to save it again.
+    if (saveCheckbox) saveCheckbox.checked = false;
+  } else {
+    addressField.value = "";
+    if (saveCheckbox) saveCheckbox.checked = true;
+  }
+}
+
+/** Called right after an order goes through — stores the address for
+ *  next time, unless it's already saved or the shopper unchecked the
+ *  "save this address" box. */
+async function maybeSaveAddress(name, address) {
+  const saveCheckbox = document.getElementById("saveAddressCheckbox");
+  if (!saveCheckbox || !saveCheckbox.checked) return;
+  if (!currentSupabaseUser || !address.trim()) return;
+
+  const alreadySaved = savedAddressesCache.some(
+    a => a.address_text.trim().toLowerCase() === address.trim().toLowerCase()
+  );
+  if (alreadySaved) return;
+
+  const label = savedAddressesCache.length === 0 ? "Home" : `Address ${savedAddressesCache.length + 1}`;
+
+  await supabase.from("addresses").insert({
+    customer_id: currentSupabaseUser.id,
+    label,
+    full_name: name,
+    address_text: address,
+    is_default: savedAddressesCache.length === 0
+  });
 }
 
 function closeCart() {
@@ -893,6 +981,8 @@ async function placeOrder() {
     const { error: redeemError } = await supabase.rpc("redeem_coupon", { p_code: appliedCoupon.code });
     if (redeemError) console.warn("Coupon redeem failed:", redeemError.message);
   }
+
+  await maybeSaveAddress(name, address);
 
   const order = {
     id,
