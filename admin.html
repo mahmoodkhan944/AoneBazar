@@ -293,7 +293,16 @@
             </div>
             <div>
               <label>Category name</label>
-              <input id="catName" placeholder="e.g. Dairy & Eggs" />
+              <input id="catName" placeholder="e.g. Dairy & Eggs" onblur="autoTranslateToHindi('catName','catNameHi')" />
+            </div>
+            <div>
+              <label>Hindi name (auto — edit or clear if needed)</label>
+              <div class="hindi-input-row">
+                <input id="catNameHi" placeholder="Type English name above, Hindi fills in automatically" />
+                <button type="button" class="hindi-kb-toggle" onclick="openHindiKeyboard('catNameHi')" title="Open Hindi keyboard">
+                  <i class="fa-solid fa-keyboard"></i>
+                </button>
+              </div>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addCategory()">Add Category</button>
@@ -630,7 +639,14 @@
         <option value="cafe">Cafe</option>
       </select>
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category name</label>
-      <input id="editCatName" placeholder="Category name" />
+      <input id="editCatName" placeholder="Category name" onblur="autoTranslateToHindi('editCatName','editCatNameHi')" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Hindi name (auto — edit or clear if needed)</label>
+      <div class="hindi-input-row">
+        <input id="editCatNameHi" placeholder="Hindi name" />
+        <button type="button" class="hindi-kb-toggle" onclick="openHindiKeyboard('editCatNameHi')" title="Open Hindi keyboard">
+          <i class="fa-solid fa-keyboard"></i>
+        </button>
+      </div>
       <button class="btn btn-primary" onclick="updateCategory()">Save</button>
     </div>
   </div>

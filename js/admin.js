@@ -1157,7 +1157,7 @@ function renderCategoriesTable(list) {
 
   body.innerHTML = pageItems.map(c => `
     <tr>
-      <td class="cell-title">${c.name}</td>
+      <td class="cell-title">${c.name}${c.name_hi ? `<div style="font-size:0.78rem;color:var(--ink-faint);font-weight:400;">${c.name_hi}</div>` : ''}</td>
       <td data-label="Store">${c.store}</td>
       <td><div class="table-actions">
         <button onclick='editCategory(${JSON.stringify(c)})'>Edit</button>
@@ -1190,10 +1190,11 @@ function filterCategories() {
 async function addCategory() {
   const store = document.getElementById("catStore").value;
   const name = document.getElementById("catName").value.trim();
+  const name_hi = document.getElementById("catNameHi").value.trim() || null;
 
   if (!name) { alert("Enter a category name"); return; }
 
-  const { error } = await supabase.from("categories").insert({ store, name });
+  const { error } = await supabase.from("categories").insert({ store, name, name_hi });
 
   if (error) {
     alert(error.code === "23505" ? "That category already exists" : "Could not add: " + error.message);
@@ -1201,6 +1202,7 @@ async function addCategory() {
   }
 
   document.getElementById("catName").value = "";
+  document.getElementById("catNameHi").value = "";
   loadCategoriesView();
 }
 
@@ -1217,6 +1219,7 @@ function editCategory(c) {
   editingCategoryId = c.id;
   document.getElementById("editCatStore").value = c.store;
   document.getElementById("editCatName").value = c.name;
+  document.getElementById("editCatNameHi").value = c.name_hi || "";
   document.getElementById("editCategoryModal").classList.remove("hidden");
 }
 
@@ -1227,6 +1230,7 @@ function closeCategoryEdit() {
 async function updateCategory() {
   const store = document.getElementById("editCatStore").value;
   const name = document.getElementById("editCatName").value.trim();
+  const name_hi = document.getElementById("editCatNameHi").value.trim() || null;
 
   if (!name) { alert("Enter a category name"); return; }
 
@@ -1238,7 +1242,7 @@ async function updateCategory() {
 
   const { error } = await supabase
     .from("categories")
-    .update({ store, name })
+    .update({ store, name, name_hi })
     .eq("id", editingCategoryId);
 
   if (error) {
