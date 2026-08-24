@@ -172,7 +172,7 @@ async function loadDashboard() {
     `).join("");
   }
 
-  const STATUS_LABELS = { NEW: "New", PROCESSING: "Processing", DELIVERED: "Delivered", CANCELLED: "Cancelled" };
+  const STATUS_LABELS = { NEW: "New", PROCESSING: "Processing", OUT_FOR_DELIVERY: "Out for Delivery", DELIVERED: "Delivered", CANCELLED: "Cancelled" };
   const statusEl = document.getElementById("ordersByStatusList");
   const statusRows = stats.orders_by_status || [];
 
@@ -322,6 +322,7 @@ function renderOrdersTable(list) {
       <td>
         <div class="table-actions">
           <button onclick="updateOrderStatus('${o.id}','PROCESSING')">Processing</button>
+          <button onclick="updateOrderStatus('${o.id}','OUT_FOR_DELIVERY')">Out for Delivery</button>
           <button onclick="updateOrderStatus('${o.id}','DELIVERED')">Delivered</button>
           <button onclick='downloadInvoiceById("${o.id}")'>Invoice</button>
         </div>
@@ -373,6 +374,7 @@ async function updateOrderStatus(id, newStatus) {
 function notifyCustomerOnWhatsApp(order, status) {
   const templates = {
     PROCESSING: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) is now being prepared. We'll message you again once it's out for delivery. 🛍️`,
+    OUT_FOR_DELIVERY: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) is out for delivery and should reach you shortly. 🛵`,
     DELIVERED: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) has been delivered. Thank you for shopping with us — see you again soon! 🙏`
   };
 

@@ -1850,6 +1850,7 @@ function orderTrackerHtml(status) {
   const steps = [
     { key: "NEW", label: "Placed", icon: "fa-clipboard-check" },
     { key: "PROCESSING", label: "Processing", icon: "fa-box" },
+    { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "fa-truck" },
     { key: "DELIVERED", label: "Delivered", icon: "fa-house" }
   ];
 

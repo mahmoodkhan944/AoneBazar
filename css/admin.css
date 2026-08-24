@@ -345,6 +345,7 @@ body.admin-body {
 }
 .status-pill.NEW { background: var(--marigold-100); color: var(--marigold-700); }
 .status-pill.PROCESSING { background: #dde8fb; color: #2554a6; }
+.status-pill.OUT_FOR_DELIVERY { background: #fde6cc; color: #b4610a; }
 .status-pill.DELIVERED { background: var(--green-100); color: var(--green-900); }
 .status-pill.CANCELLED { background: var(--danger-100); color: var(--danger-600); }
 
