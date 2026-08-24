@@ -127,6 +127,23 @@
 /* ---------------- HERO ---------------- */
 .hero {
   padding: 56px 0 64px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(100deg, var(--paper) 38%, rgba(251, 249, 244, 0.75) 60%, rgba(251, 249, 244, 0.35) 100%),
+    url("https://i.postimg.cc/Rhbvr9pG/image-(3).webp");
+  background-size: cover;
+  background-position: 78% center;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    background:
+      linear-gradient(180deg, var(--paper) 55%, rgba(251, 249, 244, 0.6) 80%, rgba(251, 249, 244, 0.4) 100%),
+      url("https://i.postimg.cc/Rhbvr9pG/image-(3).webp");
+    background-size: cover;
+    background-position: center 30%;
+  }
 }
 
 .hero-intro {
@@ -1859,5 +1876,135 @@
     align-items: flex-start;
     text-align: left;
     margin-top: 28px;
+  }
+}
+
+/* ---------------- SKELETON LOADING ---------------- */
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--line) 37%, var(--surface-sunken) 63%);
+  background-size: 400% 100%;
+  animation: shimmer-sweep 1.4s ease infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.skeleton-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+
+.skeleton-img {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+}
+
+.skeleton-line {
+  height: 11px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skeleton-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeleton-tile .skeleton-img {
+  width: 100%;
+  border-radius: 50%;
+  margin-bottom: 0;
+}
+
+.skeleton-row-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+/* ---------------- EMPTY STATES ---------------- */
+.empty-state {
+  text-align: center;
+  padding: 52px 20px;
+  color: var(--ink-faint);
+  grid-column: 1 / -1;
+}
+
+.empty-state-icon {
+  font-size: 2.4rem;
+  color: var(--line-strong);
+  margin-bottom: 14px;
+}
+
+.empty-state-message {
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  margin: 0;
+}
+
+.empty-state-subtext {
+  font-size: 0.86rem;
+  margin: 6px 0 0;
+  color: var(--ink-faint);
+}
+
+/* ---------------- ENTRANCE ANIMATIONS ---------------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.product,
+.category-tile,
+.cards .card,
+.featured-card {
+  animation: fadeInUp 0.36s ease both;
+}
+
+.product:nth-child(1)  { animation-delay: 0.02s; }
+.product:nth-child(2)  { animation-delay: 0.05s; }
+.product:nth-child(3)  { animation-delay: 0.08s; }
+.product:nth-child(4)  { animation-delay: 0.11s; }
+.product:nth-child(5)  { animation-delay: 0.14s; }
+.product:nth-child(6)  { animation-delay: 0.17s; }
+.product:nth-child(7)  { animation-delay: 0.20s; }
+.product:nth-child(8)  { animation-delay: 0.23s; }
+.product:nth-child(9)  { animation-delay: 0.26s; }
+.product:nth-child(10) { animation-delay: 0.29s; }
+.product:nth-child(n+11) { animation-delay: 0.32s; }
+
+.category-tile:nth-child(1)  { animation-delay: 0.02s; }
+.category-tile:nth-child(2)  { animation-delay: 0.045s; }
+.category-tile:nth-child(3)  { animation-delay: 0.07s; }
+.category-tile:nth-child(4)  { animation-delay: 0.095s; }
+.category-tile:nth-child(5)  { animation-delay: 0.12s; }
+.category-tile:nth-child(6)  { animation-delay: 0.145s; }
+.category-tile:nth-child(7)  { animation-delay: 0.17s; }
+.category-tile:nth-child(8)  { animation-delay: 0.195s; }
+.category-tile:nth-child(n+9) { animation-delay: 0.22s; }
+
+.cards .card:nth-child(1) { animation-delay: 0.05s; }
+.cards .card:nth-child(2) { animation-delay: 0.12s; }
+.cards .card:nth-child(3) { animation-delay: 0.19s; }
+
+.featured-card:nth-child(1) { animation-delay: 0.02s; }
+.featured-card:nth-child(2) { animation-delay: 0.06s; }
+.featured-card:nth-child(3) { animation-delay: 0.10s; }
+.featured-card:nth-child(4) { animation-delay: 0.14s; }
+.featured-card:nth-child(n+5) { animation-delay: 0.18s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .product, .category-tile, .cards .card, .featured-card, .shimmer {
+    animation: none !important;
   }
 }

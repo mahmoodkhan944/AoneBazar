@@ -116,6 +116,52 @@ function displayCategoryName(cat) {
   return categoryHindiMap[cat] ? `${cat} (${categoryHindiMap[cat]})` : cat;
 }
 
+/***********************
+    SKELETON / EMPTY-STATE HELPERS
+    Small reusable bits so "loading" and "nothing here" moments look
+    intentional instead of a bare "Loading…" string or blank space.
+************************/
+
+function skeletonProductCardsHtml(count = 8) {
+  return Array(count).fill(`
+    <div class="skeleton-card">
+      <div class="skeleton-img shimmer"></div>
+      <div class="skeleton-line shimmer" style="width:85%;"></div>
+      <div class="skeleton-line shimmer" style="width:45%;"></div>
+      <div class="skeleton-line shimmer" style="width:100%;height:32px;border-radius:999px;margin-top:10px;"></div>
+    </div>
+  `).join("");
+}
+
+function skeletonCategoryTilesHtml(count = 8) {
+  return Array(count).fill(`
+    <div class="skeleton-tile">
+      <div class="skeleton-img shimmer"></div>
+      <div class="skeleton-line shimmer" style="width:70%;height:9px;"></div>
+    </div>
+  `).join("");
+}
+
+function skeletonRowCardsHtml(count = 3) {
+  return Array(count).fill(`
+    <div class="skeleton-row-card">
+      <div class="skeleton-line shimmer" style="width:40%;"></div>
+      <div class="skeleton-line shimmer" style="width:90%;"></div>
+      <div class="skeleton-line shimmer" style="width:60%;margin-bottom:0;"></div>
+    </div>
+  `).join("");
+}
+
+function emptyStateHtml(icon, message, subtext) {
+  return `
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fa-solid ${icon}"></i></div>
+      <p class="empty-state-message">${message}</p>
+      ${subtext ? `<p class="empty-state-subtext">${subtext}</p>` : ""}
+    </div>
+  `;
+}
+
 const defaultStores = {
   supermarket: {
     title: "AOne Bazaar",
@@ -151,16 +197,22 @@ async function openStore(key, jumpToCategory) {
 
   currentStore = key;
 
+  heroSection.style.display = "none";
+  storeSection.classList.remove("hidden");
+  setHomepageFeaturedVisible(false);
+
+  // Show skeletons immediately — the store's own products/categories
+  // are about to be fetched, and this is a visibly better first
+  // impression than an empty flash before content lands.
+  document.getElementById("categoryTiles").innerHTML = skeletonCategoryTilesHtml(6);
+  productGrid.innerHTML = skeletonProductCardsHtml(8);
+
   await loadProducts(key);
   // load this store's products from Supabase
   await loadCategoryHindiMap(key);
 
   const store = data[key];
   if (!store) return;
-
-  heroSection.style.display = "none";
-  storeSection.classList.remove("hidden");
-  setHomepageFeaturedVisible(false);
 
   window.scrollTo({
   top: 0,
@@ -299,7 +351,7 @@ function renderProductGrid(items, emptyMessage) {
   productGrid.innerHTML = "";
 
   if (items.length === 0) {
-    productGrid.innerHTML = `<p>${emptyMessage}</p>`;
+    productGrid.innerHTML = emptyStateHtml("fa-basket-shopping", emptyMessage, "Try a different category or search term.");
     const pagEl = document.getElementById("storeProductsPagination");
     if (pagEl) pagEl.innerHTML = "";
     return;
@@ -786,7 +838,7 @@ function renderCart() {
   container.innerHTML = "";
 
   if (cart.length === 0) {
-    container.innerHTML = `<p style="text-align:center;color:var(--ink-faint);padding:20px 0;">Your cart is empty</p>`;
+    container.innerHTML = emptyStateHtml("fa-cart-shopping", "Your cart is empty", "Add something tasty to get started!");
     updateCartTotals();
     return;
   }
@@ -1673,7 +1725,7 @@ async function openMyOrders() {
   }
 
   const box = document.getElementById("myOrdersList");
-  box.innerHTML = "Loading…";
+  box.innerHTML = skeletonRowCardsHtml(3);
   document.getElementById("myOrdersModal").classList.remove("hidden");
 
   const { data: rows, error } = await supabase
@@ -1694,7 +1746,7 @@ async function openMyOrders() {
   box.innerHTML = "";
 
   if (myOrders.length === 0) {
-    box.innerHTML = "<p style='text-align:center'>No previous orders</p>";
+    box.innerHTML = emptyStateHtml("fa-receipt", "No previous orders", "Your order history will show up here.");
   } else {
 
     myOrders.forEach(o => {
@@ -1953,7 +2005,7 @@ async function openWishlist() {
   if (!fbUser) return;
 
   const box = document.getElementById("wishlistList");
-  box.innerHTML = "Loading…";
+  box.innerHTML = skeletonRowCardsHtml(3);
   document.getElementById("wishlistModal").classList.remove("hidden");
 
   const { data: rows, error } = await supabase
@@ -1971,7 +2023,7 @@ async function openWishlist() {
   myWishlistIds = new Set((rows || []).map(r => r.product_id));
 
   if (!rows || rows.length === 0) {
-    box.innerHTML = "<p style='text-align:center'>Your wishlist is empty</p>";
+    box.innerHTML = emptyStateHtml("fa-heart", "Your wishlist is empty", "Tap the heart on any product to save it here.");
     return;
   }
 
@@ -2019,7 +2071,7 @@ document.addEventListener("click", e => {
 async function loadReviews(productId) {
   const avgEl = document.getElementById("avgRatingDisplay");
   const listEl = document.getElementById("reviewsList");
-  listEl.innerHTML = "Loading reviews…";
+  listEl.innerHTML = skeletonRowCardsHtml(2);
 
   const { data: rows, error } = await supabase
     .from("reviews")
