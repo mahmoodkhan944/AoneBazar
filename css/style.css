@@ -910,6 +910,26 @@
   margin: 10px 0 14px;
 }
 
+.reorder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1.5px solid var(--green-700);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--green-700);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+.reorder-btn:hover { background: var(--green-700); color: #fff; }
+.reorder-btn:active { transform: scale(0.97); }
+
 .order-id { font-weight: 700; }
 
 .order-status {

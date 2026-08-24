@@ -101,7 +101,8 @@ const VIEW_LOADERS = {
   coupons: loadCoupons,
   reviews: loadReviews,
   content: loadSiteContentForm,
-  users: loadUsers
+  users: loadUsers,
+  reports: initReportsView
 };
 
 function showAdminView(name) {
@@ -1694,6 +1695,254 @@ async function addUser() {
 // Keep the dashboard chart correctly sized through phone rotation /
 // browser window resizing — Chart.js's own auto-resize can lag or
 // miss this on some mobile browsers.
+/***********************
+    REPORTS
+************************/
+
+/** Defaults the date pickers to "this month so far" the first time
+ *  the Reports tab is opened, so there's a sensible report ready to
+ *  generate without having to pick dates first. */
+function initReportsView() {
+  const fromEl = document.getElementById("reportFromDate");
+  const toEl = document.getElementById("reportToDate");
+  if (!fromEl.value) {
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    fromEl.value = firstOfMonth.toISOString().slice(0, 10);
+    toEl.value = now.toISOString().slice(0, 10);
+  }
+}
+
+async function fetchReportOrders() {
+  const fromDate = document.getElementById("reportFromDate").value;
+  const toDate = document.getElementById("reportToDate").value;
+
+  if (!fromDate || !toDate) {
+    alert("Pick both a from and to date first");
+    return null;
+  }
+
+  // Include the whole "to" day, not just midnight of it.
+  const toDateEnd = new Date(toDate + "T23:59:59.999");
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .select("*")
+    .gte("created_at", new Date(fromDate + "T00:00:00").toISOString())
+    .lte("created_at", toDateEnd.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    alert("Could not load orders for this range: " + error.message);
+    return null;
+  }
+
+  return { orders: rows || [], fromDate, toDate };
+}
+
+function summarizeOrders(orders) {
+  // Cancelled orders never actually became sales — leaving them in
+  // would overstate revenue and skew "top products".
+  const validOrders = orders.filter(o => o.status !== "CANCELLED");
+
+  const totalSales = validOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const delivered = orders.filter(o => o.status === "DELIVERED").length;
+  const cancelled = orders.filter(o => o.status === "CANCELLED").length;
+
+  const productTotals = {};
+  validOrders.forEach(o => {
+    (o.items || []).forEach(item => {
+      if (!productTotals[item.name]) productTotals[item.name] = { qty: 0, revenue: 0 };
+      productTotals[item.name].qty += item.qty;
+      productTotals[item.name].revenue += item.price * item.qty;
+    });
+  });
+
+  const topProducts = Object.entries(productTotals)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  return {
+    orderCount: orders.length,
+    totalSales,
+    avgOrderValue: validOrders.length ? totalSales / validOrders.length : 0,
+    delivered,
+    cancelled,
+    topProducts
+  };
+}
+
+async function generateSalesReport(format) {
+  const result = await fetchReportOrders();
+  if (!result) return;
+
+  const { orders, fromDate, toDate } = result;
+  const summary = summarizeOrders(orders);
+
+  document.getElementById("reportSummary").innerHTML = `
+    <div class="admin-form-grid" style="margin-top:4px;">
+      <div><strong>${summary.orderCount}</strong><br><span style="color:var(--ink-soft);font-size:0.85rem;">Orders</span></div>
+      <div><strong>₹${summary.totalSales.toFixed(0)}</strong><br><span style="color:var(--ink-soft);font-size:0.85rem;">Total Sales</span></div>
+      <div><strong>₹${summary.avgOrderValue.toFixed(0)}</strong><br><span style="color:var(--ink-soft);font-size:0.85rem;">Avg Order Value</span></div>
+      <div><strong>${summary.delivered}</strong><br><span style="color:var(--ink-soft);font-size:0.85rem;">Delivered</span></div>
+    </div>
+  `;
+
+  if (orders.length === 0) {
+    alert("No orders found in that date range");
+    return;
+  }
+
+  if (format === "csv") {
+    downloadReportCsv(orders, summary, fromDate, toDate);
+  } else {
+    downloadReportPdf(orders, summary, fromDate, toDate);
+  }
+}
+
+function downloadReportCsv(orders, summary, fromDate, toDate) {
+  const rows = [
+    ["AOne Bazaar — Sales Report", `${fromDate} to ${toDate}`],
+    [],
+    ["Order ID", "Date", "Customer", "Phone", "Items", "Subtotal", "Discount", "Delivery", "Total", "Status"]
+  ];
+
+  orders.forEach(o => {
+    const itemsStr = (o.items || []).map(i => `${i.name} x${i.qty}`).join("; ");
+    rows.push([
+      o.id,
+      new Date(o.created_at).toLocaleString(),
+      o.customer_name || "",
+      o.customer_phone || "",
+      itemsStr,
+      o.subtotal || "",
+      o.discount || 0,
+      o.delivery_charge || 0,
+      o.total,
+      o.status
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(["Summary"]);
+  rows.push(["Total Orders", summary.orderCount]);
+  rows.push(["Total Sales", summary.totalSales.toFixed(2)]);
+  rows.push(["Average Order Value", summary.avgOrderValue.toFixed(2)]);
+  rows.push(["Delivered", summary.delivered]);
+  rows.push(["Cancelled", summary.cancelled]);
+  rows.push([]);
+  rows.push(["Top Products", "Qty Sold", "Revenue"]);
+  summary.topProducts.forEach(p => rows.push([p.name, p.qty, p.revenue.toFixed(2)]));
+
+  const csv = rows
+    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `AOne-Bazaar-Sales-Report_${fromDate}_to_${toDate}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadReportPdf(orders, summary, fromDate, toDate) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const GREEN = [30, 122, 70];
+  const GREEN_DARK = [15, 74, 43];
+  const INK = [28, 27, 24];
+  const INK_SOFT = [91, 88, 79];
+  const LINE = [231, 224, 207];
+  const PAPER = [250, 248, 243];
+
+  doc.setFillColor(...GREEN_DARK);
+  doc.rect(0, 0, 210, 32, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text("AOne Bazaar", 14, 16);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(210, 228, 217);
+  doc.text("Sales Report", 14, 23);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`${fromDate} to ${toDate}`, 196, 16, { align: "right" });
+
+  doc.setTextColor(...INK);
+  let y = 44;
+
+  const cards = [
+    ["Orders", String(summary.orderCount)],
+    ["Total Sales", "Rs. " + summary.totalSales.toFixed(0)],
+    ["Avg Order", "Rs. " + summary.avgOrderValue.toFixed(0)],
+    ["Delivered", String(summary.delivered)]
+  ];
+  const cardW = 44;
+  cards.forEach((c, i) => {
+    const x = 14 + i * (cardW + 3);
+    doc.setDrawColor(...LINE);
+    doc.setFillColor(...PAPER);
+    doc.roundedRect(x, y, cardW, 22, 2, 2, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...GREEN);
+    doc.text(c[1], x + cardW / 2, y + 10, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...INK_SOFT);
+    doc.text(c[0], x + cardW / 2, y + 17, { align: "center" });
+  });
+
+  y += 32;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...INK);
+  doc.text("Top Products", 14, y);
+  y += 6;
+
+  doc.setFillColor(...GREEN);
+  doc.rect(14, y, 182, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("PRODUCT", 18, y + 5.5);
+  doc.text("QTY", 150, y + 5.5, { align: "right" });
+  doc.text("REVENUE", 192, y + 5.5, { align: "right" });
+  y += 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  summary.topProducts.forEach((p, i) => {
+    if (i % 2 === 0) { doc.setFillColor(...PAPER); doc.rect(14, y, 182, 8, "F"); }
+    doc.setTextColor(...INK);
+    doc.text(String(p.name).slice(0, 45), 18, y + 5.5);
+    doc.text(String(p.qty), 150, y + 5.5, { align: "right" });
+    doc.text("Rs. " + p.revenue.toFixed(0), 192, y + 5.5, { align: "right" });
+    y += 8;
+    if (y > 270) { doc.addPage(); y = 20; }
+  });
+
+  y += 10;
+  if (y > 260) { doc.addPage(); y = 20; }
+
+  doc.setDrawColor(...LINE);
+  doc.line(14, y, 196, y);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...INK_SOFT);
+  doc.text(`Generated on ${new Date().toLocaleString()}  |  ${summary.orderCount} orders, ${summary.cancelled} cancelled`, 105, y, { align: "center" });
+
+  doc.save(`AOne-Bazaar-Sales-Report_${fromDate}_to_${toDate}.pdf`);
+}
+
 window.addEventListener("resize", () => {
   if (ordersChartInstance) ordersChartInstance.resize();
 });

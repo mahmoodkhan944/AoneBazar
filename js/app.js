@@ -1321,6 +1321,8 @@ async function loadProductPage() {
   resetStarInput();
   loadReviews(p.id);
   loadRelatedProducts(p);
+  trackRecentlyViewed(p.id);
+  loadRecentlyViewed(p.id);
 
   // Reflect saved-wishlist state for just this one product
   if (currentSupabaseUser) {
@@ -1339,6 +1341,69 @@ async function loadProductPage() {
 /** Shows a horizontal-scrolling row of other products from the same
  *  category (falling back to the same store) — skips the product
  *  being viewed and anything out of stock. */
+const RECENTLY_VIEWED_KEY = "aone_recently_viewed";
+const RECENTLY_VIEWED_MAX = 10;
+
+/** Records this product id in localStorage (most-recent-first,
+ *  deduped, capped) — purely on this device, no account needed. */
+function trackRecentlyViewed(id) {
+  if (!id) return;
+  let list = [];
+  try {
+    list = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY)) || [];
+  } catch (e) {
+    list = [];
+  }
+  list = list.filter(existingId => existingId !== id);
+  list.unshift(id);
+  list = list.slice(0, RECENTLY_VIEWED_MAX);
+  localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
+}
+
+/** Shows the last few OTHER products the shopper looked at (never
+ *  the one they're on right now) as a horizontal row, same card
+ *  style as Related Products. */
+async function loadRecentlyViewed(currentId) {
+  const section = document.getElementById("recentlyViewedSection");
+  const row = document.getElementById("recentlyViewedRow");
+  if (!section || !row) return;
+
+  let ids = [];
+  try {
+    ids = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY)) || [];
+  } catch (e) {
+    ids = [];
+  }
+
+  ids = ids.filter(id => id !== currentId).slice(0, 10);
+
+  if (ids.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  const { data: rows, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("id", ids)
+    .eq("in_stock", true);
+
+  if (error || !rows || rows.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  // Keep "most recently viewed first" order — .in() doesn't
+  // guarantee it comes back in the order the ids were given.
+  const byId = {};
+  rows.forEach(p => { byId[p.id] = p; });
+  const ordered = ids.map(pid => byId[pid]).filter(Boolean);
+
+  row.innerHTML = ordered.map(p => featuredProductCardHtml(p)).join("");
+  section.classList.remove("hidden");
+  setupAutoScroll("recentlyViewedRow");
+}
+
 async function loadRelatedProducts(p) {
   const section = document.getElementById("relatedProductsSection");
   const row = document.getElementById("relatedProductsRow");
@@ -1534,6 +1599,7 @@ async function openMyOrders() {
   }
 
   const myOrders = (rows || []).map(mapOrderRow);
+  myOrdersCache = myOrders; // so the "Order Again" button can look the order back up
 
   box.innerHTML = "";
 
@@ -1571,10 +1637,64 @@ async function openMyOrders() {
         ${o.date}
       </div>
 
+      <button class="reorder-btn" onclick="reorderItems('${o.id}')">
+        <i class="fa-solid fa-rotate-right"></i> Order Again
+      </button>
+
     </div>
   `;
     });
   }
+}
+
+let myOrdersCache = [];
+
+/** Re-adds everything from a past order to the current cart — using
+ *  today's price and stock, not the price it was bought at, since
+ *  both can have changed since then. Anything that's been removed
+ *  or gone out of stock is skipped with a note rather than failing
+ *  the whole thing. */
+async function reorderItems(orderId) {
+  const order = myOrdersCache.find(o => o.id === orderId);
+  if (!order) return;
+
+  const ids = order.items.map(i => i.id).filter(Boolean);
+  if (ids.length === 0) return;
+
+  const { data: liveProducts, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("id", ids);
+
+  if (error) {
+    alert("Could not reorder right now: " + error.message);
+    return;
+  }
+
+  let addedCount = 0;
+  let skippedCount = 0;
+
+  order.items.forEach(item => {
+    const product = (liveProducts || []).find(p => p.id === item.id);
+    if (!product || product.in_stock === false) {
+      skippedCount++;
+      return;
+    }
+    for (let i = 0; i < item.qty; i++) addToCart(product);
+    addedCount++;
+  });
+
+  closeMyOrders();
+
+  if (addedCount === 0) {
+    alert("Sorry, none of these items are available right now.");
+  } else if (skippedCount > 0) {
+    alert(`Added ${addedCount} item(s) to your cart. ${skippedCount} item(s) are no longer available.`);
+  } else {
+    alert(`Added ${addedCount} item(s) to your cart!`);
+  }
+
+  openCart();
 }
 
 /** A small "Order Placed → Processing → Delivered" step tracker for

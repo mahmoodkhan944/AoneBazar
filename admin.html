@@ -65,6 +65,9 @@
         <button class="admin-nav-item" data-view="users" onclick="showAdminView('users')">
           <i class="fa-solid fa-users"></i> Users
         </button>
+        <button class="admin-nav-item" data-view="reports" onclick="showAdminView('reports')">
+          <i class="fa-solid fa-chart-line"></i> Reports
+        </button>
       </nav>
 
       <div class="admin-sidebar-footer">
@@ -558,6 +561,37 @@
             </table>
           </div>
           <div id="usersPagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <!-- ===== REPORTS ===== -->
+      <section id="view-reports" class="admin-view">
+        <div class="admin-topbar"><h1>Reports</h1></div>
+
+        <div class="admin-panel">
+          <h3>Sales Report</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Pick a date range and download a sales summary — handy for accounting, taxes, or just seeing how a week or month went.
+          </p>
+          <div class="admin-form-grid">
+            <div>
+              <label>From date</label>
+              <input id="reportFromDate" type="date" />
+            </div>
+            <div>
+              <label>To date</label>
+              <input id="reportToDate" type="date" />
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="generateSalesReport('pdf')">
+              <i class="fa-solid fa-file-pdf"></i> Download PDF
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="generateSalesReport('csv')">
+              <i class="fa-solid fa-file-csv"></i> Download CSV (Excel)
+            </button>
+          </div>
+          <div id="reportSummary" style="margin-top:18px;"></div>
         </div>
       </section>
 
