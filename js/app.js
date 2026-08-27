@@ -193,7 +193,7 @@ localStorage.setItem("products", JSON.stringify(data));
 
 let currentCategory = "";
 
-async function openStore(key, jumpToCategory) {
+async function openStore(key, jumpToCategory, jumpToPage) {
 
   currentStore = key;
 
@@ -222,15 +222,15 @@ async function openStore(key, jumpToCategory) {
   storeTitle.innerText = store.title;
 
   // Keep the URL in sync so refreshing (or sharing the link) lands
-  // back on this same store/category instead of the homepage.
-  updateStoreUrl(key, jumpToCategory || null);
+  // back on this same store/category/page instead of resetting.
+  updateStoreUrl(key, jumpToCategory || null, jumpToPage);
 
   populateBrandFilter(key);
 
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
 
-  const cats = Object.keys(store.categories);
+  const cats = Object.keys(store.categories).sort((a, b) => a.localeCompare(b));
 
   if (cats.length === 0) {
     productGrid.innerHTML = "<p>No products yet</p>";
@@ -241,28 +241,51 @@ async function openStore(key, jumpToCategory) {
   renderCategoryTiles(key, store, cats);
 
   const startCategory = (jumpToCategory && cats.includes(jumpToCategory)) ? jumpToCategory : null;
-  selectStoreCategory(key, store, startCategory);
+  selectStoreCategory(key, store, startCategory, jumpToPage || 1);
 }
 
 /** The one place that actually applies a category choice — used by
  *  both the "All Categories" tile and every specific-category tile,
  *  so there's a single source of truth for what happens on selection
  *  instead of duplicating this in every click handler. */
-function selectStoreCategory(key, store, cat) {
+/** Flattening `{ category: [products] }` into one list naively
+ *  groups everything category-by-category — so adding one product to
+ *  "Atta" would drag that category's whole block to the front
+ *  (wherever Atta's newest item currently sorts), making it look
+ *  like all 5 other Atta products "jumped" too. Re-sorting by actual
+ *  timestamp after flattening keeps "All Categories" truly newest
+ *  product first, not newest category first. */
+function allStoreProductsSorted(store) {
+  return Object.values(store.categories)
+    .flat()
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+function selectStoreCategory(key, store, cat, startPage) {
   currentCategory = cat;
-  updateStoreUrl(key, cat);
 
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
   const brandFilter = document.getElementById("brandFilter");
   if (brandFilter) brandFilter.value = "";
+  const sortFilter = document.getElementById("sortFilter");
+  if (sortFilter) sortFilter.value = "relevance";
 
   document.querySelectorAll(".category-tile").forEach(t => {
     t.classList.toggle("active", (t.dataset.tileCategory || null) === cat);
   });
 
-  storeProductsPage = 1;
-  const items = cat ? store.categories[cat] : Object.values(store.categories).flat();
+  const items = cat ? store.categories[cat] : allStoreProductsSorted(store);
+
+  // Picking a category fresh (from a tile click) always starts back
+  // on page 1 — startPage is only ever meaningful when we're
+  // restoring state after a refresh, i.e. straight from openStore().
+  const targetPage = startPage && startPage > 1 && startPage <= Math.ceil(items.length / PAGE_SIZE)
+    ? startPage
+    : 1;
+
+  storeProductsPage = targetPage;
+  updateStoreUrl(key, cat, targetPage);
   renderProductGrid(items, "No products in this category");
 }
 
@@ -298,7 +321,7 @@ function filterByBrand() {
     return;
   }
 
-  const allItems = Object.values(data[currentStore].categories).flat();
+  const allItems = allStoreProductsSorted(data[currentStore]);
   const matches = allItems.filter(p => p.brand === brand);
 
   document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
@@ -317,7 +340,7 @@ function searchStoreProducts() {
   }
 
   // Search across every category in the current store, not just the active one.
-  const allItems = Object.values(data[currentStore].categories).flat();
+  const allItems = allStoreProductsSorted(data[currentStore]);
   const matches = allItems.filter(p => p.name.toLowerCase().includes(q));
 
   document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
@@ -334,8 +357,74 @@ function showProducts(store, cat) {
 let storeProductsPage = 1;
 let currentStoreProductsList = [];
 
+/** The price actually shown on a card — first variant's price if
+ *  the product has variants, otherwise the base price. Keeps sorting
+ *  consistent with what the shopper sees, not some other field. */
+function getEffectivePrice(p) {
+  const hasVariants = p.variants && p.variants.length > 0;
+  return hasVariants ? p.variants[0].price : p.price;
+}
+
+function getEffectiveMrp(p) {
+  const hasVariants = p.variants && p.variants.length > 0;
+  const mrp = hasVariants ? (p.variants[0].mrp || p.mrp) : p.mrp;
+  return mrp || null;
+}
+
+function getDiscountPercent(p) {
+  const mrp = getEffectiveMrp(p);
+  const price = getEffectivePrice(p);
+  if (!mrp || mrp <= price) return 0;
+  return ((mrp - price) / mrp) * 100;
+}
+
+let productRatingsMap = null;
+
+/** Fetched once, lazily — only the shopper who actually picks
+ *  "Rating: High to Low" needs this, so there's no point querying it
+ *  on every store visit. */
+async function loadProductRatingsMap() {
+  if (productRatingsMap) return productRatingsMap;
+
+  const { data: rows, error } = await supabase
+    .from("product_ratings")
+    .select("product_id, avg_rating");
+
+  productRatingsMap = {};
+  if (!error && rows) {
+    rows.forEach(r => { productRatingsMap[r.product_id] = r.avg_rating; });
+  }
+  return productRatingsMap;
+}
+
+/** Re-sorts whatever's currently on screen (a category, "All
+ *  Categories", a search, or a brand filter) according to the Sort
+ *  dropdown, then re-renders — the sort applies to the current view
+ *  rather than being tied to one specific category or filter. */
+async function applySortAndRender() {
+  const sortValue = document.getElementById("sortFilter").value;
+  let items = [...currentStoreProductsList];
+
+  if (sortValue === "price_low") {
+    items.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
+  } else if (sortValue === "price_high") {
+    items.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
+  } else if (sortValue === "discount") {
+    items.sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a));
+  } else if (sortValue === "rating") {
+    await loadProductRatingsMap();
+    items.sort((a, b) => (productRatingsMap[b.id] || 0) - (productRatingsMap[a.id] || 0));
+  }
+  // "relevance" — leave the current (newest-first) order as-is.
+
+  storeProductsPage = 1;
+  renderProductGrid(items, "No products in this category");
+}
+
+
 function goToStoreProductsPage(n) {
   storeProductsPage = n;
+  updateStoreUrl(currentStore, currentCategory, n);
   renderProductGrid(currentStoreProductsList, "No products in this category");
   window.scrollTo({ top: productGrid.offsetTop - 100, behavior: "smooth" });
 }
@@ -563,10 +652,11 @@ function closeStore() {
 /** Keeps ?store=&category= in the URL in sync with what's on screen,
  *  without adding a new history entry for every click — so refreshing
  *  the page (or sharing the link) lands back on the same view. */
-function updateStoreUrl(store, category) {
+function updateStoreUrl(store, category, page) {
   const params = new URLSearchParams();
   if (store) params.set("store", store);
   if (category) params.set("category", category);
+  if (page && page > 1) params.set("page", page);
   const query = params.toString();
   history.replaceState(null, "", query ? `${location.pathname}?${query}` : location.pathname);
 }
@@ -1281,6 +1371,10 @@ async function loadProducts(store) {
     .from("products")
     .select("*")
     .eq("store", store)
+    // Newest first — a freshly added product should appear at the
+    // top when browsing "All Categories". (Within a single category
+    // by itself this is also newest-first, which is what "Atta"
+    // alone should show too.)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -1380,8 +1474,9 @@ window.onload = function () {
   const backParams = new URLSearchParams(location.search);
   const storeParam = backParams.get("store");
   const categoryParam = backParams.get("category");
+  const pageParam = parseInt(backParams.get("page"), 10) || 1;
   if (storeParam && typeof openStore === "function" && document.getElementById("storeSection")) {
-    openStore(storeParam, categoryParam);
+    openStore(storeParam, categoryParam, pageParam);
   }
 };
 
