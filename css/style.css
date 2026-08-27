@@ -274,10 +274,23 @@
   margin-bottom: 14px;
 }
 
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
 .brand-filter {
   display: block;
-  max-width: 280px;
-  margin-bottom: 20px;
+  max-width: 260px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.sort-filter {
+  display: block;
+  max-width: 220px;
   font-weight: 600;
   font-size: 0.88rem;
 }
@@ -1680,6 +1693,14 @@
     padding: 12px 20px 18px;
     box-shadow: var(--shadow-md);
     z-index: 45;
+    /* Being position:absolute takes this out of normal document
+       flow, so the page's own scrollbar never grows to fit a long
+       dropdown — it just gets cut off at the viewport edge with no
+       way to reach the rest. Making the dropdown scroll internally
+       fixes that regardless of how many categories it lists. */
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .main-nav.mobile-open { display: flex; }
@@ -1696,6 +1717,7 @@
     position: static;
     width: 100%;
     max-height: none;
+    overflow-y: visible;
     box-shadow: none;
     border: none;
     padding: 6px 0 0;

@@ -168,9 +168,18 @@
         oninput="searchStoreProducts()"
         class="input-pill store-search-input"
       />
-      <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
-        <option value="">Shop by Brand — All Brands</option>
-      </select>
+      <div class="filter-row">
+        <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
+          <option value="">Shop by Brand — All Brands</option>
+        </select>
+        <select id="sortFilter" onchange="applySortAndRender()" class="input-pill sort-filter">
+          <option value="relevance">Sort by — Relevance</option>
+          <option value="price_low">Price — Low to High</option>
+          <option value="price_high">Price — High to Low</option>
+          <option value="discount">Discount — High to Low</option>
+          <option value="rating">Rating — High to Low</option>
+        </select>
+      </div>
       <div id="productGrid" class="products"></div>
       <div id="storeProductsPagination" class="pagination"></div>
     </div>
