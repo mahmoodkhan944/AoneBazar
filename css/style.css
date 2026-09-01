@@ -1296,6 +1296,70 @@
   z-index: 2;
 }
 
+.product-description {
+  margin: 18px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.product-description p {
+  color: var(--ink-soft);
+  line-height: 1.6;
+  font-size: 0.94rem;
+  margin: 0 0 10px;
+}
+.product-description h3 {
+  font-size: 1.02rem;
+  margin: 16px 0 8px;
+  color: var(--green-900);
+}
+.product-description ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+.product-description li {
+  color: var(--ink-soft);
+  line-height: 1.6;
+  font-size: 0.94rem;
+  margin-bottom: 4px;
+}
+.product-description .description-hi {
+  color: var(--ink-faint);
+  font-size: 0.88rem;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.product-description .description-hi h3 { color: var(--ink-soft); }
+
+.product-specs {
+  margin: 18px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.specs-title {
+  font-size: 1.05rem;
+  color: var(--green-900);
+  margin: 0 0 12px;
+}
+.specs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.specs-table tr:nth-child(odd) { background: var(--surface-sunken); }
+.specs-table td {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+.specs-label {
+  font-weight: 600;
+  color: var(--ink);
+  width: 42%;
+}
+.specs-value {
+  color: var(--ink-soft);
+}
+
 .review-summary {
   font-size: 0.85rem;
   color: var(--ink-soft);
@@ -1697,10 +1761,15 @@
        flow, so the page's own scrollbar never grows to fit a long
        dropdown — it just gets cut off at the viewport edge with no
        way to reach the rest. Making the dropdown scroll internally
-       fixes that regardless of how many categories it lists. */
-    max-height: calc(100vh - 90px);
+       fixes that regardless of how many categories it lists.
+       The fixed mobile bottom-nav bar (~70px) also eats into the
+       bottom of the viewport, so that has to be subtracted too —
+       otherwise the last few categories end up hidden behind it
+       even while the dropdown itself thinks it's fully scrolled. */
+    max-height: calc(100vh - 90px - 76px - env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 24px;
   }
 
   .main-nav.mobile-open { display: flex; }

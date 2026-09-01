@@ -299,23 +299,57 @@ if (!window.__AONE_SUPABASE_READY__) {
       return div.innerHTML;
     }
 
-    function renderLegalText(raw) {
+    /** A tiny, forgiving text convention — no HTML/Markdown knowledge
+     *  needed. Used for Legal Pages, and for product descriptions
+     *  too, so any admin can build a properly structured description
+     *  ("Key Features", "How to Use", bullet points, etc.) just by
+     *  typing plain text with these three rules:
+     *    - A blank line starts a new paragraph.
+     *    - A line starting with "## " becomes a bold sub-heading —
+     *      admin names it whatever they want ("Ingredients", "How to
+     *      Use"...), as many as they like.
+     *    - Lines starting with "- " (one after another) become a
+     *      bullet list.
+     */
+    window.renderMarkdownLite = function (raw) {
+      if (!raw) return "";
+
       return raw
         .split(/\n\s*\n/)
         .map(block => {
           const trimmed = block.trim();
           if (!trimmed) return "";
-          if (trimmed.startsWith("## ")) {
-            const lines = trimmed.split("\n");
-            const heading = lines[0].slice(3).trim();
-            const rest = lines.slice(1).join("\n").trim();
-            let html = `<h3>${escapeHtml(heading)}</h3>`;
-            if (rest) html += `<p>${escapeHtml(rest).replace(/\n/g, "<br>")}</p>`;
-            return html;
+
+          const lines = trimmed.split("\n");
+          let heading = "";
+          let bodyLines = lines;
+
+          if (lines[0].startsWith("## ")) {
+            heading = `<h3>${escapeHtml(lines[0].slice(3).trim())}</h3>`;
+            bodyLines = lines.slice(1);
           }
-          return `<p>${escapeHtml(trimmed).replace(/\n/g, "<br>")}</p>`;
+
+          if (bodyLines.length === 0) return heading;
+
+          // A block of lines that all start with "- " renders as a
+          // bullet list instead of a paragraph.
+          const isBulletBlock = bodyLines.every(l => l.trim().startsWith("- "));
+
+          if (isBulletBlock) {
+            const items = bodyLines
+              .map(l => `<li>${escapeHtml(l.trim().slice(2).trim())}</li>`)
+              .join("");
+            return heading + `<ul>${items}</ul>`;
+          }
+
+          const paragraph = `<p>${escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>")}</p>`;
+          return heading + paragraph;
         })
         .join("\n");
+    };
+
+    function renderLegalText(raw) {
+      return window.renderMarkdownLite(raw);
     }
 
     // Every social platform we support a link for — admin can leave

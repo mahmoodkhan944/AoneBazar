@@ -741,12 +741,15 @@ async function addProduct() {
   const brand = document.getElementById("pBrand").value.trim() || null;
   const name = document.getElementById("pName").value.trim();
   const name_hi = document.getElementById("pNameHi").value.trim() || null;
+  const description = document.getElementById("pDescription").value.trim() || null;
+  const description_hi = document.getElementById("pDescriptionHi").value.trim() || null;
   const price = Number(document.getElementById("pPrice").value) || 0;
   const mrp = Number(document.getElementById("pMrp").value) || null;
   const featured_section = document.getElementById("pFeaturedSection").value.trim() || null;
   const featured_order = Number(document.getElementById("pFeaturedOrder").value) || 0;
   const files = document.getElementById("pImage").files;
   const variants = collectVariants("pVariants");
+  const specs = collectSpecs("pSpecs");
 
   if (!name || !category) {
     alert("Fill in name and category");
@@ -788,7 +791,7 @@ async function addProduct() {
   const effectivePrice = price || Math.min(...variants.map(v => v.price));
 
   const { error } = await supabase.from("products").insert({
-    store, category, brand, name, name_hi, price: effectivePrice, mrp, images: imageURLs, variants,
+    store, category, brand, name, name_hi, description, description_hi, price: effectivePrice, mrp, images: imageURLs, variants, specs,
     featured_section, featured_order
   });
 
@@ -800,6 +803,8 @@ async function addProduct() {
   alert("Product added!");
   document.getElementById("pName").value = "";
   document.getElementById("pNameHi").value = "";
+  document.getElementById("pDescription").value = "";
+  document.getElementById("pDescriptionHi").value = "";
   document.getElementById("pBrand").value = "";
   document.getElementById("pPrice").value = "";
   document.getElementById("pMrp").value = "";
@@ -807,6 +812,7 @@ async function addProduct() {
   document.getElementById("pFeaturedOrder").value = "";
   document.getElementById("pImage").value = "";
   document.getElementById("pVariants").innerHTML = "";
+  document.getElementById("pSpecs").innerHTML = "";
   loadProducts();
 }
 
@@ -816,6 +822,8 @@ async function editProduct(p) {
   editingProductId = p.id;
   document.getElementById("editName").value = p.name;
   document.getElementById("editNameHi").value = p.name_hi || "";
+  document.getElementById("editDescription").value = p.description || "";
+  document.getElementById("editDescriptionHi").value = p.description_hi || "";
   document.getElementById("editBrand").value = p.brand || "";
   document.getElementById("editPrice").value = p.price;
   document.getElementById("editMrp").value = p.mrp || "";
@@ -830,6 +838,7 @@ async function editProduct(p) {
   document.getElementById("editNewImagePreviews").innerHTML = "";
 
   renderVariantRows("editVariants", p.variants || []);
+  renderSpecRows("editSpecs", p.specs || []);
 
   await loadEditCategoryOptions(p.store, p.category);
 
@@ -1009,6 +1018,81 @@ async function autoTranslateToHindi(englishFieldId, hindiFieldId) {
   }
 }
 
+async function translateTextViaApi(text) {
+  if (!text.trim()) return "";
+  try {
+    const resp = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|hi`
+    );
+    const data = await resp.json();
+    return (data && data.responseData && data.responseData.translatedText) || text;
+  } catch (e) {
+    console.error("Translation failed:", e);
+    return text;
+  }
+}
+
+/** Descriptions can have "## Heading" lines and "- bullet" lines —
+ *  translating the whole block as one lump of text tends to mangle
+ *  those markers. This walks it block by block (heading, then each
+ *  paragraph or bullet on its own) so the Hindi version keeps the
+ *  same headings and bullet structure as the English one. */
+async function autoTranslateDescription(englishFieldId, hindiFieldId) {
+  const englishEl = document.getElementById(englishFieldId);
+  const hindiEl = document.getElementById(hindiFieldId);
+  const text = englishEl.value.trim();
+
+  if (!text || hindiEl.value.trim()) return;
+
+  const originalPlaceholder = hindiEl.placeholder;
+  hindiEl.placeholder = "Translating…";
+
+  try {
+    const blocks = text.split(/\n\s*\n/);
+    const translatedBlocks = [];
+
+    for (const block of blocks) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+
+      const lines = trimmed.split("\n");
+      let headingLine = "";
+      let bodyLines = lines;
+
+      if (lines[0].startsWith("## ")) {
+        const headingText = lines[0].slice(3).trim();
+        headingLine = "## " + (await translateTextViaApi(headingText));
+        bodyLines = lines.slice(1);
+      }
+
+      if (bodyLines.length === 0) {
+        if (headingLine) translatedBlocks.push(headingLine);
+        continue;
+      }
+
+      const isBulletBlock = bodyLines.every(l => l.trim().startsWith("- "));
+
+      if (isBulletBlock) {
+        const translatedItems = [];
+        for (const line of bodyLines) {
+          const itemText = line.trim().slice(2).trim();
+          translatedItems.push("- " + (await translateTextViaApi(itemText)));
+        }
+        translatedBlocks.push([headingLine, ...translatedItems].filter(Boolean).join("\n"));
+      } else {
+        const bodyTranslated = await translateTextViaApi(bodyLines.join(" "));
+        translatedBlocks.push([headingLine, bodyTranslated].filter(Boolean).join("\n"));
+      }
+    }
+
+    hindiEl.value = translatedBlocks.join("\n\n");
+  } catch (e) {
+    console.error("Description translation failed:", e);
+  } finally {
+    hindiEl.placeholder = originalPlaceholder;
+  }
+}
+
 function addVariantRow(containerId, label) {
   const container = document.getElementById(containerId);
   const row = document.createElement("div");
@@ -1052,9 +1136,46 @@ function collectVariants(containerId) {
   return variants;
 }
 
+/** Same "add a row, remove a row" pattern as the size/pack variant
+ *  builder above, just with a free-text label + value instead —
+ *  this is what powers the "Product Specifications" table (Cooling
+ *  Area, Body Material, whatever the admin wants to list). */
+function addSpecRow(containerId, label, value) {
+  const container = document.getElementById(containerId);
+  const row = document.createElement("div");
+  row.className = "spec-row";
+  row.innerHTML = `
+    <input class="spec-label" placeholder="e.g. Body Material" value="${label || ""}">
+    <input class="spec-value" placeholder="e.g. ABS Plastic" value="${value || ""}">
+    <button type="button" onclick="this.closest('.spec-row').remove()">×</button>
+  `;
+  container.appendChild(row);
+}
+
+function renderSpecRows(containerId, specs) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  (specs || []).forEach(s => addSpecRow(containerId, s.label, s.value));
+}
+
+function collectSpecs(containerId) {
+  const rows = document.querySelectorAll(`#${containerId} .spec-row`);
+  const specs = [];
+
+  rows.forEach(row => {
+    const label = row.querySelector(".spec-label").value.trim();
+    const value = row.querySelector(".spec-value").value.trim();
+    if (label && value) specs.push({ label, value });
+  });
+
+  return specs;
+}
+
 async function updateProduct() {
   const name = document.getElementById("editName").value;
   const name_hi = document.getElementById("editNameHi").value.trim() || null;
+  const description = document.getElementById("editDescription").value.trim() || null;
+  const description_hi = document.getElementById("editDescriptionHi").value.trim() || null;
   const brand = document.getElementById("editBrand").value.trim() || null;
   const price = Number(document.getElementById("editPrice").value);
   const mrp = Number(document.getElementById("editMrp").value) || null;
@@ -1063,6 +1184,7 @@ async function updateProduct() {
   const store = document.getElementById("editStore").value;
   const category = document.getElementById("editCategory").value;
   const variants = collectVariants("editVariants");
+  const specs = collectSpecs("editSpecs");
 
   let images = [...editRemainingImages];
   const files = document.getElementById("editImage").files;
@@ -1087,7 +1209,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, name_hi, brand, price, mrp, store, category, images, variants, featured_section, featured_order };
+  const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 

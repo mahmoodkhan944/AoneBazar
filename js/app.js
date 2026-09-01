@@ -287,6 +287,11 @@ function selectStoreCategory(key, store, cat, startPage) {
   storeProductsPage = targetPage;
   updateStoreUrl(key, cat, targetPage);
   renderProductGrid(items, "No products in this category");
+
+  // Feels like a fresh page for that category, without an actual
+  // page reload — scroll back up so the shopper lands on the new
+  // results instead of wherever they'd scrolled to previously.
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /** Fills the "Shop by Brand" dropdown with whatever distinct brands
@@ -431,6 +436,15 @@ function goToStoreProductsPage(n) {
 
 /** "Sabji Masala" → "Sabji Masala (सब्ज़ी मसाला)" when a Hindi name
  *  is set — used everywhere a product name is shown to customers. */
+/** Escapes a plain-text field (like a product description) before
+ *  inserting it into innerHTML, so stray "<" or "&" characters an
+ *  admin typed don't accidentally break the page's markup. */
+function escapeHtmlForDisplay(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML.replace(/\n/g, "<br>");
+}
+
 function displayProductName(p) {
   return p.name_hi ? `${p.name} <span class="name-hi">(${p.name_hi})</span>` : p.name;
 }
@@ -1527,6 +1541,40 @@ async function loadProductPage() {
 
   document.getElementById("detailName").innerHTML = displayProductName(p);
   renderVariantSelector(p);
+
+  const descEl = document.getElementById("detailDescription");
+  if (descEl) {
+    if (p.description) {
+      const renderMd = window.renderMarkdownLite || (t => `<p>${escapeHtmlForDisplay(t)}</p>`);
+      descEl.innerHTML = `
+        <div class="description-en">${renderMd(p.description)}</div>
+        ${p.description_hi ? `<div class="description-hi">${renderMd(p.description_hi)}</div>` : ""}
+      `;
+      descEl.classList.remove("hidden");
+    } else {
+      descEl.classList.add("hidden");
+    }
+  }
+
+  const specsEl = document.getElementById("detailSpecs");
+  if (specsEl) {
+    if (p.specs && p.specs.length > 0) {
+      specsEl.innerHTML = `
+        <h3 class="specs-title">Product Specifications</h3>
+        <table class="specs-table">
+          ${p.specs.map(s => `
+            <tr>
+              <td class="specs-label">${escapeHtmlForDisplay(s.label)}</td>
+              <td class="specs-value">${escapeHtmlForDisplay(s.value)}</td>
+            </tr>
+          `).join("")}
+        </table>
+      `;
+      specsEl.classList.remove("hidden");
+    } else {
+      specsEl.classList.add("hidden");
+    }
+  }
 
   const addBtn = document.getElementById("addToCartBtn");
   if (p.in_stock === false) {

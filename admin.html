@@ -207,6 +207,22 @@
                 </button>
               </div>
             </div>
+            <div class="full">
+              <label>Product Description</label>
+              <p style="font-size:0.8rem;color:var(--ink-soft);margin:-2px 0 6px;">
+                Plain text is fine. Leave a blank line to start a new paragraph. Start a line with <code>## </code> to make your own custom heading (e.g. "Key Features", "How to Use" — name it anything). Start lines with <code>- </code> to make a bullet list.
+              </p>
+              <textarea id="pDescription" rows="6" placeholder="e.g.&#10;Fresh, stone-ground atta made from 100% wheat.&#10;&#10;## Key Features&#10;- No maida added&#10;- Chakki fresh&#10;- Rich in fibre&#10;&#10;## How to Use&#10;Store in a cool, dry place. Use within 3 months of opening." onblur="autoTranslateDescription('pDescription','pDescriptionHi')"></textarea>
+            </div>
+            <div class="full">
+              <label>Product Description (Hindi)</label>
+              <div class="hindi-input-row">
+                <textarea id="pDescriptionHi" rows="6" placeholder="Hindi description will be translated automatically…"></textarea>
+                <button type="button" class="hindi-kb-toggle" onclick="openHindiKeyboard('pDescriptionHi')" title="Open Hindi keyboard">
+                  <i class="fa-solid fa-keyboard"></i>
+                </button>
+              </div>
+            </div>
             <div>
               <label>Price (₹) — used if no variants are added below</label>
               <input id="pPrice" type="number" placeholder="e.g. 120" />
@@ -249,6 +265,14 @@
                 <button type="button" onclick="addVariantRow('pVariants','')">+ Custom</button>
               </div>
               <div id="pVariants" class="variant-rows"></div>
+            </div>
+            <div class="full">
+              <label>Product Specifications (optional) — e.g. "Body Material: ABS Plastic"</label>
+              <p style="font-size:0.8rem;color:var(--ink-soft);margin:-2px 0 8px;">
+                Add as many spec rows as you like — any label, any value. Shows as a clean table on the product page, like "Cooling Area: 1000 sq.ft." or "Weight: 2 kg".
+              </p>
+              <div id="pSpecs" class="spec-rows"></div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addSpecRow('pSpecs')">+ Add Specification</button>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addProduct()">Save Product</button>
@@ -623,6 +647,13 @@
           <i class="fa-solid fa-keyboard"></i>
         </button>
       </div>
+      <textarea id="editDescription" rows="6" placeholder="Product description — leave a blank line for a new paragraph, start a line with ## for a heading, or - for bullet points." onblur="autoTranslateDescription('editDescription','editDescriptionHi')"></textarea>
+      <div class="hindi-input-row">
+        <textarea id="editDescriptionHi" rows="6" placeholder="Hindi description (auto — edit or clear if needed)"></textarea>
+        <button type="button" class="hindi-kb-toggle" onclick="openHindiKeyboard('editDescriptionHi')" title="Open Hindi keyboard">
+          <i class="fa-solid fa-keyboard"></i>
+        </button>
+      </div>
       <input id="editPrice" placeholder="Price (used if no variants below)" />
       <input id="editMrp" type="number" placeholder="MRP (optional, shows a discount badge)" />
 
@@ -657,6 +688,10 @@
         <button type="button" onclick="addVariantRow('editVariants','')">+ Custom</button>
       </div>
       <div id="editVariants" class="variant-rows"></div>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:14px 0 4px;">Product Specifications (optional)</label>
+      <div id="editSpecs" class="spec-rows"></div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addSpecRow('editSpecs')">+ Add Specification</button>
 
       <button class="btn btn-primary" style="margin-top:14px;" onclick="updateProduct()">Save</button>
     </div>
