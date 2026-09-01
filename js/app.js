@@ -445,6 +445,17 @@ function escapeHtmlForDisplay(str) {
   return div.innerHTML.replace(/\n/g, "<br>");
 }
 
+/** Description/Specifications on the product page collapse by
+ *  default and expand on tap — mirrors the compact accordion pattern
+ *  most shopping apps use so the page doesn't open already sprawling
+ *  with text before you've even seen the price or Add to Cart. */
+function toggleAccordion(headerEl) {
+  const content = headerEl.nextElementSibling;
+  const icon = headerEl.querySelector(".accordion-icon");
+  const isOpen = content.classList.toggle("open");
+  icon.textContent = isOpen ? "\u2212" : "+";
+}
+
 function displayProductName(p) {
   return p.name_hi ? `${p.name} <span class="name-hi">(${p.name_hi})</span>` : p.name;
 }
@@ -1547,8 +1558,16 @@ async function loadProductPage() {
     if (p.description) {
       const renderMd = window.renderMarkdownLite || (t => `<p>${escapeHtmlForDisplay(t)}</p>`);
       descEl.innerHTML = `
-        <div class="description-en">${renderMd(p.description)}</div>
-        ${p.description_hi ? `<div class="description-hi">${renderMd(p.description_hi)}</div>` : ""}
+        <button type="button" class="accordion-header" onclick="toggleAccordion(this)">
+          <span>Description</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-content-inner">
+            <div class="description-en">${renderMd(p.description)}</div>
+            ${p.description_hi ? `<div class="description-hi">${renderMd(p.description_hi)}</div>` : ""}
+          </div>
+        </div>
       `;
       descEl.classList.remove("hidden");
     } else {
@@ -1560,15 +1579,22 @@ async function loadProductPage() {
   if (specsEl) {
     if (p.specs && p.specs.length > 0) {
       specsEl.innerHTML = `
-        <h3 class="specs-title">Product Specifications</h3>
-        <table class="specs-table">
-          ${p.specs.map(s => `
-            <tr>
-              <td class="specs-label">${escapeHtmlForDisplay(s.label)}</td>
-              <td class="specs-value">${escapeHtmlForDisplay(s.value)}</td>
-            </tr>
-          `).join("")}
-        </table>
+        <button type="button" class="accordion-header" onclick="toggleAccordion(this)">
+          <span>Specifications</span>
+          <span class="accordion-icon">+</span>
+        </button>
+        <div class="accordion-content">
+          <div class="accordion-content-inner">
+            <table class="specs-table">
+              ${p.specs.map(s => `
+                <tr>
+                  <td class="specs-label">${escapeHtmlForDisplay(s.label)}</td>
+                  <td class="specs-value">${escapeHtmlForDisplay(s.value)}</td>
+                </tr>
+              `).join("")}
+            </table>
+          </div>
+        </div>
       `;
       specsEl.classList.remove("hidden");
     } else {

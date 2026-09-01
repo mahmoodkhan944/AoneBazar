@@ -1297,10 +1297,53 @@
 }
 
 .product-description {
-  margin: 18px 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  margin: 10px 0;
 }
+
+.product-specs {
+  margin: 10px 0;
+}
+
+/* ---------------- ACCORDION (Description / Specifications) ---------------- */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.accordion-header:hover { color: var(--green-700); }
+
+.accordion-icon {
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--green-700);
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s var(--ease);
+}
+.accordion-content.open {
+  max-height: 3000px;
+}
+
+.accordion-content-inner {
+  padding-bottom: 18px;
+}
+
 .product-description p {
   color: var(--ink-soft);
   line-height: 1.6;
@@ -1331,16 +1374,6 @@
 }
 .product-description .description-hi h3 { color: var(--ink-soft); }
 
-.product-specs {
-  margin: 18px 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
-.specs-title {
-  font-size: 1.05rem;
-  color: var(--green-900);
-  margin: 0 0 12px;
-}
 .specs-table {
   width: 100%;
   border-collapse: collapse;
