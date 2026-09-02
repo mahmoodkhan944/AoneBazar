@@ -281,6 +281,25 @@
   margin-bottom: 20px;
 }
 
+/* Matches the height/shape of the brand & sort pill dropdowns right
+   next to it, so it reads as one more filter chip in the same row
+   instead of a separate standalone button. */
+.btn-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 11px 20px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  background: var(--green-700);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-pill-tag:hover { background: var(--green-800, var(--green-700)); }
+
 .brand-filter {
   display: block;
   max-width: 260px;

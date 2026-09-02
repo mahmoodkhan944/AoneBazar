@@ -169,6 +169,9 @@
         class="input-pill store-search-input"
       />
       <div class="filter-row">
+        <button id="tilesBackBtn" type="button" class="btn-pill-tag hidden" onclick="showCategoryTilesAgain()">
+          <i class="fa-solid fa-grip"></i> Categories
+        </button>
         <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
           <option value="">Shop by Brand — All Brands</option>
         </select>
@@ -180,9 +183,6 @@
           <option value="rating">Rating — High to Low</option>
         </select>
       </div>
-      <button id="tilesBackBtn" type="button" class="btn btn-sm hidden" onclick="showCategoryTilesAgain()" style="margin-bottom: 14px; background: var(--green-700); color: #fff; border: none;">
-        <i class="fa-solid fa-grip"></i> Show Categories
-      </button>
       <div id="productGrid" class="products"></div>
       <div id="storeProductsPagination" class="pagination"></div>
     </div>
