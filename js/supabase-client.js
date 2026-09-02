@@ -392,7 +392,30 @@ if (!window.__AONE_SUPABASE_READY__) {
 // where service workers aren't allowed anyway). ----
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    navigator.serviceWorker.register("/sw.js").then(reg => {
+      // A newer sw.js has finished installing while this app was
+      // already open (common for an installed/standalone app, which
+      // has no address bar to manually refresh) — reload straight
+      // away so it's actually running the new version, not just
+      // holding a new one in reserve for next launch.
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "activated") {
+            window.location.reload();
+          }
+        });
+      });
+
+      // Also check for an update every time the app is opened/
+      // brought to the foreground, not just at first load — an
+      // installed app can stay open for days without a fresh
+      // network request ever happening otherwise.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reg.update();
+      });
+    }).catch(() => {
       // Non-fatal — the site still works perfectly without it, it
       // just won't be installable on this particular browser.
     });

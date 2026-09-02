@@ -7,7 +7,7 @@
 // and shows something even with a flaky connection — actual product
 // data always comes fresh from Supabase, never from this cache.
 
-const CACHE_NAME = "aone-bazaar-shell-v1";
+const CACHE_NAME = "aone-bazaar-shell-v2";
 
 const SHELL_FILES = [
   "/",
@@ -56,21 +56,21 @@ self.addEventListener("fetch", event => {
   if (req.method !== "GET") return;
   if (req.url.includes("supabase.co")) return;
 
+  // Network-first: whenever the shopper is online, always fetch the
+  // latest HTML/CSS/JS so an update we ship shows up immediately,
+  // without needing a manual refresh (an installed/standalone app
+  // has no address bar reload button, so this matters a lot there).
+  // The cache is only ever a fallback for when the network fails
+  // (offline, or a flaky connection) — never the first answer.
   event.respondWith(
-    caches.match(req).then(cached => {
-      const network = fetch(req)
-        .then(res => {
-          if (res && res.status === 200 && res.type === "basic") {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-
-      // Cache-first for the shell (instant loads), falling back to
-      // the network for anything not cached yet.
-      return cached || network;
-    })
+    fetch(req)
+      .then(res => {
+        if (res && res.status === 200 && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
