@@ -281,24 +281,31 @@
   margin-bottom: 20px;
 }
 
-/* Matches the height/shape of the brand & sort pill dropdowns right
-   next to it, so it reads as one more filter chip in the same row
-   instead of a separate standalone button. */
-.btn-pill-tag {
-  display: inline-flex;
+/* Sits in the exact spot the category tile grid occupies, shown only
+   while that grid is collapsed (a specific category/sub-category is
+   selected) — reads as "the categories are folded away here",
+   tapping it unfolds them again right where they were. */
+.category-collapsed-bar {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  padding: 11px 20px;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
   font-weight: 600;
-  font-size: 0.88rem;
-  background: var(--green-700);
-  color: #fff;
-  border: none;
+  font-size: 0.92rem;
   cursor: pointer;
-  white-space: nowrap;
+  text-align: left;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
-.btn-pill-tag:hover { background: var(--green-800, var(--green-700)); }
+.category-collapsed-bar i:first-child { color: var(--green-700); font-size: 1rem; }
+.category-collapsed-bar span { flex: 1; }
+.category-collapsed-bar-chevron { font-size: 0.8rem; color: var(--ink-faint); }
+.category-collapsed-bar:hover { border-color: var(--green-700); background: var(--green-100, var(--surface-sunken)); }
 
 .brand-filter {
   display: block;

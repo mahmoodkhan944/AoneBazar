@@ -160,6 +160,11 @@
           <i class="fa-solid fa-share-nodes"></i> Share
         </button>
       </div>
+      <button id="tilesBackBtn" type="button" class="category-collapsed-bar hidden" onclick="showCategoryTilesAgain()">
+        <i class="fa-solid fa-border-all"></i>
+        <span>Browse Categories</span>
+        <i class="fa-solid fa-chevron-down category-collapsed-bar-chevron"></i>
+      </button>
       <div id="categoryTiles" class="category-tiles"></div>
       <input
         type="text"
@@ -169,9 +174,6 @@
         class="input-pill store-search-input"
       />
       <div class="filter-row">
-        <button id="tilesBackBtn" type="button" class="btn-pill-tag hidden" onclick="showCategoryTilesAgain()">
-          <i class="fa-solid fa-grip"></i> Categories
-        </button>
         <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
           <option value="">Shop by Brand — All Brands</option>
         </select>
