@@ -318,6 +318,26 @@ function allStoreProductsSorted(store) {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
+/** Shows/hides the whole category-tile bar (top-level tiles, or a
+ *  drilled-in parent's sub-category tiles — whichever is currently
+ *  rendered inside #categoryTiles) and its matching "Categories"
+ *  back button, so picking a specific category can clear the tile
+ *  clutter away while browsing its products. */
+function setCategoryTilesVisible(visible) {
+  const tiles = document.getElementById("categoryTiles");
+  const backBtn = document.getElementById("tilesBackBtn");
+  if (tiles) tiles.classList.toggle("hidden", !visible);
+  if (backBtn) backBtn.classList.toggle("hidden", visible);
+}
+
+/** The "Categories" back button's click handler — just reveals
+ *  whatever tile screen (top-level or a drilled-in parent's
+ *  sub-categories) was showing before the last selection hid it;
+ *  it doesn't change the selection or the products on screen. */
+function showCategoryTilesAgain() {
+  setCategoryTilesVisible(true);
+}
+
 function selectStoreCategory(key, store, cat, startPage) {
   currentCategory = cat;
 
@@ -338,20 +358,28 @@ function selectStoreCategory(key, store, cat, startPage) {
   // and every child combined, the same way "All Categories" shows
   // every product in the whole store, so opening the parent alone
   // already surfaces everything in it without drilling in first.
+  const catRecord = cat ? categoryHierarchy.topLevel.find(c => c.name === cat) : null;
+  const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
+
   let items;
   if (!cat) {
     items = allStoreProductsSorted(store);
+  } else if (subs.length > 0) {
+    const own = store.categories[cat] || [];
+    const fromSubs = subs.flatMap(sub => store.categories[sub.name] || []);
+    items = [...own, ...fromSubs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   } else {
-    const catRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
-    const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
-    if (subs.length > 0) {
-      const own = store.categories[cat] || [];
-      const fromSubs = subs.flatMap(sub => store.categories[sub.name] || []);
-      items = [...own, ...fromSubs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    } else {
-      items = store.categories[cat] || [];
-    }
+    items = store.categories[cat] || [];
   }
+
+  // A genuine leaf pick (a plain category, or a sub-category tapped
+  // inside a drilled-in parent's screen) is a final choice — clear
+  // the tile bar out of the way so the products take center stage.
+  // A parent category (still has children to browse) or "All
+  // Categories" keeps the tile bar visible since that's still
+  // browsing, not a finished pick.
+  const isLeafSelection = !!cat && subs.length === 0;
+  setCategoryTilesVisible(!isLeafSelection);
 
   // Picking a category fresh (from a tile click) always starts back
   // on page 1 — startPage is only ever meaningful when we're
