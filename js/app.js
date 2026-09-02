@@ -285,11 +285,11 @@ async function openStore(key, jumpToCategory, jumpToPage) {
     if (parentRecord) currentParentCategoryView = parentRecord;
   }
 
-  // Jumping straight to a parent category that holds no products of
-  // its own (everything's filed under its sub-categories) — land on
-  // its sub-category tile screen instead of an empty product grid,
-  // since that parent alone has nothing to show.
-  if (jumpToCategory && topLevelNames.includes(jumpToCategory) && !(store.categories[jumpToCategory] || []).length) {
+  // Jumping straight to a parent category — land on its sub-category
+  // tile screen (like tapping its tile would), while the product
+  // grid below still fills with that parent's full combined list via
+  // selectStoreCategory below.
+  if (jumpToCategory && topLevelNames.includes(jumpToCategory)) {
     const parentRecord = categoryHierarchy.topLevel.find(c => c.name === jumpToCategory);
     const hasSubs = parentRecord && (categoryHierarchy.subByParentId[parentRecord.id] || []).length > 0;
     if (hasSubs) currentParentCategoryView = parentRecord;
@@ -297,7 +297,7 @@ async function openStore(key, jumpToCategory, jumpToPage) {
 
   renderCategoryTiles(key, store, cats);
 
-  const startCategory = (jumpToCategory && !currentParentCategoryView && (cats.includes(jumpToCategory) || subcategoryNames.has(jumpToCategory))) ? jumpToCategory : null;
+  const startCategory = (jumpToCategory && (cats.includes(jumpToCategory) || subcategoryNames.has(jumpToCategory))) ? jumpToCategory : null;
   selectStoreCategory(key, store, startCategory, jumpToPage || 1);
 }
 
@@ -332,11 +332,26 @@ function selectStoreCategory(key, store, cat, startPage) {
     t.classList.toggle("active", (t.dataset.tileCategory || null) === cat);
   });
 
-  // Every category shows strictly its own directly-tagged products —
-  // never merged with a parent's or a child's, so opening any tile
-  // (or any shared/mega-menu link) always shows exactly what that one
-  // category holds, nothing more.
-  const items = cat ? (store.categories[cat] || []) : allStoreProductsSorted(store);
+  // A category can be a straightforward leaf (its own product list),
+  // or a parent like "Furniture" that groups everything under its
+  // sub-categories — in that case, show every product from itself
+  // and every child combined, the same way "All Categories" shows
+  // every product in the whole store, so opening the parent alone
+  // already surfaces everything in it without drilling in first.
+  let items;
+  if (!cat) {
+    items = allStoreProductsSorted(store);
+  } else {
+    const catRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
+    const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
+    if (subs.length > 0) {
+      const own = store.categories[cat] || [];
+      const fromSubs = subs.flatMap(sub => store.categories[sub.name] || []);
+      items = [...own, ...fromSubs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else {
+      items = store.categories[cat] || [];
+    }
+  }
 
   // Picking a category fresh (from a tile click) always starts back
   // on page 1 — startPage is only ever meaningful when we're
@@ -730,6 +745,9 @@ function renderCategoryTiles(key, store, cats) {
     container.querySelector("[data-tile-back]").onclick = () => {
       currentParentCategoryView = null;
       renderCategoryTiles(key, store, cats);
+      // Back to the top-level tiles should feel like landing on the
+      // store fresh again — every product, same as "All Categories".
+      selectStoreCategory(key, store, null);
     };
 
     container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
@@ -800,6 +818,11 @@ function renderCategoryTiles(key, store, cats) {
       if (cat && tile.hasAttribute("data-has-subs")) {
         currentParentCategoryView = categoryHierarchy.topLevel.find(c => c.name === cat);
         renderCategoryTiles(key, store, cats);
+        // Fill the product grid with this category's full combined
+        // list right away (own + every sub-category), same as
+        // "All Categories" shows everything at once — no need to
+        // drill into a specific sub-category just to see products.
+        selectStoreCategory(key, store, cat);
         return;
       }
 
