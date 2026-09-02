@@ -249,8 +249,6 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   // back on this same store/category/page instead of resetting.
   updateStoreUrl(key, jumpToCategory || null, jumpToPage);
 
-  populateBrandFilter(key);
-
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
 
@@ -338,6 +336,26 @@ function showCategoryTilesAgain() {
   setCategoryTilesVisible(true);
 }
 
+/** Works out the product list for a given category selection — a
+ *  plain leaf category's own products, a parent category's own +
+ *  every child's combined, or the whole store when no category is
+ *  selected. Shared by category selection and the brand filter so
+ *  both always agree on what's "in scope" right now. */
+function getCategoryItems(store, cat) {
+  if (!cat) return allStoreProductsSorted(store);
+
+  const catRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
+  const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
+
+  if (subs.length > 0) {
+    const own = store.categories[cat] || [];
+    const fromSubs = subs.flatMap(sub => store.categories[sub.name] || []);
+    return [...own, ...fromSubs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+
+  return store.categories[cat] || [];
+}
+
 function selectStoreCategory(key, store, cat, startPage) {
   currentCategory = cat;
 
@@ -360,17 +378,7 @@ function selectStoreCategory(key, store, cat, startPage) {
   // already surfaces everything in it without drilling in first.
   const catRecord = cat ? categoryHierarchy.topLevel.find(c => c.name === cat) : null;
   const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
-
-  let items;
-  if (!cat) {
-    items = allStoreProductsSorted(store);
-  } else if (subs.length > 0) {
-    const own = store.categories[cat] || [];
-    const fromSubs = subs.flatMap(sub => store.categories[sub.name] || []);
-    items = [...own, ...fromSubs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  } else {
-    items = store.categories[cat] || [];
-  }
+  const items = getCategoryItems(store, cat);
 
   // A genuine leaf pick (a plain category, or a sub-category tapped
   // inside a drilled-in parent's screen) is a final choice — clear
@@ -391,6 +399,10 @@ function selectStoreCategory(key, store, cat, startPage) {
   storeProductsPage = targetPage;
   updateStoreUrl(key, cat, targetPage);
   renderProductGrid(items, "No products in this category");
+  // The brand dropdown should only ever offer brands that actually
+  // exist within whatever's on screen right now — not every brand in
+  // the whole store — so switching category always narrows it down.
+  populateBrandFilter(key, items);
 
   // Feels like a fresh page for that category, without an actual
   // page reload — scroll back up so the shopper lands on the new
@@ -399,14 +411,15 @@ function selectStoreCategory(key, store, cat, startPage) {
 }
 
 /** Fills the "Shop by Brand" dropdown with whatever distinct brands
- *  exist in this store — and hides it entirely for stores where no
- *  product has a brand set yet, so it doesn't clutter the page. */
-function populateBrandFilter(key) {
+ *  exist among the given items (the current category's products, or
+ *  every product in the store when browsing "All Categories") — and
+ *  hides it entirely when none of them have a brand set, so it
+ *  doesn't clutter the page. */
+function populateBrandFilter(key, items) {
   const select = document.getElementById("brandFilter");
   if (!select || !data[key]) return;
 
-  const allItems = Object.values(data[key].categories).flat();
-  const brands = [...new Set(allItems.map(p => p.brand).filter(Boolean))].sort();
+  const brands = [...new Set((items || []).map(p => p.brand).filter(Boolean))].sort();
 
   if (brands.length === 0) {
     select.classList.add("hidden");
@@ -419,9 +432,10 @@ function populateBrandFilter(key) {
   select.classList.remove("hidden");
 }
 
-/** Picking a brand shows every matching product in this store across
- *  all categories (a brand can span more than one) — picking "All
- *  Brands" again goes back to normal category browsing. */
+/** Picking a brand narrows down whatever's currently on screen (the
+ *  active category, or every product when browsing "All Categories")
+ *  to just that brand — matching what the dropdown itself offered,
+ *  instead of reaching across the whole store. */
 function filterByBrand() {
   const brand = document.getElementById("brandFilter").value;
 
@@ -430,14 +444,14 @@ function filterByBrand() {
     return;
   }
 
-  const allItems = allStoreProductsSorted(data[currentStore]);
-  const matches = allItems.filter(p => p.brand === brand);
+  const scopedItems = getCategoryItems(data[currentStore], currentCategory);
+  const matches = scopedItems.filter(p => p.brand === brand);
 
   document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
   storeProductsPage = 1;
-  renderProductGrid(matches, `No products from ${brand} in this store yet`);
+  renderProductGrid(matches, `No products from ${brand} in this category`);
 }
 
 function searchStoreProducts() {
