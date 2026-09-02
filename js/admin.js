@@ -1366,11 +1366,12 @@ async function loadCategoriesView() {
   const treeEl = document.getElementById("categoriesTree");
   treeEl.innerHTML = `<p style="text-align:center;color:var(--ink-faint);padding:20px 0;">Loading…</p>`;
 
-  const { data: rows, error } = await supabase
-    .from("categories")
-    .select("*")
-    .order("store")
-    .order("name");
+  const [{ data: rows, error }, { data: productRows, error: productsError }] = await Promise.all([
+    supabase.from("categories").select("*").order("store").order("name"),
+    // Just enough columns to count active/inactive products per
+    // category — the full product record isn't needed here.
+    supabase.from("products").select("category, store, in_stock")
+  ]);
 
   if (error) {
     treeEl.innerHTML = `<p style="color:var(--ink-faint);">Could not load categories</p>`;
@@ -1378,11 +1379,62 @@ async function loadCategoriesView() {
   }
 
   allCategoriesCache = rows || [];
+
+  // "store::category name" -> { active, inactive } — a category name
+  // is only unique within its own store, so both are part of the key.
+  categoryProductCounts = {};
+  if (!productsError) {
+    (productRows || []).forEach(p => {
+      const key = `${p.store}::${p.category}`;
+      if (!categoryProductCounts[key]) categoryProductCounts[key] = { active: 0, inactive: 0 };
+      categoryProductCounts[key][p.in_stock ? "active" : "inactive"]++;
+    });
+  }
+
+  categoriesPage = 1;
   renderCategoriesTree(allCategoriesCache);
   populateParentCategoryDropdown("catParent", document.getElementById("catStore").value);
 }
 
 let currentCategoriesList = [];
+let categoryProductCounts = {};
+let categoriesPage = 1;
+const CATEGORIES_PAGE_SIZE = 12;
+
+// Which main-category cards currently have their sub-categories
+// hidden — collapsed by id, expanded (shown) by default, matching
+// how the list always looked before this toggle existed.
+const collapsedCategoryIds = new Set();
+
+function toggleSubcategoriesVisible(mainId) {
+  if (collapsedCategoryIds.has(mainId)) {
+    collapsedCategoryIds.delete(mainId);
+  } else {
+    collapsedCategoryIds.add(mainId);
+  }
+  renderCategoriesTree(currentCategoriesList);
+}
+
+/** Small "N active • N inactive" (plus "N sub-categories" for a main
+ *  category) label shown next to a category/sub-category's name, so
+ *  an admin can see at a glance how full or empty it is without
+ *  opening the Products tab. */
+function categoryStatsHtml(cat, subCount) {
+  const counts = categoryProductCounts[`${cat.store}::${cat.name}`] || { active: 0, inactive: 0 };
+  const parts = [];
+  if (subCount !== undefined) {
+    parts.push(`${subCount} sub-categor${subCount === 1 ? "y" : "ies"}`);
+  }
+  parts.push(`${counts.active} active`);
+  parts.push(`${counts.inactive} inactive`);
+  return `<span class="cat-tree-stats">${parts.join(" · ")}</span>`;
+}
+
+function goToCategoriesPage(n) {
+  categoriesPage = n;
+  renderCategoriesTree(currentCategoriesList);
+  document.getElementById("categoriesTree").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 /** Switches the Add Category form between "Main Category" (no
  *  parent, shows as a big tile) and "Sub-Category" (must pick a
@@ -1464,7 +1516,11 @@ function renderCategoriesTree(list) {
     }
   });
 
-  const mains = [...mainsToShow.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const allMains = [...mainsToShow.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+  const totalPages = Math.max(1, Math.ceil(allMains.length / CATEGORIES_PAGE_SIZE));
+  if (categoriesPage > totalPages) categoriesPage = totalPages;
+  const mains = paginateArray(allMains, categoriesPage, CATEGORIES_PAGE_SIZE);
 
   const cardsHtml = mains.map(main => {
     // If the main category itself matched the search, show every one
@@ -1476,11 +1532,14 @@ function renderCategoriesTree(list) {
       ? allCategoriesCache.filter(c => c.parent_id === main.id).sort((a, b) => a.name.localeCompare(b.name))
       : (subsByParentToShow[main.id] || []);
 
+    const isCollapsed = collapsedCategoryIds.has(main.id);
+
     const subsHtml = subs.map(sub => `
         <div class="cat-tree-sub">
           <div class="cat-tree-sub-info">
             <span class="cat-tree-sub-arrow">↳</span>
             <span>${sub.name}${sub.name_hi ? `<span class="cat-tree-hi"> (${sub.name_hi})</span>` : ""}</span>
+            ${categoryStatsHtml(sub)}
           </div>
           <div class="table-actions">
             <button onclick='editCategory(${JSON.stringify(sub)})'>Edit</button>
@@ -1497,19 +1556,23 @@ function renderCategoriesTree(list) {
               <strong>${main.name}</strong>
               ${main.name_hi ? `<span class="cat-tree-hi">${main.name_hi}</span>` : ""}
               <span class="cat-tree-store-tag">${main.store}</span>
+              ${categoryStatsHtml(main, subs.length)}
             </div>
             <div class="table-actions">
+              ${subs.length > 0 ? `<button onclick="toggleSubcategoriesVisible('${main.id}')">${isCollapsed ? `Show Sub-categories (${subs.length})` : "Hide Sub-categories"}</button>` : ""}
               <button onclick="quickAddSubcategory('${main.id}', '${main.name.replace(/'/g, "\\'")}', '${main.store}')">+ Sub-category</button>
               <button onclick='editCategory(${JSON.stringify(main)})'>Edit</button>
               <button class="danger" onclick="deleteCategory('${main.id}')">Delete</button>
             </div>
           </div>
-          ${subsHtml ? `<div class="cat-tree-subs">${subsHtml}</div>` : ""}
+          ${subsHtml && !isCollapsed ? `<div class="cat-tree-subs">${subsHtml}</div>` : ""}
         </div>
       `;
   }).join("");
 
   treeEl.innerHTML = cardsHtml || `<p style="text-align:center;color:var(--ink-faint);padding:20px 0;">No categories found</p>`;
+
+  renderPagination("categoriesPagination", allMains.length, categoriesPage, CATEGORIES_PAGE_SIZE, "goToCategoriesPage");
 }
 
 function filterCategories() {
@@ -1521,6 +1584,7 @@ function filterCategories() {
     (!storeFilter || c.store === storeFilter)
   );
 
+  categoriesPage = 1;
   renderCategoriesTree(filtered);
 }
 

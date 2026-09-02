@@ -439,6 +439,13 @@ body.admin-body {
   border-radius: 999px;
 }
 
+.cat-tree-stats {
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .cat-tree-subs {
   display: flex;
   flex-direction: column;
