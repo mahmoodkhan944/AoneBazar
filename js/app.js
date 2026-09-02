@@ -97,16 +97,39 @@ function saveCart() {
 // half for the chip labels).
 let categoryHindiMap = {};
 
+// Parent → child category structure for this store — { topLevel: [...],
+// subByParentId: { [parentId]: [...] } } — powers the "tap Furniture,
+// see Almirah/Sofa/Bed" drill-down.
+let categoryHierarchy = { topLevel: [], subByParentId: {} };
+
+// When drilled into a parent category's sub-categories, this holds
+// that parent's category record; null means we're on the normal
+// top-level tile screen.
+let currentParentCategoryView = null;
+
 async function loadCategoryHindiMap(store) {
   categoryHindiMap = {};
+  categoryHierarchy = { topLevel: [], subByParentId: {} };
+
   const { data: rows, error } = await supabase
     .from("categories")
-    .select("name, name_hi")
-    .eq("store", store);
+    .select("id, name, name_hi, parent_id")
+    .eq("store", store)
+    .order("name");
 
   if (error || !rows) return;
+
   rows.forEach(c => {
     if (c.name_hi) categoryHindiMap[c.name] = c.name_hi;
+  });
+
+  rows.forEach(c => {
+    if (!c.parent_id) {
+      categoryHierarchy.topLevel.push(c);
+    } else {
+      if (!categoryHierarchy.subByParentId[c.parent_id]) categoryHierarchy.subByParentId[c.parent_id] = [];
+      categoryHierarchy.subByParentId[c.parent_id].push(c);
+    }
   });
 }
 
@@ -196,6 +219,7 @@ let currentCategory = "";
 async function openStore(key, jumpToCategory, jumpToPage) {
 
   currentStore = key;
+  currentParentCategoryView = null; // start fresh, not mid-drill-down from a previous store
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
@@ -230,7 +254,20 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   const storeSearch = document.getElementById("storeSearch");
   if (storeSearch) storeSearch.value = "";
 
-  const cats = Object.keys(store.categories).sort((a, b) => a.localeCompare(b));
+  // Top-level tiles = registered top-level categories, plus any
+  // category name that has products but was never formally added to
+  // the categories table (so nothing a shopper could actually buy
+  // silently disappears) — minus anything that's a registered
+  // sub-category, since those only show up once their parent tile is
+  // tapped, not alongside the main tiles.
+  const subcategoryNames = new Set(
+    Object.values(categoryHierarchy.subByParentId).flat().map(c => c.name)
+  );
+  const topLevelNames = categoryHierarchy.topLevel.map(c => c.name);
+  const orphanNames = Object.keys(store.categories).filter(
+    name => !topLevelNames.includes(name) && !subcategoryNames.has(name)
+  );
+  const cats = [...topLevelNames, ...orphanNames].sort((a, b) => a.localeCompare(b));
 
   if (cats.length === 0) {
     productGrid.innerHTML = "<p>No products yet</p>";
@@ -238,9 +275,29 @@ async function openStore(key, jumpToCategory, jumpToPage) {
     return;
   }
 
+  // Jumping straight to a sub-category (e.g. from the mega-menu) —
+  // show that sub-category's tile screen (with its siblings), not
+  // the top-level tiles, so the shopper sees where they landed.
+  if (jumpToCategory && subcategoryNames.has(jumpToCategory)) {
+    const allSubs = Object.values(categoryHierarchy.subByParentId).flat();
+    const subRecord = allSubs.find(c => c.name === jumpToCategory);
+    const parentRecord = subRecord && categoryHierarchy.topLevel.find(c => c.id === subRecord.parent_id);
+    if (parentRecord) currentParentCategoryView = parentRecord;
+  }
+
+  // Jumping straight to a parent category that holds no products of
+  // its own (everything's filed under its sub-categories) — land on
+  // its sub-category tile screen instead of an empty product grid,
+  // since that parent alone has nothing to show.
+  if (jumpToCategory && topLevelNames.includes(jumpToCategory) && !(store.categories[jumpToCategory] || []).length) {
+    const parentRecord = categoryHierarchy.topLevel.find(c => c.name === jumpToCategory);
+    const hasSubs = parentRecord && (categoryHierarchy.subByParentId[parentRecord.id] || []).length > 0;
+    if (hasSubs) currentParentCategoryView = parentRecord;
+  }
+
   renderCategoryTiles(key, store, cats);
 
-  const startCategory = (jumpToCategory && cats.includes(jumpToCategory)) ? jumpToCategory : null;
+  const startCategory = (jumpToCategory && !currentParentCategoryView && (cats.includes(jumpToCategory) || subcategoryNames.has(jumpToCategory))) ? jumpToCategory : null;
   selectStoreCategory(key, store, startCategory, jumpToPage || 1);
 }
 
@@ -275,7 +332,11 @@ function selectStoreCategory(key, store, cat, startPage) {
     t.classList.toggle("active", (t.dataset.tileCategory || null) === cat);
   });
 
-  const items = cat ? store.categories[cat] : allStoreProductsSorted(store);
+  // Every category shows strictly its own directly-tagged products —
+  // never merged with a parent's or a child's, so opening any tile
+  // (or any shared/mega-menu link) always shows exactly what that one
+  // category holds, nothing more.
+  const items = cat ? (store.categories[cat] || []) : allStoreProductsSorted(store);
 
   // Picking a category fresh (from a tile click) always starts back
   // on page 1 — startPage is only ever meaningful when we're
@@ -634,6 +695,58 @@ function renderCategoryTiles(key, store, cats) {
 
   const escapeAttr = str => String(str).replace(/"/g, "&quot;");
 
+  // Drilled into a parent category ("Furniture") — show its
+  // children (Almirah, Sofa, Bed) plus a way back, instead of the
+  // normal top-level tile screen.
+  if (currentParentCategoryView) {
+    const parent = currentParentCategoryView;
+    const subs = categoryHierarchy.subByParentId[parent.id] || [];
+
+    const backTile = `
+      <button type="button" class="category-tile category-tile-back-btn" data-tile-back>
+        <span class="category-tile-img-wrap category-tile-all">
+          <i class="fa-solid fa-arrow-left"></i>
+        </span>
+        <span class="category-tile-label">Back</span>
+      </button>
+    `;
+
+    const subTiles = subs.map(sub => {
+      const items = store.categories[sub.name] || [];
+      const thumb = (items[0] && items[0].images && items[0].images[0]) || "images/logo192.png";
+
+      return `
+        <button type="button" class="category-tile" data-tile-category="${escapeAttr(sub.name)}">
+          <span class="category-tile-img-wrap">
+            <img src="${thumb}" alt="${escapeAttr(sub.name)}" loading="lazy" />
+          </span>
+          <span class="category-tile-label">${displayCategoryName(sub.name)}</span>
+        </button>
+      `;
+    }).join("");
+
+    container.innerHTML = `<div class="category-tiles-heading">${displayCategoryName(parent.name)}</div>` + backTile + subTiles;
+
+    container.querySelector("[data-tile-back]").onclick = () => {
+      currentParentCategoryView = null;
+      renderCategoryTiles(key, store, cats);
+    };
+
+    container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
+      tile.onclick = () => {
+        selectStoreCategory(key, store, tile.dataset.tileCategory);
+      };
+    });
+
+    return;
+  }
+
+  // Normal top-level screen: "All Categories" first, then every
+  // top-level category — every tile's thumbnail is forced into the
+  // same circle treatment as a sub-category tile (see
+  // .category-tile-img-wrap in style.css), whether it has
+  // sub-categories or not; only the small layer-group badge in the
+  // corner marks a tile as a parent that drills down.
   const allTile = `
     <button type="button" class="category-tile" data-tile-category="">
       <span class="category-tile-img-wrap category-tile-all">
@@ -644,13 +757,34 @@ function renderCategoryTiles(key, store, cats) {
   `;
 
   const catTiles = cats.map(cat => {
-    const items = store.categories[cat];
-    const thumb = (items[0] && items[0].images && items[0].images[0]) || "images/logo192.png";
+    const catRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
+    const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
+    const hasSubs = subs.length > 0;
+
+    const items = store.categories[cat] || [];
+    let thumb = items[0] && items[0].images && items[0].images[0];
+
+    // A parent category with no products of its own (everything's
+    // filed under its sub-categories instead) borrows a thumbnail
+    // from the first sub-category that has one.
+    if (!thumb && hasSubs) {
+      for (const sub of subs) {
+        const subItems = store.categories[sub.name];
+        if (subItems && subItems[0] && subItems[0].images && subItems[0].images[0]) {
+          thumb = subItems[0].images[0];
+          break;
+        }
+      }
+    }
+    thumb = thumb || "images/logo192.png";
 
     return `
-      <button type="button" class="category-tile" data-tile-category="${escapeAttr(cat)}">
-        <span class="category-tile-img-wrap">
-          <img src="${thumb}" alt="${escapeAttr(cat)}" loading="lazy" />
+      <button type="button" class="category-tile" data-tile-category="${escapeAttr(cat)}" ${hasSubs ? "data-has-subs" : ""}>
+        <span class="category-tile-thumb">
+          <span class="category-tile-img-wrap">
+            <img src="${thumb}" alt="${escapeAttr(cat)}" loading="lazy" />
+          </span>
+          ${hasSubs ? `<span class="category-tile-subs-badge"><i class="fa-solid fa-layer-group"></i></span>` : ""}
         </span>
         <span class="category-tile-label">${displayCategoryName(cat)}</span>
       </button>
@@ -659,9 +793,16 @@ function renderCategoryTiles(key, store, cats) {
 
   container.innerHTML = allTile + catTiles;
 
-  container.querySelectorAll(".category-tile").forEach(tile => {
+  container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
     tile.onclick = () => {
       const cat = tile.dataset.tileCategory || null;
+
+      if (cat && tile.hasAttribute("data-has-subs")) {
+        currentParentCategoryView = categoryHierarchy.topLevel.find(c => c.name === cat);
+        renderCategoryTiles(key, store, cats);
+        return;
+      }
+
       selectStoreCategory(key, store, cat);
     };
   });

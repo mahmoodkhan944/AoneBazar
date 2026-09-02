@@ -581,34 +581,146 @@ function toggleProductForm() {
 
 document.addEventListener("change", e => {
   if (e.target && e.target.id === "pStore") loadCategoryOptions(e.target.value);
+  if (e.target && e.target.id === "catStore") populateParentCategoryDropdown("catParent", e.target.value);
+  if (e.target && e.target.id === "editCatStore") populateParentCategoryDropdown("editCatParent", e.target.value, editingCategoryId);
 });
 
-async function loadCategoryOptions(store) {
-  const sel = document.getElementById("pCategory");
-  sel.innerHTML = "<option>Loading...</option>";
+/** Category names actually in use come from two places that can
+ *  drift apart: the formal `categories` table (via "Add Category"),
+ *  and whatever a product's `category` field happens to say — a
+ *  product can carry a category value that was never formally
+ *  registered (e.g. set before "Add Category" existed, or via a
+ *  direct import). Merging both here means a product never ends up
+ *  hiding its own current category from its own edit dropdown. */
+let productFormCategoryCache = []; // full category rows (with parent_id) for whichever store is currently selected in the product form
 
-  const { data: rows, error } = await supabase
-    .from("categories")
-    .select("name")
-    .eq("store", store)
-    .order("name");
+/** Fetches every category row for a store, PLUS any category name a
+ *  product uses that was never formally added via "Add Category" —
+ *  those get treated as flat, parent-less categories so a product's
+ *  existing assignment is never invisible in its own dropdown. */
+async function loadProductFormCategories(store) {
+  const [catResult, productResult] = await Promise.all([
+    supabase.from("categories").select("*").eq("store", store),
+    supabase.from("products").select("category").eq("store", store)
+  ]);
 
-  if (error) {
-    sel.innerHTML = "<option value=''>Could not load categories</option>";
+  const catRows = catResult.data || [];
+  const knownNames = new Set(catRows.map(c => c.name));
+
+  const orphanNames = [...new Set((productResult.data || []).map(p => p.category).filter(Boolean))]
+    .filter(name => !knownNames.has(name));
+
+  const orphanRows = orphanNames.map(name => ({ id: `orphan:${name}`, name, parent_id: null, store }));
+
+  productFormCategoryCache = [...catRows, ...orphanRows];
+}
+
+/** Populates the "Category" dropdown with MAIN categories only (no
+ *  parent) — sub-categories don't clutter this list; they show up
+ *  in the separate "Sub-Category" dropdown once a main category
+ *  with children is picked. `selectedCategoryName` can be either a
+ *  main category's name or a sub-category's name — either way, both
+ *  dropdowns end up correctly pre-selected. */
+async function populateProductCategoryDropdowns(mainSelectId, subWrapId, subSelectId, store, selectedCategoryName) {
+  const mainSelect = document.getElementById(mainSelectId);
+  mainSelect.innerHTML = "<option>Loading...</option>";
+
+  try {
+    await loadProductFormCategories(store);
+  } catch (e) {
+    mainSelect.innerHTML = "<option value=''>Could not load categories</option>";
     return;
   }
 
-  const options = (rows || []).map(c => `<option value="${c.name}">${c.name}</option>`).join("");
-  sel.innerHTML = (options || "") + `<option value="__add_new__">+ Add New Category…</option>`;
-  sel.dataset.prevValue = sel.value;
+  const mains = productFormCategoryCache
+    .filter(c => !c.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // The product's saved category might itself be a sub-category —
+  // if so, figure out its parent so the MAIN dropdown lands on the
+  // right group, and the SUB dropdown lands on the actual value.
+  let selectedMain = "";
+  let selectedSub = "";
+
+  if (selectedCategoryName) {
+    if (mains.some(c => c.name === selectedCategoryName)) {
+      selectedMain = selectedCategoryName;
+    } else {
+      const asSub = productFormCategoryCache.find(c => c.name === selectedCategoryName && c.parent_id);
+      const parent = asSub && productFormCategoryCache.find(c => c.id === asSub.parent_id);
+      if (parent) {
+        selectedMain = parent.name;
+        selectedSub = selectedCategoryName;
+      }
+    }
+  }
+
+  mainSelect.innerHTML = mains.map(c => `<option value="${c.name}">${c.name}</option>`).join("") +
+    `<option value="__add_new__">+ Add New Category…</option>`;
+
+  if (selectedMain) mainSelect.value = selectedMain;
+  mainSelect.dataset.prevValue = mainSelect.value;
+
+  updateSubCategoryDropdown(mainSelectId, subWrapId, subSelectId, selectedSub);
 }
 
-/** Fires when the admin picks "+ Add New Category…" in a category
- *  dropdown (Add Product form, or the Edit Product modal) — lets
- *  them create the category right there instead of leaving the page. */
+/** Fills the "Sub-Category" dropdown based on whichever main
+ *  category is currently picked — hides the whole field when that
+ *  main category has no children, since there's nothing to choose. */
+function updateSubCategoryDropdown(mainSelectId, subWrapId, subSelectId, preSelectSubName) {
+  const mainSelect = document.getElementById(mainSelectId);
+  const subWrap = document.getElementById(subWrapId);
+  const subSelect = document.getElementById(subSelectId);
+
+  const mainName = mainSelect.value;
+  const mainRecord = productFormCategoryCache.find(c => c.name === mainName && !c.parent_id);
+  const subs = mainRecord
+    ? productFormCategoryCache.filter(c => c.parent_id === mainRecord.id).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  if (!mainRecord || subs.length === 0) {
+    subWrap.classList.add("hidden");
+    subSelect.innerHTML = "";
+    return;
+  }
+
+  subWrap.classList.remove("hidden");
+  subSelect.innerHTML =
+    `<option value="">— Use "${mainName}" directly (no sub-category) —</option>` +
+    subs.map(s => `<option value="${s.name}">${s.name}</option>`).join("") +
+    `<option value="__add_new_sub__">+ Add New Sub-Category…</option>`;
+
+  subSelect.value = preSelectSubName || "";
+  subSelect.dataset.prevValue = subSelect.value;
+  subSelect.dataset.parentId = mainRecord.id;
+}
+
+/** The category a product actually gets saved under — the
+ *  sub-category if one's selected, otherwise the main category. */
+function getSelectedProductCategory(mainSelectId, subSelectId) {
+  const subSelect = document.getElementById(subSelectId);
+  const subValue = subSelect && !subSelect.closest("div").classList.contains("hidden") ? subSelect.value : "";
+  if (subValue && subValue !== "__add_new_sub__") return subValue;
+  return document.getElementById(mainSelectId).value;
+}
+
+async function loadCategoryOptions(store) {
+  await populateProductCategoryDropdowns("pCategory", "pSubCategoryWrap", "pSubCategory", store, null);
+}
+
+/** Fires when the admin picks "+ Add New Category…" in the MAIN
+ *  category dropdown — lets them create a new top-level category
+ *  right there instead of leaving the page. */
 async function handleCategorySelectChange(selectEl, storeFieldId) {
   if (selectEl.value !== "__add_new__") {
     selectEl.dataset.prevValue = selectEl.value;
+    const isEdit = selectEl.id === "editCategory";
+    updateSubCategoryDropdown(
+      selectEl.id,
+      isEdit ? "editSubCategoryWrap" : "pSubCategoryWrap",
+      isEdit ? "editSubCategory" : "pSubCategory",
+      ""
+    );
     return;
   }
 
@@ -629,12 +741,46 @@ async function handleCategorySelectChange(selectEl, storeFieldId) {
   alert(`"${name}" category added!`);
 
   if (selectEl.id === "editCategory") {
-    await loadEditCategoryOptions(store, name);
+    await populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", store, name);
   } else {
-    await loadCategoryOptions(store);
-    selectEl.value = name;
+    await populateProductCategoryDropdowns("pCategory", "pSubCategoryWrap", "pSubCategory", store, name);
   }
-  selectEl.dataset.prevValue = name;
+}
+
+/** Same idea, but for "+ Add New Sub-Category…" in the SUB dropdown —
+ *  nests the new category under whichever main category is
+ *  currently selected. */
+async function handleSubCategorySelectChange(selectEl) {
+  if (selectEl.value !== "__add_new_sub__") {
+    selectEl.dataset.prevValue = selectEl.value;
+    return;
+  }
+
+  const isEdit = selectEl.id === "editSubCategory";
+  const mainSelectId = isEdit ? "editCategory" : "pCategory";
+  const storeFieldId = isEdit ? "editStore" : "pStore";
+  const store = document.getElementById(storeFieldId).value;
+  const parentId = selectEl.dataset.parentId;
+  const prevValue = selectEl.dataset.prevValue || "";
+
+  const name = ((await customPrompt("New sub-category name:")) || "").trim();
+  if (!name) { selectEl.value = prevValue; return; }
+
+  const { error } = await supabase.from("categories").insert({ store, name, parent_id: parentId });
+
+  if (error) {
+    alert(error.code === "23505" ? "That category already exists" : "Could not add: " + error.message);
+    selectEl.value = prevValue;
+    return;
+  }
+
+  alert(`"${name}" sub-category added!`);
+
+  if (isEdit) {
+    await populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", store, name);
+  } else {
+    await populateProductCategoryDropdowns("pCategory", "pSubCategoryWrap", "pSubCategory", store, name);
+  }
 }
 
 async function loadProducts() {
@@ -737,7 +883,7 @@ async function toggleProductStock(id, newStatus) {
 
 async function addProduct() {
   const store = document.getElementById("pStore").value;
-  const category = document.getElementById("pCategory").value;
+  const category = getSelectedProductCategory("pCategory", "pSubCategory");
   const brand = document.getElementById("pBrand").value.trim() || null;
   const name = document.getElementById("pName").value.trim();
   const name_hi = document.getElementById("pNameHi").value.trim() || null;
@@ -840,7 +986,7 @@ async function editProduct(p) {
   renderVariantRows("editVariants", p.variants || []);
   renderSpecRows("editSpecs", p.specs || []);
 
-  await loadEditCategoryOptions(p.store, p.category);
+  await populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", p.store, p.category);
 
   document.getElementById("editModal").classList.remove("hidden");
 }
@@ -882,34 +1028,10 @@ document.getElementById("editImage") && document.getElementById("editImage").add
 });
 
 document.getElementById("editStore") && document.getElementById("editStore").addEventListener("change", e => {
-  loadEditCategoryOptions(e.target.value);
+  populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", e.target.value, null);
 });
 
-/** Populates the Category dropdown for the store selected in the
- *  edit-product modal. */
-async function loadEditCategoryOptions(store, selectedCategory) {
-  const sel = document.getElementById("editCategory");
-  sel.innerHTML = "<option>Loading...</option>";
 
-  const { data: rows, error } = await supabase
-    .from("categories")
-    .select("name")
-    .eq("store", store)
-    .order("name");
-
-  if (error) {
-    sel.innerHTML = "<option value=''>Could not load categories</option>";
-    return;
-  }
-
-  const options = (rows || []).map(c => `<option value="${c.name}">${c.name}</option>`).join("");
-  sel.innerHTML = (options || "") + `<option value="__add_new__">+ Add New Category…</option>`;
-
-  if (selectedCategory && (rows || []).some(c => c.name === selectedCategory)) {
-    sel.value = selectedCategory;
-  }
-  sel.dataset.prevValue = sel.value;
-}
 
 /***********************
     VARIANTS (sizes / packs) — shared by Add + Edit forms
@@ -1182,7 +1304,7 @@ async function updateProduct() {
   const featured_section = document.getElementById("editFeaturedSection").value.trim() || null;
   const featured_order = Number(document.getElementById("editFeaturedOrder").value) || 0;
   const store = document.getElementById("editStore").value;
-  const category = document.getElementById("editCategory").value;
+  const category = getSelectedProductCategory("editCategory", "editSubCategory");
   const variants = collectVariants("editVariants");
   const specs = collectSpecs("editSpecs");
 
@@ -1241,8 +1363,8 @@ async function deleteProduct(id) {
 ************************/
 
 async function loadCategoriesView() {
-  const body = document.getElementById("categoriesBody");
-  body.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading…</td></tr>`;
+  const treeEl = document.getElementById("categoriesTree");
+  treeEl.innerHTML = `<p style="text-align:center;color:var(--ink-faint);padding:20px 0;">Loading…</p>`;
 
   const { data: rows, error } = await supabase
     .from("categories")
@@ -1251,52 +1373,143 @@ async function loadCategoriesView() {
     .order("name");
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="4">Could not load categories</td></tr>`;
+    treeEl.innerHTML = `<p style="color:var(--ink-faint);">Could not load categories</p>`;
     return;
   }
 
-  if (!rows || rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);">No categories yet</td></tr>`;
-    return;
-  }
-
-  allCategoriesCache = rows;
-  categoriesPage = 1;
-  renderCategoriesTable(rows);
+  allCategoriesCache = rows || [];
+  renderCategoriesTree(allCategoriesCache);
+  populateParentCategoryDropdown("catParent", document.getElementById("catStore").value);
 }
 
-let categoriesPage = 1;
 let currentCategoriesList = [];
 
-function renderCategoriesTable(list) {
-  currentCategoriesList = list;
-  const body = document.getElementById("categoriesBody");
+/** Switches the Add Category form between "Main Category" (no
+ *  parent, shows as a big tile) and "Sub-Category" (must pick a
+ *  parent) — two clearly separate modes instead of one form with an
+ *  easy-to-miss optional dropdown. */
+function setCategoryFormType(type) {
+  document.querySelectorAll(".cat-type-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.type === type);
+  });
 
-  if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);">No categories yet</td></tr>`;
-    document.getElementById("categoriesPagination").innerHTML = "";
-    return;
+  const parentWrap = document.getElementById("catParentWrap");
+  const hint = document.getElementById("catFormHint");
+
+  if (type === "sub") {
+    parentWrap.classList.remove("hidden");
+    hint.textContent = "Pick which main category this nests under — it'll show up when a customer taps that tile.";
+    populateParentCategoryDropdown("catParent", document.getElementById("catStore").value);
+  } else {
+    parentWrap.classList.add("hidden");
+    document.getElementById("catParent").value = "";
+    hint.textContent = "Main categories are the big tiles a customer sees first on the store page — e.g. \"Furniture\", \"Groceries\".";
   }
-
-  const pageItems = paginateArray(list, categoriesPage, PAGE_SIZE);
-
-  body.innerHTML = pageItems.map(c => `
-    <tr>
-      <td class="cell-title">${c.name}${c.name_hi ? `<div style="font-size:0.78rem;color:var(--ink-faint);font-weight:400;">${c.name_hi}</div>` : ''}</td>
-      <td data-label="Store">${c.store}</td>
-      <td><div class="table-actions">
-        <button onclick='editCategory(${JSON.stringify(c)})'>Edit</button>
-        <button class="danger" onclick="deleteCategory('${c.id}')">Delete</button>
-      </div></td>
-    </tr>
-  `).join("");
-
-  renderPagination("categoriesPagination", list.length, categoriesPage, PAGE_SIZE, "goToCategoriesPage");
 }
 
-function goToCategoriesPage(n) {
-  categoriesPage = n;
-  renderCategoriesTable(currentCategoriesList);
+/** Jumps to the Add Category form pre-set to add a sub-category
+ *  under a specific main category — used by the "+ Sub-category"
+ *  button on each main-category card, so there's no need to
+ *  remember and re-select the parent from a long dropdown. */
+function quickAddSubcategory(parentId, parentName, store) {
+  setCategoryFormType("sub");
+  document.getElementById("catStore").value = store;
+  populateParentCategoryDropdown("catParent", store);
+  document.getElementById("catParent").value = parentId;
+  document.getElementById("catName").value = "";
+  document.getElementById("catNameHi").value = "";
+  document.getElementById("catName").focus();
+  document.getElementById("catName").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** Fills a "Parent Category" dropdown with the top-level (no parent
+ *  of their own) categories for one store — a category can only be
+ *  nested one level deep, so a category that's already a
+ *  sub-category never shows up here as a choice for parent. */
+function populateParentCategoryDropdown(selectId, store, excludeId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+
+  const topLevel = allCategoriesCache.filter(c =>
+    c.store === store && !c.parent_id && c.id !== excludeId
+  );
+
+  select.innerHTML = `<option value="">— Choose a main category —</option>` +
+    topLevel.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+}
+
+/** Renders categories as a grouped tree — each main category as its
+ *  own card with its sub-categories nested underneath, instead of a
+ *  flat table where the parent/child relationship isn't visible at
+ *  a glance. `list` may be a search-filtered subset — if a
+ *  sub-category matches but its parent's name doesn't, the parent
+ *  card still renders (pulled from the full cache) so the match has
+ *  somewhere to show up. */
+function renderCategoriesTree(list) {
+  currentCategoriesList = list;
+  const treeEl = document.getElementById("categoriesTree");
+
+  const matchedIds = new Set(list.map(c => c.id));
+  const mainsToShow = new Map();
+  const subsByParentToShow = {};
+
+  list.forEach(c => {
+    if (!c.parent_id) {
+      mainsToShow.set(c.id, c);
+    } else {
+      const parent = allCategoriesCache.find(p => p.id === c.parent_id);
+      if (parent) mainsToShow.set(parent.id, parent);
+      if (!subsByParentToShow[c.parent_id]) subsByParentToShow[c.parent_id] = [];
+      subsByParentToShow[c.parent_id].push(c);
+    }
+  });
+
+  const mains = [...mainsToShow.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+  const cardsHtml = mains.map(main => {
+    // If the main category itself matched the search, show every one
+    // of its sub-categories (not just ones that happened to match
+    // too) — only when a main is showing up SOLELY because a child
+    // matched do we narrow the list down to just that child.
+    const mainMatchedDirectly = matchedIds.has(main.id);
+    const subs = mainMatchedDirectly
+      ? allCategoriesCache.filter(c => c.parent_id === main.id).sort((a, b) => a.name.localeCompare(b.name))
+      : (subsByParentToShow[main.id] || []);
+
+    const subsHtml = subs.map(sub => `
+        <div class="cat-tree-sub">
+          <div class="cat-tree-sub-info">
+            <span class="cat-tree-sub-arrow">↳</span>
+            <span>${sub.name}${sub.name_hi ? `<span class="cat-tree-hi"> (${sub.name_hi})</span>` : ""}</span>
+          </div>
+          <div class="table-actions">
+            <button onclick='editCategory(${JSON.stringify(sub)})'>Edit</button>
+            <button class="danger" onclick="deleteCategory('${sub.id}')">Delete</button>
+          </div>
+        </div>
+      `).join("");
+
+    return `
+        <div class="cat-tree-group">
+          <div class="cat-tree-main">
+            <div class="cat-tree-main-info">
+              <i class="fa-solid fa-folder" style="color:var(--marigold-600);"></i>
+              <strong>${main.name}</strong>
+              ${main.name_hi ? `<span class="cat-tree-hi">${main.name_hi}</span>` : ""}
+              <span class="cat-tree-store-tag">${main.store}</span>
+            </div>
+            <div class="table-actions">
+              <button onclick="quickAddSubcategory('${main.id}', '${main.name.replace(/'/g, "\\'")}', '${main.store}')">+ Sub-category</button>
+              <button onclick='editCategory(${JSON.stringify(main)})'>Edit</button>
+              <button class="danger" onclick="deleteCategory('${main.id}')">Delete</button>
+            </div>
+          </div>
+          ${subsHtml ? `<div class="cat-tree-subs">${subsHtml}</div>` : ""}
+        </div>
+      `;
+  }).join("");
+
+  treeEl.innerHTML = cardsHtml || `<p style="text-align:center;color:var(--ink-faint);padding:20px 0;">No categories found</p>`;
 }
 
 function filterCategories() {
@@ -1308,18 +1521,20 @@ function filterCategories() {
     (!storeFilter || c.store === storeFilter)
   );
 
-  categoriesPage = 1;
-  renderCategoriesTable(filtered);
+  renderCategoriesTree(filtered);
 }
 
 async function addCategory() {
+  const isSubMode = document.querySelector(".cat-type-btn.active")?.dataset.type === "sub";
   const store = document.getElementById("catStore").value;
   const name = document.getElementById("catName").value.trim();
   const name_hi = document.getElementById("catNameHi").value.trim() || null;
+  const parent_id = document.getElementById("catParent").value || null;
 
   if (!name) { alert("Enter a category name"); return; }
+  if (isSubMode && !parent_id) { alert("Pick a main category for this sub-category to nest under"); return; }
 
-  const { error } = await supabase.from("categories").insert({ store, name, name_hi });
+  const { error } = await supabase.from("categories").insert({ store, name, name_hi, parent_id });
 
   if (error) {
     alert(error.code === "23505" ? "That category already exists" : "Could not add: " + error.message);
@@ -1328,11 +1543,12 @@ async function addCategory() {
 
   document.getElementById("catName").value = "";
   document.getElementById("catNameHi").value = "";
+  if (!isSubMode) document.getElementById("catParent").value = "";
   loadCategoriesView();
 }
 
 async function deleteCategory(id) {
-  if (!(await customConfirm("Delete this category? Products already in it are unaffected.", "Delete"))) return;
+  if (!(await customConfirm("Delete this category? Products already in it are unaffected. Any sub-categories under it will be deleted too.", "Delete"))) return;
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadCategoriesView();
@@ -1345,6 +1561,8 @@ function editCategory(c) {
   document.getElementById("editCatStore").value = c.store;
   document.getElementById("editCatName").value = c.name;
   document.getElementById("editCatNameHi").value = c.name_hi || "";
+  populateParentCategoryDropdown("editCatParent", c.store, c.id);
+  document.getElementById("editCatParent").value = c.parent_id || "";
   document.getElementById("editCategoryModal").classList.remove("hidden");
 }
 
@@ -1356,8 +1574,14 @@ async function updateCategory() {
   const store = document.getElementById("editCatStore").value;
   const name = document.getElementById("editCatName").value.trim();
   const name_hi = document.getElementById("editCatNameHi").value.trim() || null;
+  const parent_id = document.getElementById("editCatParent").value || null;
 
   if (!name) { alert("Enter a category name"); return; }
+
+  if (parent_id === editingCategoryId) {
+    alert("A category can't be its own parent");
+    return;
+  }
 
   // Remember the old store/name so we can re-tag any products that
   // were filed under it — otherwise renaming a category silently
@@ -1367,7 +1591,7 @@ async function updateCategory() {
 
   const { error } = await supabase
     .from("categories")
-    .update({ store, name, name_hi })
+    .update({ store, name, name_hi, parent_id })
     .eq("id", editingCategoryId);
 
   if (error) {

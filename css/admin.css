@@ -365,6 +365,114 @@ body.admin-body {
 .table-actions button:active { transform: translateY(0); }
 .table-actions .danger { background: var(--danger-100); color: var(--danger-600); }
 
+/* ---------------- CATEGORY TYPE TOGGLE (Main / Sub) ---------------- */
+.cat-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cat-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+.cat-type-btn:hover { border-color: var(--green-700); color: var(--green-700); }
+.cat-type-btn.active {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(15, 74, 43, 0.2);
+}
+
+/* ---------------- CATEGORY TREE (main + nested sub-categories) ---------------- */
+.cat-tree-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.cat-tree-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: var(--surface-sunken);
+}
+
+.cat-tree-main-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.96rem;
+}
+
+.cat-tree-hi {
+  color: var(--ink-faint);
+  font-weight: 400;
+  font-size: 0.88em;
+}
+
+.cat-tree-store-tag {
+  background: var(--green-100);
+  color: var(--green-900);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.cat-tree-subs {
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-tree-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px 12px 32px;
+  border-top: 1px solid var(--line);
+}
+
+.cat-tree-sub-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.cat-tree-sub-arrow {
+  color: var(--marigold-600);
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .cat-type-toggle { flex-direction: column; }
+  .cat-tree-main, .cat-tree-sub { flex-direction: column; align-items: flex-start; }
+  .cat-tree-main .table-actions, .cat-tree-sub .table-actions { width: 100%; }
+}
+
 .admin-toolbar {
   display: flex;
   justify-content: space-between;

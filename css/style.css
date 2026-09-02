@@ -299,22 +299,31 @@
 .category-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 10px;
-  margin-bottom: 22px;
+  gap: 14px 10px;
+  margin-bottom: 20px;
 }
 
 .category-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  max-width: 76px;
+  width: 100%;
+  margin: 0 auto;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
 }
 
+.category-tile-thumb {
+  position: relative;
+  width: 100%;
+}
+
 .category-tile-img-wrap {
+  display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
@@ -347,6 +356,36 @@
   font-size: 1.15rem;
 }
 
+.category-tile-back-btn .category-tile-all {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.category-tile-subs-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--marigold-600);
+  color: var(--indigo-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  border: 2px solid var(--paper);
+}
+
+.category-tiles-heading {
+  grid-column: 1 / -1;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--green-900);
+  margin-bottom: 2px;
+}
+
 .category-tile-img-wrap img {
   width: 100%;
   height: 100%;
@@ -359,6 +398,10 @@
   color: var(--ink);
   text-align: center;
   line-height: 1.2;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .products {
@@ -1971,6 +2014,16 @@
   #userGreeting { display: none; }
   .products { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .cart-box { max-width: 100%; }
+
+  /* Tiles get tight on phones — smaller minimum column and a
+     slightly smaller tile cap so 4-5 fit per row with breathing
+     room, instead of squeezing the desktop sizing down. */
+  .category-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 12px 8px;
+  }
+  .category-tile { max-width: 68px; }
+  .category-tile-label { font-size: 0.62rem; }
 
   .brand-tagline { display: none; }
   .brand-name { font-size: 1rem; white-space: nowrap; }

@@ -189,6 +189,10 @@
               <label>Category</label>
               <select id="pCategory" onchange="handleCategorySelectChange(this, 'pStore')"></select>
             </div>
+            <div id="pSubCategoryWrap" class="hidden">
+              <label>Sub-Category</label>
+              <select id="pSubCategory" onchange="handleSubCategorySelectChange(this)"></select>
+            </div>
             <div>
               <label>Brand (optional) — powers "Shop by Brand"</label>
               <input id="pBrand" placeholder="e.g. Tata, Everest, Kohinoor" list="brandList" />
@@ -306,16 +310,32 @@
 
         <div class="admin-panel">
           <h3>Add Category</h3>
-          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
-            The homepage's "All Categories" menu groups these by store automatically, sorted alphabetically — nothing extra to fill in.
+
+          <div class="cat-type-toggle">
+            <button type="button" class="cat-type-btn active" data-type="main" onclick="setCategoryFormType('main')">
+              <i class="fa-solid fa-folder"></i> Main Category
+            </button>
+            <button type="button" class="cat-type-btn" data-type="sub" onclick="setCategoryFormType('sub')">
+              <i class="fa-solid fa-folder-tree"></i> Sub-Category
+            </button>
+          </div>
+          <p id="catFormHint" style="font-size:0.85rem;color:var(--ink-soft);margin:10px 0 0;">
+            Main categories are the big tiles a customer sees first on the store page — e.g. "Furniture", "Groceries".
           </p>
-          <div class="admin-form-grid">
+
+          <div class="admin-form-grid" style="margin-top:14px;">
             <div>
               <label>Store</label>
               <select id="catStore">
                 <option value="supermarket">Supermarket</option>
                 <option value="grocery">Grocery</option>
                 <option value="cafe">Cafe</option>
+              </select>
+            </div>
+            <div id="catParentWrap" class="hidden">
+              <label>Parent Category</label>
+              <select id="catParent">
+                <option value="">— Choose a main category —</option>
               </select>
             </div>
             <div>
@@ -346,13 +366,7 @@
               <option value="cafe">Cafe</option>
             </select>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Name</th><th>Store</th><th>Actions</th></tr></thead>
-              <tbody id="categoriesBody"></tbody>
-            </table>
-          </div>
-          <div id="categoriesPagination" class="pagination"></div>
+          <div id="categoriesTree"></div>
         </div>
       </section>
 
@@ -637,6 +651,11 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Category</label>
       <select id="editCategory" onchange="handleCategorySelectChange(this, 'editStore')"></select>
 
+      <div id="editSubCategoryWrap" class="hidden">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Sub-Category</label>
+        <select id="editSubCategory" onchange="handleSubCategorySelectChange(this)"></select>
+      </div>
+
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Brand (optional)</label>
       <input id="editBrand" placeholder="e.g. Tata, Everest, Kohinoor" list="brandList" />
 
@@ -716,7 +735,11 @@
           <i class="fa-solid fa-keyboard"></i>
         </button>
       </div>
-      <button class="btn btn-primary" onclick="updateCategory()">Save</button>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Parent Category (optional)</label>
+      <select id="editCatParent">
+        <option value="">— None (this is a main category) —</option>
+      </select>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="updateCategory()">Save</button>
     </div>
   </div>
 
