@@ -1583,6 +1583,44 @@
   margin-bottom: 16px;
 }
 
+.section-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.section-header-row .featured-section-title {
+  margin-bottom: 0;
+}
+
+.view-all-link {
+  background: none;
+  border: none;
+  color: var(--green-700);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 4px 0;
+}
+.view-all-link:hover { text-decoration: underline; }
+
+.card-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--marigold-700, #b8860b);
+  margin: 2px 0;
+}
+.card-rating i { font-size: 0.72rem; }
+.card-rating-count {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
 /* ---------------- WHY SHOP WITH US + DELIVERY AREA ---------------- */
 .why-shop-section {
   padding: 40px 0;

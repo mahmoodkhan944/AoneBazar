@@ -22,6 +22,7 @@ const customerAddress = document.getElementById("customerAddress");
 // itself lives entirely in admin.html / js/admin.js now.
 let tapCount = 0;
 let currentStore = "";
+let currentSectionKey = null; // set while viewing a "View All" auto-section page, cleared for a normal store
 
 // Kept in sync with supabase.auth.onAuthStateChange (see bottom of file)
 // so the rest of the app can check "who's logged in" synchronously,
@@ -219,13 +220,23 @@ let currentCategory = "";
 async function openStore(key, jumpToCategory, jumpToPage) {
 
   currentStore = key;
+  currentSectionKey = null; // leaving any "View All" section page, if we were on one
   currentParentCategoryView = null; // start fresh, not mid-drill-down from a previous store
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
   setHomepageFeaturedVisible(false);
-  setNewArrivalsVisible(false);
+  setAutoSectionsVisible(false);
   setWhyShopVisible(false);
+
+  // A "View All" section page hides these — undo that so a real
+  // store always starts with its normal search/filter chrome intact.
+  const storeSearchEl = document.getElementById("storeSearch");
+  if (storeSearchEl) storeSearchEl.classList.remove("hidden");
+  const categoryTilesEl = document.getElementById("categoryTiles");
+  if (categoryTilesEl) categoryTilesEl.classList.remove("hidden");
+  const tilesBackBtn = document.getElementById("tilesBackBtn");
+  if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
 
   // Show skeletons immediately — the store's own products/categories
   // are about to be fetched, and this is a visibly better first
@@ -505,21 +516,31 @@ function getDiscountPercent(p) {
 
 let productRatingsMap = null;
 
-/** Fetched once, lazily — only the shopper who actually picks
- *  "Rating: High to Low" needs this, so there's no point querying it
- *  on every store visit. */
+/** Fetched once, lazily — only needed for "Rating: High to Low"
+ *  sorting and the star badge on Best Deals/New/Trending/Top Rated
+ *  cards, so there's no point querying it on every store visit.
+ *  Keyed by product id → { avg, count }. */
 async function loadProductRatingsMap() {
   if (productRatingsMap) return productRatingsMap;
 
   const { data: rows, error } = await supabase
     .from("product_ratings")
-    .select("product_id, avg_rating");
+    .select("product_id, avg_rating, review_count");
 
   productRatingsMap = {};
   if (!error && rows) {
-    rows.forEach(r => { productRatingsMap[r.product_id] = r.avg_rating; });
+    rows.forEach(r => { productRatingsMap[r.product_id] = { avg: r.avg_rating, count: r.review_count }; });
   }
   return productRatingsMap;
+}
+
+/** Small "★ 4.5 (23)" badge shown on a product card when this
+ *  product has at least one review — silently renders nothing
+ *  otherwise, so unrated products just show no badge at all. */
+function ratingBadgeHtml(p) {
+  const r = productRatingsMap && productRatingsMap[p.id];
+  if (!r || !r.count) return "";
+  return `<span class="card-rating"><i class="fa-solid fa-star"></i> ${r.avg} <span class="card-rating-count">(${r.count})</span></span>`;
 }
 
 /** Re-sorts whatever's currently on screen (a category, "All
@@ -538,7 +559,7 @@ async function applySortAndRender() {
     items.sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a));
   } else if (sortValue === "rating") {
     await loadProductRatingsMap();
-    items.sort((a, b) => (productRatingsMap[b.id] || 0) - (productRatingsMap[a.id] || 0));
+    items.sort((a, b) => (productRatingsMap[b.id]?.avg || 0) - (productRatingsMap[a.id]?.avg || 0));
   }
   // "relevance" — leave the current (newest-first) order as-is.
 
@@ -549,7 +570,11 @@ async function applySortAndRender() {
 
 function goToStoreProductsPage(n) {
   storeProductsPage = n;
-  updateStoreUrl(currentStore, currentCategory, n);
+  if (currentSectionKey) {
+    history.replaceState(null, "", `${location.pathname}?section=${currentSectionKey}&page=${n}`);
+  } else {
+    updateStoreUrl(currentStore, currentCategory, n);
+  }
   renderProductGrid(currentStoreProductsList, "No products in this category");
   window.scrollTo({ top: productGrid.offsetTop - 100, behavior: "smooth" });
 }
@@ -592,6 +617,14 @@ function renderProductGrid(items, emptyMessage) {
   }
 
   const pageItems = paginateArray(items, storeProductsPage, PAGE_SIZE);
+  // Ratings are used for the card badge below — loaded lazily and
+  // cached, so this is a no-op after the very first time it's needed.
+  loadProductRatingsMap().then(() => {
+    pageItems.forEach(p => {
+      const badgeEl = document.getElementById(`rating-${p.id}`);
+      if (badgeEl) badgeEl.outerHTML = ratingBadgeHtml(p);
+    });
+  });
 
   pageItems.forEach(p => {
     const hasVariants = p.variants && p.variants.length > 0;
@@ -623,6 +656,7 @@ function renderProductGrid(items, emptyMessage) {
         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
           <img src="${p.images ? p.images[0] : p.img}">
           <h4>${displayProductName(p)}</h4>
+          <span id="rating-${p.id}">${ratingBadgeHtml(p)}</span>
           <p id="price-${p.id}">${priceHtml}</p>
         </a>
         ${variantSelect}
@@ -879,8 +913,9 @@ function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
   setHomepageFeaturedVisible(true);
-  setNewArrivalsVisible(true);
+  setAutoSectionsVisible(true);
   setWhyShopVisible(true);
+  currentSectionKey = null;
   history.replaceState(null, "", location.pathname);
 }
 
@@ -897,16 +932,33 @@ function updateStoreUrl(store, category, page) {
 }
 
 /***********************
-    NEW ARRIVALS (automatic)
-    The most recently added in-stock products across every store,
-    with a "NEW" badge — no admin curation needed, it's always just
-    whatever was added most recently.
+    HOMEPAGE AUTO PRODUCT SECTIONS
+    Four always-fresh rows built entirely from data already in the
+    database — no admin curation needed for any of them:
+      - Best Deals   → highest discount % first
+      - New Products → most recently added first
+      - Trending Now → recent sales + cart-adds + views (server-scored)
+      - Top Rated    → highest average review rating first
+    A product that already appears in Best Deals / New Products /
+    Trending is skipped further down so nothing repeats across those
+    three rows — Top Rated is judged on a different signal entirely
+    (reviews, not recency or discount) so it's left independent.
 ************************/
 
-/** Mirrors setHomepageFeaturedVisible — New Arrivals is homepage-
- *  only too, so it hides the same way once a store is opened. */
-function setNewArrivalsVisible(visible) {
-  const el = document.getElementById("newArrivalsSection");
+const AUTO_SECTIONS_PER_ROW = 12;
+let autoSectionFullLists = {}; // populated by loadAutoProductSections(), used by "View All"
+const AUTO_SECTION_TITLES = {
+  "best-deals": "Best Deals",
+  "new-products": "New Products",
+  "trending": "Trending Now",
+  "top-rated": "Top Rated"
+};
+
+/** Mirrors setHomepageFeaturedVisible — these rows are homepage-
+ *  only too, so they hide the same way once a store (or a "View
+ *  All" section page) is opened. */
+function setAutoSectionsVisible(visible) {
+  const el = document.getElementById("autoProductSections");
   if (el) el.style.display = visible ? "" : "none";
 }
 
@@ -917,33 +969,138 @@ function setWhyShopVisible(visible) {
   if (el) el.style.display = visible ? "" : "none";
 }
 
-async function loadNewArrivals() {
-  const container = document.getElementById("newArrivalsSection");
+async function loadAutoProductSections() {
+  const container = document.getElementById("autoProductSections");
   if (!container) return; // not on the homepage
 
-  const { data: rows, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("in_stock", true)
-    .order("created_at", { ascending: false })
-    .limit(12);
+  const [{ data: allProducts, error }, ratings] = await Promise.all([
+    supabase.from("products").select("*").eq("in_stock", true),
+    loadProductRatingsMap()
+  ]);
 
-  if (error || !rows || rows.length === 0) {
+  if (error || !allProducts || allProducts.length === 0) {
     if (error) console.error(error);
     container.innerHTML = "";
     return;
   }
 
-  container.innerHTML = `
-    <section class="featured-section new-arrivals-section">
-      <div class="container">
-        <h2 class="featured-section-title">New Arrivals</h2>
-        <div class="featured-row">
-          ${rows.map(p => featuredProductCardHtml(p, { isNew: true })).join("")}
+  const byId = {};
+  allProducts.forEach(p => { byId[p.id] = p; });
+
+  const bestDeals = [...allProducts]
+    .filter(p => getDiscountPercent(p) > 0)
+    .sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a));
+
+  // Only products actually added in the last 14 days — an admin who
+  // hasn't added anything new in a while should see this row shrink
+  // (or empty out), not quietly backfill with older products just
+  // to hit 12.
+  const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const newProducts = [...allProducts]
+    .filter(p => new Date(p.created_at).getTime() >= fourteenDaysAgo)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // Server-side scored (recent sales × 5 + cart-adds × 2 + views ×
+  // 1, last 14 days) — see get_trending_products() in Supabase.
+  // Falls back to an empty row if the function isn't installed yet
+  // or nothing's had any activity.
+  let trending = [];
+  try {
+    const { data: trendRows } = await supabase.rpc("get_trending_products", { p_limit: 60 });
+    trending = (trendRows || []).map(r => byId[r.product_id]).filter(Boolean);
+  } catch (e) {
+    trending = [];
+  }
+
+  const topRated = [...allProducts]
+    .filter(p => ratings[p.id] && ratings[p.id].count > 0)
+    .sort((a, b) => {
+      const ra = ratings[a.id], rb = ratings[b.id];
+      return rb.avg - ra.avg || rb.count - ra.count;
+    });
+
+  const usedIds = new Set();
+  const takeUnique = (list, n) => {
+    const picked = [];
+    for (const p of list) {
+      if (usedIds.has(p.id)) continue;
+      picked.push(p);
+      usedIds.add(p.id);
+      if (picked.length === n) break;
+    }
+    return picked;
+  };
+
+  const sections = [
+    { key: "best-deals", title: "Best Deals", items: takeUnique(bestDeals, AUTO_SECTIONS_PER_ROW), full: bestDeals },
+    { key: "new-products", title: "New Products", items: takeUnique(newProducts, AUTO_SECTIONS_PER_ROW), full: newProducts, isNew: true },
+    { key: "trending", title: "Trending Now", items: takeUnique(trending, AUTO_SECTIONS_PER_ROW), full: trending },
+    { key: "top-rated", title: "Top Rated", items: topRated.slice(0, AUTO_SECTIONS_PER_ROW), full: topRated }
+  ];
+
+  autoSectionFullLists = {};
+  sections.forEach(s => { autoSectionFullLists[s.key] = s.full.slice(0, 200); });
+
+  container.innerHTML = sections
+    .filter(s => s.items.length > 0)
+    .map(s => `
+      <section class="featured-section">
+        <div class="container">
+          <div class="section-header-row">
+            <h2 class="featured-section-title">${s.title}</h2>
+            <button class="view-all-link" onclick="openProductSection('${s.key}', '${s.title}')">View All</button>
+          </div>
+          <div class="featured-row">
+            ${s.items.map(p => featuredProductCardHtml(p, { isNew: s.isNew })).join("")}
+          </div>
         </div>
-      </div>
-    </section>
-  `;
+      </section>
+    `)
+    .join("");
+}
+
+/** "View All" on any of the four auto sections — reuses the normal
+ *  store product-grid/pagination UI (just with categories, brand
+ *  filter and search hidden, since none of that applies to a list
+ *  built from a discount/recency/trending/rating score). */
+function openProductSection(key, title, startPage) {
+  const items = autoSectionFullLists[key] || [];
+
+  currentStore = null;
+  currentCategory = null;
+  currentSectionKey = key;
+  currentParentCategoryView = null;
+
+  heroSection.style.display = "none";
+  storeSection.classList.remove("hidden");
+  setHomepageFeaturedVisible(false);
+  setAutoSectionsVisible(false);
+  setWhyShopVisible(false);
+
+  storeTitle.innerText = title;
+
+  const categoryTilesEl = document.getElementById("categoryTiles");
+  if (categoryTilesEl) {
+    categoryTilesEl.innerHTML = "";
+    categoryTilesEl.classList.add("hidden");
+  }
+  const tilesBackBtn = document.getElementById("tilesBackBtn");
+  if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
+  const brandFilter = document.getElementById("brandFilter");
+  if (brandFilter) brandFilter.classList.add("hidden");
+  const sortFilter = document.getElementById("sortFilter");
+  if (sortFilter) sortFilter.value = "relevance";
+  const storeSearchEl = document.getElementById("storeSearch");
+  if (storeSearchEl) {
+    storeSearchEl.value = "";
+    storeSearchEl.classList.add("hidden");
+  }
+
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  storeProductsPage = (startPage && startPage > 1 && startPage <= totalPages) ? startPage : 1;
+  history.pushState(null, "", `${location.pathname}?section=${key}`);
+  renderProductGrid(items, "Nothing to show here yet");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /***********************
@@ -985,16 +1142,29 @@ async function loadFeaturedSections() {
     sections[p.featured_section].push(p);
   });
 
-  container.innerHTML = Object.entries(sections).map(([title, items]) => `
+  container.innerHTML = Object.entries(sections).map(([title, items]) => {
+    // A curated section is almost always all one store's products
+    // (e.g. "Delicious Food" = Cafe items) — "View All" opens
+    // whichever store most of this section's products belong to,
+    // so a mixed section still goes somewhere sensible.
+    const storeCounts = {};
+    items.forEach(p => { storeCounts[p.store] = (storeCounts[p.store] || 0) + 1; });
+    const topStore = Object.keys(storeCounts).sort((a, b) => storeCounts[b] - storeCounts[a])[0];
+
+    return `
     <section class="featured-section">
       <div class="container">
-        <h2 class="featured-section-title">${title}</h2>
+        <div class="section-header-row">
+          <h2 class="featured-section-title">${title}</h2>
+          ${topStore ? `<button class="view-all-link" onclick="openStore('${topStore}')">View All</button>` : ""}
+        </div>
         <div class="featured-row">
           ${items.map(p => featuredProductCardHtml(p)).join("")}
         </div>
       </div>
     </section>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function featuredProductCardHtml(p, opts) {
@@ -1012,6 +1182,7 @@ function featuredProductCardHtml(p, opts) {
       <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
         <h4>${displayProductName(p)}</h4>
+        ${ratingBadgeHtml(p)}
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}
@@ -1186,6 +1357,16 @@ function addToCart(p, variant) {
     });
   }
   saveCart();
+  logProductEvent(p, "cart_add");
+}
+
+/** Fire-and-forget — feeds the "Trending Now" score (see
+ *  get_trending_products() in Supabase) and should never be allowed
+ *  to break the actual action (adding to cart, viewing a product)
+ *  it's attached to if it fails for any reason (offline, RLS, etc). */
+function logProductEvent(p, eventType) {
+  if (!p || !p.id || !supabase) return;
+  supabase.from("product_events").insert({ product_id: p.id, store: p.store, event_type: eventType }).then(() => {}, () => {});
 }
 
 let appliedCoupon = null; // { code, discount_amount }
@@ -1755,16 +1936,24 @@ window.onload = function () {
   updateWhatsAppCTA();
   loadProductPage(); // no-ops unless this is product.html
   loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
-  loadNewArrivals(); // no-ops unless #newArrivalsSection exists on this page
+  const autoSectionsReady = loadAutoProductSections(); // no-ops unless #autoProductSections exists on this page
 
   // Coming back from a product page, or from the mega-menu? Jump
   // straight to that store (and category, if given).
   const backParams = new URLSearchParams(location.search);
   const storeParam = backParams.get("store");
   const categoryParam = backParams.get("category");
+  const sectionParam = backParams.get("section");
   const pageParam = parseInt(backParams.get("page"), 10) || 1;
   if (storeParam && typeof openStore === "function" && document.getElementById("storeSection")) {
     openStore(storeParam, categoryParam, pageParam);
+  } else if (sectionParam && AUTO_SECTION_TITLES[sectionParam] && document.getElementById("storeSection")) {
+    // The "View All" lists only exist once loadAutoProductSections()
+    // has actually resolved, so a direct/shared link to one has to
+    // wait for that first load instead of finding an empty list.
+    (autoSectionsReady || Promise.resolve()).then(() => {
+      openProductSection(sectionParam, AUTO_SECTION_TITLES[sectionParam], pageParam);
+    });
   }
 };
 
@@ -1803,6 +1992,7 @@ async function loadProductPage() {
 
   currentProduct = p;
   currentStore = p.store;
+  logProductEvent(p, "view");
 
   document.title = p.name + " — AOne Bazaar";
   const metaDesc = document.querySelector('meta[name="description"]');
