@@ -214,7 +214,7 @@
             <div class="full">
               <label>Product Description</label>
               <p style="font-size:0.8rem;color:var(--ink-soft);margin:-2px 0 6px;">
-                Plain text is fine. Leave a blank line to start a new paragraph. Start a line with <code>## </code> to make your own custom heading (e.g. "Key Features", "How to Use" — name it anything). Start lines with <code>- </code> to make a bullet list.
+                Plain text is fine. Leave a blank line to start a new paragraph. Start a line with <code>#</code> (or <code>## </code>) to make your own custom heading (e.g. "Key Features", "How to Use" — name it anything). Start lines with <code>-</code>, <code>*</code> or <code>•</code> to make a bullet list.
               </p>
               <textarea id="pDescription" rows="6" placeholder="e.g.&#10;Fresh, stone-ground atta made from 100% wheat.&#10;&#10;## Key Features&#10;- No maida added&#10;- Chakki fresh&#10;- Rich in fibre&#10;&#10;## How to Use&#10;Store in a cool, dry place. Use within 3 months of opening." onblur="autoTranslateDescription('pDescription','pDescriptionHi')"></textarea>
             </div>
@@ -667,7 +667,7 @@
           <i class="fa-solid fa-keyboard"></i>
         </button>
       </div>
-      <textarea id="editDescription" rows="6" placeholder="Product description — leave a blank line for a new paragraph, start a line with ## for a heading, or - for bullet points." onblur="autoTranslateDescription('editDescription','editDescriptionHi')"></textarea>
+      <textarea id="editDescription" rows="6" placeholder="Product description — leave a blank line for a new paragraph, start a line with # for a heading, or -, * or • for bullet points." onblur="autoTranslateDescription('editDescription','editDescriptionHi')"></textarea>
       <div class="hindi-input-row">
         <textarea id="editDescriptionHi" rows="6" placeholder="Hindi description (auto — edit or clear if needed)"></textarea>
         <button type="button" class="hindi-kb-toggle" onclick="openHindiKeyboard('editDescriptionHi')" title="Open Hindi keyboard">

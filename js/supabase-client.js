@@ -305,14 +305,18 @@ if (!window.__AONE_SUPABASE_READY__) {
      *  ("Key Features", "How to Use", bullet points, etc.) just by
      *  typing plain text with these three rules:
      *    - A blank line starts a new paragraph.
-     *    - A line starting with "## " becomes a bold sub-heading —
-     *      admin names it whatever they want ("Ingredients", "How to
-     *      Use"...), as many as they like.
-     *    - Lines starting with "- " (one after another) become a
-     *      bullet list.
+     *    - A line starting with one or more "#" becomes a bold
+     *      sub-heading — "#Heading", "# Heading" and "## Heading" all
+     *      work, admin names it whatever they want ("Ingredients",
+     *      "How to Use"...), as many as they like.
+     *    - Lines starting with "- ", "* " or "• " (one after another)
+     *      become a bullet list.
      */
     window.renderMarkdownLite = function (raw) {
       if (!raw) return "";
+
+      const headingRe = /^#{1,6}\s*(.*)$/;
+      const bulletRe = /^[-*•]\s+(.*)$/;
 
       return raw
         .split(/\n\s*\n/)
@@ -324,20 +328,21 @@ if (!window.__AONE_SUPABASE_READY__) {
           let heading = "";
           let bodyLines = lines;
 
-          if (lines[0].startsWith("## ")) {
-            heading = `<h3>${escapeHtml(lines[0].slice(3).trim())}</h3>`;
+          const headingMatch = lines[0].match(headingRe);
+          if (headingMatch) {
+            heading = `<h3>${escapeHtml(headingMatch[1].trim())}</h3>`;
             bodyLines = lines.slice(1);
           }
 
           if (bodyLines.length === 0) return heading;
 
-          // A block of lines that all start with "- " renders as a
-          // bullet list instead of a paragraph.
-          const isBulletBlock = bodyLines.every(l => l.trim().startsWith("- "));
+          // A block of lines that all start with a bullet marker
+          // renders as a bullet list instead of a paragraph.
+          const isBulletBlock = bodyLines.every(l => bulletRe.test(l.trim()));
 
           if (isBulletBlock) {
             const items = bodyLines
-              .map(l => `<li>${escapeHtml(l.trim().slice(2).trim())}</li>`)
+              .map(l => `<li>${escapeHtml(l.trim().match(bulletRe)[1].trim())}</li>`)
               .join("");
             return heading + `<ul>${items}</ul>`;
           }
