@@ -1590,6 +1590,73 @@
   margin-bottom: 16px;
 }
 
+/* ---------------- WHY SHOP WITH US + DELIVERY AREA ---------------- */
+.why-shop-section {
+  padding: 40px 0;
+  background: var(--surface);
+}
+
+.section-title-center {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.why-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.why-shop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 22px 12px;
+}
+
+.why-shop-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.why-shop-item p {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.delivery-area-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  margin: 30px auto 0;
+  max-width: 520px;
+  background: var(--green-100);
+  border-radius: 999px;
+  padding: 12px 22px;
+}
+
+.delivery-area-icon {
+  font-size: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.delivery-area-note p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--green-900, var(--ink));
+}
+
 .featured-row {
   display: flex;
   gap: 16px;
@@ -2072,6 +2139,9 @@
   }
   .category-tile { max-width: 68px; }
   .category-tile-label { font-size: 0.62rem; }
+
+  .why-shop-grid { grid-template-columns: repeat(2, 1fr); }
+  .delivery-area-note { flex-direction: column; gap: 4px; padding: 14px 18px; }
 
   .brand-tagline { display: none; }
   .brand-name { font-size: 1rem; white-space: nowrap; }

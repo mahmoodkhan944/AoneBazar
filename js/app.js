@@ -234,6 +234,7 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   storeSection.classList.remove("hidden");
   setHomepageFeaturedVisible(false);
   setNewArrivalsVisible(false);
+  setWhyShopVisible(false);
 
   // Show skeletons immediately — the store's own products/categories
   // are about to be fetched, and this is a visibly better first
@@ -888,6 +889,7 @@ function closeStore() {
   heroSection.style.display = "flex";
   setHomepageFeaturedVisible(true);
   setNewArrivalsVisible(true);
+  setWhyShopVisible(true);
   history.replaceState(null, "", location.pathname);
 }
 
@@ -914,6 +916,13 @@ function updateStoreUrl(store, category, page) {
  *  only too, so it hides the same way once a store is opened. */
 function setNewArrivalsVisible(visible) {
   const el = document.getElementById("newArrivalsSection");
+  if (el) el.style.display = visible ? "" : "none";
+}
+
+/** "Why Shop With Us" + delivery-area note — static trust content
+ *  that only makes sense on the homepage, same hide/show pattern. */
+function setWhyShopVisible(visible) {
+  const el = document.getElementById("whyShopSection");
   if (el) el.style.display = visible ? "" : "none";
 }
 
