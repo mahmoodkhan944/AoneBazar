@@ -56,6 +56,9 @@
         <button class="admin-nav-item" data-view="coupons" onclick="showAdminView('coupons')">
           <i class="fa-solid fa-ticket"></i> Coupons
         </button>
+        <button class="admin-nav-item" data-view="delivery-areas" onclick="showAdminView('delivery-areas')">
+          <i class="fa-solid fa-location-dot"></i> Delivery Areas
+        </button>
         <button class="admin-nav-item" data-view="reviews" onclick="showAdminView('reviews')">
           <i class="fa-solid fa-star"></i> Reviews
         </button>
@@ -417,6 +420,40 @@
         </div>
       </section>
 
+      <!-- ===== DELIVERY AREAS ===== -->
+      <section id="view-delivery-areas" class="admin-view">
+        <div class="admin-topbar"><h1>Delivery Areas</h1></div>
+
+        <div class="admin-panel">
+          <h3>Add Delivery Area</h3>
+          <div class="admin-form-grid">
+            <div>
+              <label>Area / Locality name</label>
+              <input id="areaNameInput" placeholder="e.g. Lahideeh" />
+            </div>
+            <div>
+              <label>Estimated delivery time</label>
+              <input id="areaEtaInput" placeholder="e.g. 30–60 min" value="30–60 min" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addDeliveryArea()">Add Area</button>
+        </div>
+
+        <div class="admin-panel">
+          <h3>All Delivery Areas</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin:-4px 0 14px;">
+            Shoppers can only order from areas listed here as Active. Anything they type that doesn't match is shown as "not available yet", with a WhatsApp button to ask you to add it.
+          </p>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Area</th><th>ETA</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="deliveryAreasBody"></tbody>
+            </table>
+          </div>
+          <div id="deliveryAreasPagination" class="pagination"></div>
+        </div>
+      </section>
+
       <!-- ===== REVIEWS ===== -->
       <section id="view-reviews" class="admin-view">
         <div class="admin-topbar"><h1>Reviews</h1></div>
@@ -762,6 +799,18 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Usage limit (optional)</label>
       <input id="editCouponUsageLimit" type="number" placeholder="Unlimited if blank" />
       <button class="btn btn-primary" onclick="updateCoupon()">Save</button>
+    </div>
+  </div>
+
+  <div id="editAreaModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeAreaEdit()">×</button>
+      <h3>Edit Delivery Area</h3>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Area / Locality name</label>
+      <input id="editAreaName" placeholder="e.g. Lahideeh" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Estimated delivery time</label>
+      <input id="editAreaEta" placeholder="e.g. 30–60 min" />
+      <button class="btn btn-primary" onclick="updateDeliveryArea()">Save</button>
     </div>
   </div>
 

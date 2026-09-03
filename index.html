@@ -116,6 +116,27 @@
         </div>
       </div>
 
+      <div class="delivery-check-box">
+        <p class="delivery-check-label">📍 Enter your location to check delivery</p>
+        <div class="delivery-check-row">
+          <div class="delivery-check-input-wrap">
+            <input
+              type="text"
+              id="deliveryCheckInput"
+              class="input-pill"
+              placeholder="Area / locality name…"
+              autocomplete="off"
+              oninput="showDeliveryAreaSuggestions()"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();checkDeliveryAvailability();}"
+              onblur="setTimeout(hideDeliveryAreaSuggestions, 150)"
+            />
+            <div id="deliveryAreaSuggestions" class="delivery-area-suggestions hidden"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="checkDeliveryAvailability()">Check</button>
+        </div>
+        <div id="deliveryCheckResult"></div>
+      </div>
+
       <div class="cards">
         <div class="card">
           <span class="ribbon card-header">AOne Bazaar</span>

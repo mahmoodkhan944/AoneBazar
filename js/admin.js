@@ -99,6 +99,7 @@ const VIEW_LOADERS = {
   products: loadProducts,
   categories: loadCategoriesView,
   coupons: loadCoupons,
+  "delivery-areas": loadDeliveryAreas,
   reviews: loadReviews,
   content: loadSiteContentForm,
   users: loadUsers,
@@ -1830,6 +1831,134 @@ async function deleteCoupon(id) {
   const { error } = await supabase.from("coupons").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadCoupons();
+}
+
+/***********************
+    DELIVERY AREAS
+************************/
+
+async function loadDeliveryAreas() {
+  const body = document.getElementById("deliveryAreasBody");
+  body.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading…</td></tr>`;
+
+  const { data: rows, error } = await supabase
+    .from("delivery_areas")
+    .select("*")
+    .order("area_name");
+
+  if (error) {
+    body.innerHTML = `<tr><td colspan="4">Could not load delivery areas</td></tr>`;
+    return;
+  }
+
+  deliveryAreasPage = 1;
+  renderDeliveryAreasTable(rows || []);
+}
+
+let deliveryAreasPage = 1;
+let currentDeliveryAreasList = [];
+
+function renderDeliveryAreasTable(list) {
+  currentDeliveryAreasList = list;
+  const body = document.getElementById("deliveryAreasBody");
+
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);">No delivery areas added yet</td></tr>`;
+    document.getElementById("deliveryAreasPagination").innerHTML = "";
+    return;
+  }
+
+  const pageItems = paginateArray(list, deliveryAreasPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(a => `
+    <tr>
+      <td class="cell-title">${a.area_name}</td>
+      <td data-label="ETA">${a.eta_text}</td>
+      <td data-label="Status"><span class="status-pill ${a.active ? 'DELIVERED' : 'CANCELLED'}">${a.active ? "Active" : "Off"}</span></td>
+      <td>
+        <div class="table-actions">
+          <button onclick='editDeliveryArea(${jsonAttr(a)})'>Edit</button>
+          <button onclick="toggleDeliveryArea('${a.id}', ${!a.active})">${a.active ? "Deactivate" : "Activate"}</button>
+          <button class="danger" onclick="deleteDeliveryArea('${a.id}')">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  renderPagination("deliveryAreasPagination", list.length, deliveryAreasPage, PAGE_SIZE, "goToDeliveryAreasPage");
+}
+
+function goToDeliveryAreasPage(n) {
+  deliveryAreasPage = n;
+  renderDeliveryAreasTable(currentDeliveryAreasList);
+}
+
+async function addDeliveryArea() {
+  const area_name = document.getElementById("areaNameInput").value.trim();
+  const eta_text = document.getElementById("areaEtaInput").value.trim() || "30–60 min";
+
+  if (!area_name) {
+    alert("Enter an area / locality name");
+    return;
+  }
+
+  const { error } = await supabase.from("delivery_areas").insert({ area_name, eta_text });
+
+  if (error) {
+    alert("Could not add: " + error.message);
+    return;
+  }
+
+  document.getElementById("areaNameInput").value = "";
+  document.getElementById("areaEtaInput").value = "30–60 min";
+
+  loadDeliveryAreas();
+}
+
+async function toggleDeliveryArea(id, active) {
+  const { error } = await supabase.from("delivery_areas").update({ active }).eq("id", id);
+  if (error) { alert("Could not update: " + error.message); return; }
+  loadDeliveryAreas();
+}
+
+let editingAreaId = null;
+
+function editDeliveryArea(a) {
+  editingAreaId = a.id;
+  document.getElementById("editAreaName").value = a.area_name;
+  document.getElementById("editAreaEta").value = a.eta_text;
+  document.getElementById("editAreaModal").classList.remove("hidden");
+}
+
+function closeAreaEdit() {
+  document.getElementById("editAreaModal").classList.add("hidden");
+}
+
+async function updateDeliveryArea() {
+  const area_name = document.getElementById("editAreaName").value.trim();
+  const eta_text = document.getElementById("editAreaEta").value.trim() || "30–60 min";
+
+  if (!area_name) {
+    alert("Enter an area / locality name");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("delivery_areas")
+    .update({ area_name, eta_text })
+    .eq("id", editingAreaId);
+
+  if (error) { alert("Could not update: " + error.message); return; }
+
+  closeAreaEdit();
+  loadDeliveryAreas();
+}
+
+async function deleteDeliveryArea(id) {
+  if (!(await customConfirm("Delete this delivery area?", "Delete"))) return;
+  const { error } = await supabase.from("delivery_areas").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  loadDeliveryAreas();
 }
 
 /***********************

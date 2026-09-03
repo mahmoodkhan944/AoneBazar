@@ -13,6 +13,118 @@ const cartBox = document.getElementById("cartBox");
 const cartItems = document.getElementById("cartItems");
 const cartTotal = document.getElementById("cartTotal");
 
+/***********************
+    DELIVERY AVAILABILITY CHECK
+    Matches whatever the shopper typed against the admin's
+    delivery_areas list (by area name) — case-insensitive. No
+    match → offer to ask over WhatsApp instead of just leaving
+    them stuck.
+************************/
+
+let deliveryAreasCache = null; // active areas, fetched once and reused for both the suggestion dropdown and the actual check
+
+/** Fetched once, lazily — the homepage's location box is the only
+ *  thing that needs this, so there's no point loading it on every
+ *  page. */
+async function loadDeliveryAreasCache() {
+  if (deliveryAreasCache) return deliveryAreasCache;
+
+  const { data: rows, error } = await supabase
+    .from("delivery_areas")
+    .select("area_name, eta_text")
+    .eq("active", true);
+
+  deliveryAreasCache = error ? [] : (rows || []);
+  return deliveryAreasCache;
+}
+
+/** As the shopper types ("L") every admin-listed area starting with
+ *  that text ("Lahideeh", "Lohta"...) shows up as a clickable
+ *  suggestion — picking one fills the box and checks it right away,
+ *  instead of them having to type the whole name out and hope it
+ *  matches. */
+async function showDeliveryAreaSuggestions() {
+  const input = document.getElementById("deliveryCheckInput");
+  const box = document.getElementById("deliveryAreaSuggestions");
+  if (!input || !box) return;
+
+  const query = input.value.trim().toLowerCase();
+  if (!query) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  const areas = await loadDeliveryAreasCache();
+  const matches = areas.filter(a => a.area_name.toLowerCase().startsWith(query)).slice(0, 8);
+
+  if (matches.length === 0) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.innerHTML = matches.map(a => `
+    <button type="button" class="delivery-area-suggestion" onmousedown="pickDeliveryAreaSuggestion('${a.area_name.replace(/'/g, "\\'")}')">
+      <i class="fa-solid fa-location-dot"></i> ${a.area_name}
+    </button>
+  `).join("");
+  box.classList.remove("hidden");
+}
+
+function hideDeliveryAreaSuggestions() {
+  const box = document.getElementById("deliveryAreaSuggestions");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+}
+
+function pickDeliveryAreaSuggestion(areaName) {
+  const input = document.getElementById("deliveryCheckInput");
+  if (input) input.value = areaName;
+  hideDeliveryAreaSuggestions();
+  checkDeliveryAvailability();
+}
+
+async function checkDeliveryAvailability() {
+  const input = document.getElementById("deliveryCheckInput");
+  const resultEl = document.getElementById("deliveryCheckResult");
+  if (!input || !resultEl) return;
+
+  hideDeliveryAreaSuggestions();
+
+  const query = input.value.trim();
+  if (!query) {
+    resultEl.innerHTML = `<p class="delivery-check-message delivery-check-warn">Type your area name first.</p>`;
+    return;
+  }
+
+  resultEl.innerHTML = `<p class="delivery-check-message">Checking…</p>`;
+
+  const rows = await loadDeliveryAreasCache();
+
+  const q = query.toLowerCase();
+  const match = rows.find(a =>
+    a.area_name.toLowerCase().includes(q) || q.includes(a.area_name.toLowerCase())
+  );
+
+  if (match) {
+    resultEl.innerHTML = `
+      <p class="delivery-check-message delivery-check-yes">
+        <i class="fa-solid fa-circle-check"></i> Delivery available<br>
+        <span class="delivery-check-eta">Estimated delivery: ${match.eta_text}</span>
+      </p>`;
+    return;
+  }
+
+  const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${query}" — could you add it if not?`);
+  resultEl.innerHTML = `
+    <p class="delivery-check-message delivery-check-no">
+      <i class="fa-solid fa-circle-xmark"></i> Sorry, delivery isn't available in your area yet.
+    </p>
+    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
+      <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
+    </a>`;
+}
+
 const customerName = document.getElementById("customerName");
 const customerAddress = document.getElementById("customerAddress");
 
