@@ -13,6 +13,15 @@ const cartBox = document.getElementById("cartBox");
 const cartItems = document.getElementById("cartItems");
 const cartTotal = document.getElementById("cartTotal");
 
+/** The hero's "Shop Now" button — just scrolls down to the store
+ *  picker cards already on the homepage, since there are three
+ *  separate stores here and this button isn't tied to any one of
+ *  them in particular. */
+function scrollToStoreCards() {
+  const cards = document.querySelector(".hero .cards");
+  if (cards) cards.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 const customerName = document.getElementById("customerName");
 const customerAddress = document.getElementById("customerAddress");
 
@@ -224,6 +233,7 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
   setHomepageFeaturedVisible(false);
+  setNewArrivalsVisible(false);
 
   // Show skeletons immediately — the store's own products/categories
   // are about to be fetched, and this is a visibly better first
@@ -877,6 +887,7 @@ function closeStore() {
   storeSection.classList.add("hidden");
   heroSection.style.display = "flex";
   setHomepageFeaturedVisible(true);
+  setNewArrivalsVisible(true);
   history.replaceState(null, "", location.pathname);
 }
 
@@ -890,6 +901,49 @@ function updateStoreUrl(store, category, page) {
   if (page && page > 1) params.set("page", page);
   const query = params.toString();
   history.replaceState(null, "", query ? `${location.pathname}?${query}` : location.pathname);
+}
+
+/***********************
+    NEW ARRIVALS (automatic)
+    The most recently added in-stock products across every store,
+    with a "NEW" badge — no admin curation needed, it's always just
+    whatever was added most recently.
+************************/
+
+/** Mirrors setHomepageFeaturedVisible — New Arrivals is homepage-
+ *  only too, so it hides the same way once a store is opened. */
+function setNewArrivalsVisible(visible) {
+  const el = document.getElementById("newArrivalsSection");
+  if (el) el.style.display = visible ? "" : "none";
+}
+
+async function loadNewArrivals() {
+  const container = document.getElementById("newArrivalsSection");
+  if (!container) return; // not on the homepage
+
+  const { data: rows, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("in_stock", true)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  if (error || !rows || rows.length === 0) {
+    if (error) console.error(error);
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = `
+    <section class="featured-section new-arrivals-section">
+      <div class="container">
+        <h2 class="featured-section-title">New Arrivals</h2>
+        <div class="featured-row">
+          ${rows.map(p => featuredProductCardHtml(p, { isNew: true })).join("")}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 /***********************
@@ -943,15 +997,17 @@ async function loadFeaturedSections() {
   `).join("");
 }
 
-function featuredProductCardHtml(p) {
+function featuredProductCardHtml(p, opts) {
   const hasVariants = p.variants && p.variants.length > 0;
   const initial = hasVariants ? p.variants[0] : { price: p.price, mrp: p.mrp };
   const initialMrp = hasVariants ? (initial.mrp || p.mrp) : initial.mrp;
   const hasDiscount = initialMrp && initialMrp > initial.price;
   const discountPct = hasDiscount ? Math.round(((initialMrp - initial.price) / initialMrp) * 100) : 0;
+  const isNew = opts && opts.isNew;
 
   return `
     <div class="featured-card">
+      ${isNew ? `<span class="new-badge">NEW</span>` : ""}
       <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
       <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
@@ -1699,6 +1755,7 @@ window.onload = function () {
   updateWhatsAppCTA();
   loadProductPage(); // no-ops unless this is product.html
   loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
+  loadNewArrivals(); // no-ops unless #newArrivalsSection exists on this page
 
   // Coming back from a product page, or from the mega-menu? Jump
   // straight to that store (and category, if given).
