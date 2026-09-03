@@ -13,15 +13,6 @@ const cartBox = document.getElementById("cartBox");
 const cartItems = document.getElementById("cartItems");
 const cartTotal = document.getElementById("cartTotal");
 
-/** The hero's "Shop Now" button — just scrolls down to the store
- *  picker cards already on the homepage, since there are three
- *  separate stores here and this button isn't tied to any one of
- *  them in particular. */
-function scrollToStoreCards() {
-  const cards = document.querySelector(".hero .cards");
-  if (cards) cards.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
 const customerName = document.getElementById("customerName");
 const customerAddress = document.getElementById("customerAddress");
 

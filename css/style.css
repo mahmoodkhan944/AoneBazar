@@ -174,13 +174,6 @@
   margin-top: 20px;
 }
 
-.hero-cta {
-  margin-top: 26px;
-  padding: 14px 36px;
-  font-size: 1rem;
-  border-radius: 999px;
-}
-
 .trust-chip {
   display: inline-flex;
   align-items: center;
@@ -1998,7 +1991,6 @@
   .hero-intro p { font-size: 0.95rem; }
   .trust-chips { gap: 8px; }
   .trust-chip { font-size: 0.78rem; padding: 7px 12px; }
-  .hero-cta { margin-top: 20px; padding: 12px 30px; width: 100%; max-width: 280px; }
 
   /* ---- Section rhythm — less dead air between blocks on a phone ---- */
   .section { padding: 32px 0; }
