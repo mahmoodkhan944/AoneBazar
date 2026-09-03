@@ -729,14 +729,6 @@ function renderProductGrid(items, emptyMessage) {
   }
 
   const pageItems = paginateArray(items, storeProductsPage, PAGE_SIZE);
-  // Ratings are used for the card badge below — loaded lazily and
-  // cached, so this is a no-op after the very first time it's needed.
-  loadProductRatingsMap().then(() => {
-    pageItems.forEach(p => {
-      const badgeEl = document.getElementById(`rating-${p.id}`);
-      if (badgeEl) badgeEl.outerHTML = ratingBadgeHtml(p);
-    });
-  });
 
   pageItems.forEach(p => {
     const hasVariants = p.variants && p.variants.length > 0;
@@ -768,7 +760,6 @@ function renderProductGrid(items, emptyMessage) {
         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
           <img src="${p.images ? p.images[0] : p.img}">
           <h4>${displayProductName(p)}</h4>
-          <span id="rating-${p.id}">${ratingBadgeHtml(p)}</span>
           <p id="price-${p.id}">${priceHtml}</p>
         </a>
         ${variantSelect}
@@ -1294,7 +1285,6 @@ function featuredProductCardHtml(p, opts) {
       <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
         <h4>${displayProductName(p)}</h4>
-        ${ratingBadgeHtml(p)}
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}

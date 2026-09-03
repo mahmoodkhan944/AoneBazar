@@ -35,6 +35,26 @@ if (!window.__AONE_SUPABASE_READY__) {
       .replace(/</g, "&lt;");
   };
 
+  /** "Back to Top" — a small floating button that fades in once the
+   *  page has been scrolled down a bit, and smooth-scrolls back to
+   *  the top when tapped. No-ops on any page that doesn't have the
+   *  button (e.g. admin.html), so this is safe to run everywhere. */
+  (function initBackToTop() {
+    const btn = document.getElementById("backToTopBtn");
+    if (!btn) return;
+
+    const toggleVisible = () => {
+      btn.classList.toggle("visible", window.scrollY > 400);
+    };
+
+    window.addEventListener("scroll", toggleVisible, { passive: true });
+    toggleVisible();
+
+    btn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  })();
+
   document.addEventListener("click", e => {
     const nav = document.getElementById("mainNav");
     const toggleBtn = document.querySelector(".mobile-nav-toggle");

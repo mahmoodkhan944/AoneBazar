@@ -762,6 +762,37 @@
 }
 #whatsappFloat:hover { transform: scale(1.08); }
 
+.back-to-top-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  z-index: 46;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--green-700);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.15rem;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease), visibility 0s linear 0.2s;
+}
+.back-to-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+.back-to-top-btn:hover { transform: translateY(-2px) scale(1.06); }
+.back-to-top-btn.visible:hover { transform: translateY(-2px) scale(1.06); }
+
 /* ---------------- MODAL (generic) ---------------- */
 .modal {
   position: fixed;
