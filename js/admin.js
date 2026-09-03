@@ -841,7 +841,7 @@ function renderProductsTable(list) {
       <td data-label="Status"><span class="status-pill ${p.in_stock ? 'DELIVERED' : 'CANCELLED'}">${p.in_stock ? 'Active' : 'Inactive'}</span></td>
       <td>
         <div class="table-actions">
-          <button onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
+          <button onclick='editProduct(${jsonAttr(p)})'>Edit</button>
           <button onclick="toggleProductStock('${p.id}', ${!p.in_stock})">${p.in_stock ? 'Deactivate' : 'Activate'}</button>
           <button class="danger" onclick="deleteProduct('${p.id}')">Delete</button>
         </div>
@@ -1542,7 +1542,7 @@ function renderCategoriesTree(list) {
             ${categoryStatsHtml(sub)}
           </div>
           <div class="table-actions">
-            <button onclick='editCategory(${JSON.stringify(sub)})'>Edit</button>
+            <button onclick='editCategory(${jsonAttr(sub)})'>Edit</button>
             <button class="danger" onclick="deleteCategory('${sub.id}')">Delete</button>
           </div>
         </div>
@@ -1561,7 +1561,7 @@ function renderCategoriesTree(list) {
             <div class="table-actions">
               ${subs.length > 0 ? `<button onclick="toggleSubcategoriesVisible('${main.id}')">${isCollapsed ? `Show Sub-categories (${subs.length})` : "Hide Sub-categories"}</button>` : ""}
               <button onclick="quickAddSubcategory('${main.id}', '${main.name.replace(/'/g, "\\'")}', '${main.store}')">+ Sub-category</button>
-              <button onclick='editCategory(${JSON.stringify(main)})'>Edit</button>
+              <button onclick='editCategory(${jsonAttr(main)})'>Edit</button>
               <button class="danger" onclick="deleteCategory('${main.id}')">Delete</button>
             </div>
           </div>
@@ -1730,7 +1730,7 @@ function renderCouponsTable(list) {
       <td data-label="Status"><span class="status-pill ${c.active ? 'DELIVERED' : 'CANCELLED'}">${c.active ? "Active" : "Off"}</span></td>
       <td>
         <div class="table-actions">
-          <button onclick='editCoupon(${JSON.stringify(c)})'>Edit</button>
+          <button onclick='editCoupon(${jsonAttr(c)})'>Edit</button>
           <button onclick="toggleCoupon('${c.id}', ${!c.active})">${c.active ? "Deactivate" : "Activate"}</button>
           <button class="danger" onclick="deleteCoupon('${c.id}')">Delete</button>
         </div>

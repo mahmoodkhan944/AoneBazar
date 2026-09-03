@@ -21,6 +21,20 @@ if (!window.__AONE_SUPABASE_READY__) {
     if (nav) nav.classList.toggle("mobile-open");
   };
 
+  /** Safely embeds a JS object into a single-quoted inline HTML
+   *  attribute, e.g. onclick='addToCart(${jsonAttr(p)})'. Plain
+   *  JSON.stringify() breaks that attribute the moment any field —
+   *  a product name, description, category — contains an apostrophe
+   *  ("India's 1st...", "Chef's Special"), corrupting the markup and
+   *  taking down every button on the page with a syntax error.
+   *  Shared by both the storefront and the admin panel. */
+  window.jsonAttr = function (obj) {
+    return JSON.stringify(obj)
+      .replace(/&/g, "&amp;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;");
+  };
+
   document.addEventListener("click", e => {
     const nav = document.getElementById("mainNav");
     const toggleBtn = document.querySelector(".mobile-nav-toggle");

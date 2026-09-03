@@ -612,8 +612,8 @@ function renderProductGrid(items, emptyMessage) {
     const actionHtml = outOfStock
       ? `<button class="out-of-stock-btn" disabled>Out of Stock</button>`
       : (hasVariants
-          ? `<button onclick='addFromCardSelect(this, ${JSON.stringify(p)})'>Add to Cart</button>`
-          : `<button onclick='addToCart(${JSON.stringify(p)})'>Add to Cart</button>`);
+          ? `<button onclick='addFromCardSelect(this, ${jsonAttr(p)})'>Add to Cart</button>`
+          : `<button onclick='addToCart(${jsonAttr(p)})'>Add to Cart</button>`);
 
     productGrid.innerHTML += `
       <div class="product${outOfStock ? " product-out-of-stock" : ""}">
@@ -960,8 +960,8 @@ function featuredProductCardHtml(p) {
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}
       ${hasVariants
-        ? `<button onclick='addFromCardSelect(this, ${JSON.stringify(p)})'>Add to Cart</button>`
-        : `<button onclick='addToCart(${JSON.stringify(p)})'>Add to Cart</button>`
+        ? `<button onclick='addFromCardSelect(this, ${jsonAttr(p)})'>Add to Cart</button>`
+        : `<button onclick='addToCart(${jsonAttr(p)})'>Add to Cart</button>`
       }
     </div>
   `;
@@ -2414,7 +2414,7 @@ async function openWishlist() {
           <b>${displayProductName(p)}</b>
           <span>₹${p.price}</span>
         </div>
-        <button class="btn btn-primary btn-sm" onclick='addToCart(${JSON.stringify(p)})'>Add</button>
+        <button class="btn btn-primary btn-sm" onclick='addToCart(${jsonAttr(p)})'>Add</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleWishlist('${p.id}').then(openWishlist)">Remove</button>
       </div>
     `;
