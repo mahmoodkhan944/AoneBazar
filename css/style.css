@@ -1751,6 +1751,11 @@
 }
 .cart-summary-discount { color: var(--green-700); }
 
+.cart-min-order-warning {
+  color: var(--danger, #c0392b);
+  font-weight: 700;
+}
+
 /* ---------------- WISHLIST MODAL LIST ---------------- */
 .wishlist-item {
   display: flex;

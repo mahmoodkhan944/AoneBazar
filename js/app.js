@@ -1532,6 +1532,8 @@ function updateCartTotals() {
   const subtotal = cartSubtotal();
   const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
   const goodsTotal = Math.max(0, subtotal - discount);
+  const minOrder = getMinOrder();
+  const belowMinimum = cart.length > 0 && goodsTotal < minOrder;
   const deliveryCharge = cart.length > 0 ? calculateDeliveryCharge(goodsTotal) : 0;
   const total = goodsTotal + deliveryCharge;
 
@@ -1549,7 +1551,17 @@ function updateCartTotals() {
       deliveryRow.classList.add("hidden");
     } else {
       deliveryRow.classList.remove("hidden");
-      deliveryLabel.innerText = deliveryCharge > 0 ? "₹" + deliveryCharge : "Free";
+      // Below the minimum order — swap the delivery info out for a
+      // clear "how much more" nudge right where the shopper's
+      // already looking, instead of a floating toast that appears
+      // only once they try to check out.
+      if (belowMinimum) {
+        deliveryLabel.innerText = `Minimum order ₹${minOrder}`;
+        deliveryLabel.classList.add("cart-min-order-warning");
+      } else {
+        deliveryLabel.innerText = deliveryCharge > 0 ? "₹" + deliveryCharge : "Free";
+        deliveryLabel.classList.remove("cart-min-order-warning");
+      }
     }
   }
 }
@@ -1927,7 +1939,16 @@ function proceedToPayment() {
   const goodsTotal = Math.max(0, cartSubtotal() - discount);
 
   if (goodsTotal < getMinOrder()) {
-    alert(`Minimum order is ₹${getMinOrder()}. Please add more items to your cart.`);
+    // The "Delivery" row already shows "Minimum order ₹X" right
+    // above Total whenever the cart's under it — just draw the
+    // shopper's eye there instead of a floating toast saying the
+    // same thing again.
+    const deliveryRow = document.getElementById("cartDeliveryRow");
+    if (deliveryRow) {
+      deliveryRow.scrollIntoView({ behavior: "smooth", block: "center" });
+      deliveryRow.classList.add("shake-attention");
+      setTimeout(() => deliveryRow.classList.remove("shake-attention"), 500);
+    }
     return;
   }
 
