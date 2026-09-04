@@ -1806,6 +1806,19 @@ async function placeOrder() {
 
   await maybeSaveAddress(name, address);
 
+  // Keeps the admin's Users list showing a real name instead of just
+  // an email/phone — the anonymous phone-login flow never asks for a
+  // name up front, so the first (and every) order is what actually
+  // supplies it. Non-fatal if it fails; the order itself is already
+  // placed either way.
+  if (currentSupabaseUser) {
+    const { error: nameError } = await supabase
+      .from("profiles")
+      .update({ full_name: name })
+      .eq("id", currentSupabaseUser.id);
+    if (nameError) console.warn("Could not save name to profile:", nameError.message);
+  }
+
   const order = {
     id,
     invoiceNo,
@@ -2877,23 +2890,18 @@ saveCart();
 updateCartBar();
 
 function goHome() {
+  // Reuses the exact same "leave the store" logic as the ⬅ Back
+  // button (closeStore) — that's what actually un-hides New
+  // Arrivals/Trending/Best Deals/Top Rated/Why Shop again; this was
+  // previously just hiding the store and showing the hero, which
+  // left those sections stuck hidden from whatever store view they
+  // were last closed from.
+  closeStore();
 
-  // सभी store sections hide
-  document.querySelectorAll(".store").forEach(s => {
-    s.classList.add("hidden");
-  });
-
-  // hero show
-  const hero = document.querySelector(".hero");
-  if (hero) {
-    hero.style.display = "flex";
-  }
-  // 🟢 scroll top (important UX)
   window.scrollTo({
     top: 0,
     behavior: "smooth"
   });
-
 }
 
 /***********************

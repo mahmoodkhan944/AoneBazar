@@ -632,11 +632,16 @@
         <div class="admin-panel">
           <h3>All Users</h3>
           <div class="admin-toolbar">
-            <input type="text" id="userSearch" placeholder="Search by email…" oninput="filterUsers()" />
+            <input type="text" id="userSearch" placeholder="Search by name, email or phone…" oninput="filterUsers()" />
+          </div>
+          <div class="cat-type-toggle" style="margin-bottom:14px;">
+            <button type="button" class="cat-type-btn active" data-role="all" onclick="setUsersRoleFilter('all')">All</button>
+            <button type="button" class="cat-type-btn" data-role="customer" onclick="setUsersRoleFilter('customer')">Customers</button>
+            <button type="button" class="cat-type-btn" data-role="admin" onclick="setUsersRoleFilter('admin')">Admins</button>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
               <tbody id="usersBody"></tbody>
             </table>
           </div>

@@ -2187,7 +2187,7 @@ let allUsersCache = [];
 
 async function loadUsers() {
   const body = document.getElementById("usersBody");
-  body.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="6" style="text-align:center;">Loading…</td></tr>`;
 
   const { data: rows, error } = await supabase
     .from("profiles")
@@ -2195,25 +2195,50 @@ async function loadUsers() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="5">Could not load users</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6">Could not load users</td></tr>`;
     console.error(error);
     return;
   }
 
   allUsersCache = rows || [];
   usersPage = 1;
-  renderUsersTable(allUsersCache);
+  renderUsersTable(applyUsersFilters());
 }
 
 let usersPage = 1;
 let currentUsersList = [];
+let usersRoleFilter = "all"; // "all" | "customer" | "admin"
+
+function setUsersRoleFilter(role) {
+  usersRoleFilter = role;
+  document.querySelectorAll("#view-users .cat-type-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.role === role);
+  });
+  filterUsers();
+}
+
+/** Combines the search box and the All/Customers/Admins tabs into
+ *  one filtered list — kept as its own function so both loadUsers()
+ *  and filterUsers() apply the exact same rules. */
+function applyUsersFilters() {
+  const q = (document.getElementById("userSearch")?.value || "").toLowerCase();
+
+  return allUsersCache.filter(u => {
+    const matchesRole = usersRoleFilter === "all" || u.role === usersRoleFilter;
+    const matchesSearch = !q ||
+      (u.full_name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.phone || "").toLowerCase().includes(q);
+    return matchesRole && matchesSearch;
+  });
+}
 
 function renderUsersTable(list) {
   currentUsersList = list;
   const body = document.getElementById("usersBody");
 
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);">No users yet</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No users yet</td></tr>`;
     document.getElementById("usersPagination").innerHTML = "";
     return;
   }
@@ -2222,7 +2247,8 @@ function renderUsersTable(list) {
 
   body.innerHTML = pageItems.map(u => `
     <tr>
-      <td class="cell-title">${u.email || "—"}</td>
+      <td class="cell-title">${u.full_name || "—"}</td>
+      <td data-label="Email">${u.email || "—"}</td>
       <td data-label="Phone">${u.phone || "—"}</td>
       <td data-label="Role"><span class="status-pill ${u.role === 'admin' ? 'DELIVERED' : 'PROCESSING'}">${u.role}</span></td>
       <td data-label="Joined">${new Date(u.created_at).toLocaleDateString()}</td>
@@ -2248,9 +2274,8 @@ function goToUsersPage(n) {
 }
 
 function filterUsers() {
-  const q = document.getElementById("userSearch").value.toLowerCase();
   usersPage = 1;
-  renderUsersTable(allUsersCache.filter(u => (u.email || "").toLowerCase().includes(q)));
+  renderUsersTable(applyUsersFilters());
 }
 
 async function toggleUserRole(id, newRole) {
