@@ -274,36 +274,72 @@
   </div>
 
   <!-- ============ FOOTER ============ -->
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-col">
-        <h2>AOne Bazaar</h2>
-        <p>Fast • Fresh • Reliable</p>
-        <p>Your one-stop shop for groceries, cafe & daily needs.</p>
+  <footer class="footer footer-v2">
+    <div class="footer-container footer-v2-grid">
+      <div class="footer-col footer-brand-col">
+        <div class="footer-brand-row">
+          <img src="images/logo192.png" alt="AOne Bazaar" class="footer-logo" />
+          <div>
+            <h2>AOne Bazaar</h2>
+            <p class="footer-tagline">FAST • FRESH • RELIABLE</p>
+          </div>
+        </div>
+        <p>Your one-stop shop for groceries, cafe items, home essentials and daily needs. We deliver freshness, quality and convenience to your doorstep.</p>
+
+        <div class="footer-stats">
+          <div class="footer-stat">
+            <span class="footer-stat-icon"><i class="fa-solid fa-basket-shopping"></i></span>
+            <div><strong id="footerStatProducts">—</strong><span>Products</span></div>
+          </div>
+          <div class="footer-stat">
+            <span class="footer-stat-icon"><i class="fa-solid fa-users"></i></span>
+            <div><strong id="footerStatCustomers">—</strong><span>Customers</span></div>
+          </div>
+          <div class="footer-stat">
+            <span class="footer-stat-icon"><i class="fa-solid fa-location-dot"></i></span>
+            <div><strong id="footerStatAreas">—</strong><span>Delivery Areas</span></div>
+          </div>
+        </div>
+
+        <p class="footer-motto">Freshness Brings Happiness <i class="fa-regular fa-heart"></i></p>
       </div>
 
       <div class="footer-col">
         <h4>Quick Links</h4>
         <ul>
-          <li><a href="index.html" style="color:inherit;">Home</a></li>
-          <li><a href="about.html" style="color:inherit;">About</a></li>
-          <li><a href="contact.html" style="color:inherit;">Contact</a></li>
+          <li onclick="location.href='index.html'"><i class="fa-solid fa-chevron-right"></i><span>Home</span></li>
+          <li onclick="location.href='about.html'"><i class="fa-solid fa-chevron-right"></i><span>About Us</span></li>
+          <li onclick="location.href='contact.html'"><i class="fa-solid fa-chevron-right"></i><span>Contact Us</span></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h4>Legal</h4>
+        <h4>Customer Support</h4>
         <ul>
-          <li><a href="privacy-policy.html" style="color:inherit;">Privacy Policy</a></li>
-          <li><a href="terms.html" style="color:inherit;">Terms & Conditions</a></li>
-          <li><a href="refund-policy.html" style="color:inherit;">Refund & Returns</a></li>
+          <li onclick="openMyOrders()"><i class="fa-solid fa-box"></i><span>My Orders</span></li>
+          <li onclick="openWishlist()"><i class="fa-solid fa-heart"></i><span>Wishlist</span></li>
+          <li onclick="location.href='refund-policy.html'"><i class="fa-solid fa-rotate-left"></i><span>Return &amp; Refund</span></li>
+          <li onclick="location.href='privacy-policy.html'"><i class="fa-solid fa-shield-halved"></i><span>Privacy Policy</span></li>
+          <li onclick="location.href='terms.html'"><i class="fa-solid fa-file-lines"></i><span>Terms &amp; Conditions</span></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h4>Contact</h4>
-        <p><a href="tel:+918009555567" style="color:#fff">📞 +91 8009555567</a></p>
-        <p>📍 Master Naseem Complex,<br />Lahideeh Bazar, Azamgarh</p>
+        <h4>Contact Us</h4>
+        <ul class="footer-contact-list">
+          <li class="footer-contact-item">
+            <span class="footer-contact-icon"><i class="fa-solid fa-phone"></i></span>
+            <a href="tel:+918009555567">+91 8009555567<span class="footer-li-sub">Mon - Sat, 9AM - 8PM</span></a>
+          </li>
+          <li class="footer-contact-item">
+            <span class="footer-contact-icon"><i class="fa-solid fa-location-dot"></i></span>
+            <span>Master Naseem Complex,<br />Lahideeh Bazar, Azamgarh,<br />Uttar Pradesh - 276001</span>
+          </li>
+          <li class="footer-contact-item">
+            <span class="footer-contact-icon"><i class="fa-solid fa-map"></i></span>
+            <a href="https://maps.app.goo.gl/jWDgXUiZZ177bZHP7" target="_blank" rel="noopener noreferrer">View on Google Map ↗</a>
+          </li>
+        </ul>
       </div>
 
       <div class="footer-col">
@@ -311,7 +347,9 @@
         <div class="socials" data-social-links>
           <a href="https://www.facebook.com/share/18mMKAfYBN/" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
           <a href="https://www.instagram.com/aonebazar.co.in?igsh=NzRybXhwamV0ZGF6" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://wa.me/918009555567" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
         </div>
+        <p class="footer-follow-note">Stay connected for the latest offers, new products and updates!</p>
         <button class="footer-share-btn hidden" data-install-app-btn onclick="installAoneBazaarApp()" style="margin-top:12px;">
           <i class="fa-solid fa-download"></i> Install App
         </button>

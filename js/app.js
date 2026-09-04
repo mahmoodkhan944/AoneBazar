@@ -1072,6 +1072,33 @@ function setWhyShopVisible(visible) {
   if (el) el.style.display = visible ? "" : "none";
 }
 
+/***********************
+    FOOTER STATS
+    Real counts (not made-up numbers) for the "Products / Customers /
+    Delivery Areas" row in the footer's brand column.
+************************/
+
+async function loadFooterStats() {
+  const productsEl = document.getElementById("footerStatProducts");
+  const customersEl = document.getElementById("footerStatCustomers");
+  const areasEl = document.getElementById("footerStatAreas");
+  if (!productsEl && !customersEl && !areasEl) return; // not on a page with this footer
+
+  // A plain SELECT count() on profiles would only ever see this
+  // visitor's own row (or none at all) — profiles is intentionally
+  // locked down that way — so this goes through a security-definer
+  // RPC that returns just the three aggregate numbers instead. See
+  // get_public_footer_stats() in Supabase.
+  const { data, error } = await supabase.rpc("get_public_footer_stats");
+  const stats = (!error && data && data[0]) ? data[0] : {};
+
+  const fmt = n => (n === null || n === undefined) ? "—" : (n >= 100 ? `${Math.floor(n / 10) * 10}+` : String(n));
+
+  if (productsEl) productsEl.textContent = fmt(stats.products_count);
+  if (customersEl) customersEl.textContent = fmt(stats.customers_count);
+  if (areasEl) areasEl.textContent = fmt(stats.delivery_areas_count);
+}
+
 async function loadAutoProductSections() {
   const container = document.getElementById("autoProductSections");
   if (!container) return; // not on the homepage
@@ -2276,6 +2303,7 @@ window.onload = function () {
   loadProductPage(); // no-ops unless this is product.html
   loadFeaturedSections(); // no-ops unless #featuredSections exists on this page
   const autoSectionsReady = loadAutoProductSections(); // no-ops unless #autoProductSections exists on this page
+  loadFooterStats(); // no-ops unless the footer's stat spans exist on this page
 
   // Coming back from a product page, or from the mega-menu? Jump
   // straight to that store (and category, if given).

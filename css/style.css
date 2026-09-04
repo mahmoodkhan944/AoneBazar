@@ -1435,6 +1435,11 @@
   padding-top: 52px;
 }
 
+.footer-v2 {
+  background: var(--green-900);
+  color: #cfe3d6;
+}
+
 .footer-container {
   max-width: 1180px;
   margin: 0 auto;
@@ -1443,6 +1448,91 @@
   grid-template-columns: 1.3fr 1fr 0.9fr 1.1fr 0.8fr;
   gap: 28px;
 }
+
+.footer-v2-grid { align-items: start; }
+
+.footer-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.footer-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: #fff;
+  object-fit: contain;
+  padding: 3px;
+}
+
+.footer-v2 .footer-col h2 { margin-bottom: 2px; }
+
+.footer-tagline {
+  color: var(--green-400, #7ed6a0);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.footer-stats {
+  display: flex;
+  gap: 18px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+
+.footer-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green-400, #7ed6a0);
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.footer-stat strong {
+  display: block;
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+/* Scoped to the number/label's own <div> — not ".footer-stat span" —
+   because the icon circle above is *also* a <span> and a direct
+   child of .footer-stat; the old bare-span selector matched it too
+   (with higher specificity than .footer-stat-icon), recoloring it
+   grey, shrinking it, and breaking its centering so the icon glyph
+   rendered outside the visible circle. */
+.footer-stat div span {
+  display: block;
+  font-size: 0.72rem;
+  color: #a9c3ae;
+}
+
+.footer-motto {
+  font-family: var(--font-display, serif);
+  font-style: italic;
+  color: var(--green-400, #7ed6a0);
+  font-size: 0.95rem;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.footer-motto i { margin-left: 4px; }
 
 .footer-col h2 {
   color: #fff;
@@ -1457,9 +1547,21 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 14px;
+  position: relative;
+  padding-bottom: 10px;
+}
+.footer-v2 .footer-col h4::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 26px;
+  height: 2px;
+  background: var(--green-400, #7ed6a0);
 }
 
 .footer-col p { color: #a9b4c7; font-size: 0.88rem; }
+.footer-v2 .footer-col p { color: #b7d0bd; line-height: 1.55; }
 
 .footer-col ul {
   list-style: none;
@@ -1475,6 +1577,67 @@
   transition: color var(--fast) var(--ease);
 }
 .footer-col li:hover { color: var(--marigold-400); }
+
+.footer-v2 .footer-col li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #dcefe0;
+  padding: 7px 0;
+}
+.footer-v2 .footer-col li i {
+  font-size: 0.65rem;
+  color: var(--green-400, #7ed6a0);
+  flex: 0 0 auto;
+}
+.footer-v2 .footer-col li:hover { color: var(--marigold-400); }
+.footer-v2 .footer-col li a { color: inherit; text-decoration: none; }
+
+.footer-li-sub {
+  display: block;
+  font-size: 0.74rem;
+  color: #93b299;
+  font-weight: 400;
+}
+
+.footer-contact-list li,
+.footer-contact-item {
+  cursor: default;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+}
+
+.footer-contact-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green-400, #7ed6a0);
+  font-size: 0.8rem;
+  flex: 0 0 auto;
+}
+
+.footer-contact-item a,
+.footer-contact-item > span:not(.footer-contact-icon) {
+  color: #dcefe0;
+  font-size: 0.88rem;
+  text-decoration: none;
+  line-height: 1.5;
+}
+.footer-contact-item a:hover { color: var(--marigold-400); }
+
+.footer-follow-note {
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
 
 .socials {
   display: flex;
@@ -1494,6 +1657,8 @@
   transition: background var(--fast) var(--ease);
 }
 .socials a:hover { background: var(--marigold-600); color: var(--indigo-900); }
+.footer-v2 .socials a { background: rgba(255, 255, 255, 0.1); }
+.footer-v2 .socials a:hover { background: var(--marigold-600); color: var(--green-900); }
 
 .footer-bottom {
   margin-top: 40px;
@@ -1509,6 +1674,11 @@
   margin-left: auto;
   margin-right: auto;
 }
+.footer-v2 .footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: #a9c3ae;
+}
+.footer-payment { font-size: 0.8rem; }
 
 .footer-share-btn {
   display: inline-flex;
@@ -1527,6 +1697,7 @@
 }
 .footer-share-btn:hover { background: var(--marigold-600); color: var(--indigo-900); }
 .footer-share-btn:active { transform: scale(0.97); }
+.footer-v2 .footer-share-btn:hover { color: var(--green-900); }
 
 .footer-credit a { color: var(--marigold-400); font-weight: 600; }
 
@@ -1826,47 +1997,60 @@
   font-weight: 500;
 }
 
-/* ---------------- WHY SHOP WITH US + DELIVERY AREA ---------------- */
+/* ---------------- WHY SHOP STRIP + DELIVERY AREA ---------------- */
 .why-shop-section {
-  padding: 40px 0;
+  padding: 24px 0;
   background: var(--surface);
 }
 
-.section-title-center {
-  font-size: 1.5rem;
-  text-align: center;
-  margin-bottom: 26px;
-}
-
-.why-shop-grid {
+.why-shop-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  max-width: 900px;
-  margin: 0 auto;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
 }
 
-.why-shop-item {
+.why-shop-strip-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  text-align: center;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  gap: 12px;
+  background: var(--green-100);
   border-radius: var(--radius-md);
-  padding: 22px 12px;
+  padding: 16px 18px;
 }
 
-.why-shop-icon {
-  font-size: 1.8rem;
-  line-height: 1;
+.why-shop-strip-icon {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green-700);
+  font-size: 1.35rem;
 }
 
-.why-shop-item p {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin: 0;
+.why-shop-strip-item strong {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+/* Scoped to the text block's own <div> — not ".why-shop-strip-item
+   span" — because the icon circle above is *also* a <span> and a
+   direct child of .why-shop-strip-item; the old bare-span selector
+   was matching it too (with higher specificity than
+   .why-shop-strip-icon), quietly shrinking it, recoloring it grey,
+   and breaking its centering so the icon glyph rendered outside the
+   visible circle. */
+.why-shop-strip-item div span {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  margin-top: 1px;
 }
 
 .delivery-area-note {
@@ -1875,7 +2059,7 @@
   justify-content: center;
   gap: 8px;
   text-align: center;
-  margin: 30px auto 0;
+  margin: 20px auto 0;
   max-width: 520px;
   background: var(--green-100);
   border-radius: 999px;
@@ -2376,7 +2560,9 @@
   .category-tile { max-width: 68px; }
   .category-tile-label { font-size: 0.62rem; }
 
-  .why-shop-grid { grid-template-columns: repeat(2, 1fr); }
+  .why-shop-strip { grid-template-columns: repeat(2, 1fr); }
+  .why-shop-strip-item { padding: 12px 14px; }
+  .why-shop-strip-icon { width: 40px; height: 40px; font-size: 1.05rem; }
   .delivery-area-note { flex-direction: column; gap: 4px; padding: 14px 18px; }
   .delivery-check-box { padding: 14px 16px; margin-bottom: 24px; }
   .delivery-check-row { flex-direction: column; }
