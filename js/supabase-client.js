@@ -55,6 +55,19 @@ if (!window.__AONE_SUPABASE_READY__) {
     });
   })();
 
+  /** Logs a row whenever this browser actually installs the PWA
+   *  (added to home screen / desktop) — powers the "App Installs"
+   *  count on the admin dashboard. Only fires on browsers that
+   *  support the standard install flow (Chrome/Edge/Android, desktop
+   *  Chrome/Edge...) — iOS Safari has no JS API for "Add to Home
+   *  Screen" at all, so those installs can never be counted here.
+   *  window.supabase is read at fire-time (not registration time),
+   *  so this is safe to set up before the client finishes init. */
+  window.addEventListener("appinstalled", () => {
+    if (!window.supabase) return;
+    window.supabase.from("pwa_installs").insert({ user_agent: navigator.userAgent }).then(() => {}, () => {});
+  });
+
   document.addEventListener("click", e => {
     const nav = document.getElementById("mainNav");
     const toggleBtn = document.querySelector(".mobile-nav-toggle");

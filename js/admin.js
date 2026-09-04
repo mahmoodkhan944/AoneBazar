@@ -156,6 +156,15 @@ async function loadDashboard() {
   document.getElementById("statTotalRevenue").innerText = "₹" + Math.round(stats.total_revenue || 0);
   document.getElementById("statPendingOrders").innerText = stats.pending_orders || 0;
 
+  // Separate lightweight query rather than folding into the RPC above
+  // — keeps that function untouched, and a missing/not-yet-migrated
+  // pwa_installs table just shows 0 instead of breaking the rest of
+  // the dashboard.
+  supabase.from("pwa_installs").select("*", { count: "exact", head: true }).then(({ count, error: installsError }) => {
+    const el = document.getElementById("statAppInstalls");
+    if (el) el.innerText = installsError ? 0 : (count || 0);
+  });
+
   renderOrdersChart(stats.orders_last_7_days || []);
 
   const STORE_LABELS = { supermarket: "Supermarket", grocery: "Grocery", cafe: "Cafe" };
