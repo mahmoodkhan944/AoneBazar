@@ -74,8 +74,9 @@
       </nav>
 
       <div class="admin-sidebar-footer">
-        <span id="adminEmailLabel" style="display:block;font-size:0.78rem;color:#a9b4c7;margin-bottom:8px;"></span>
-        <button onclick="adminSignOut()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out</button>
+        <span id="adminEmailLabel" style="display:block;font-size:0.78rem;color:#a9c3ae;word-break:break-all;"></span>
+        <span style="display:block;font-size:0.72rem;color:#7fa88a;margin-top:2px;">Admin Panel</span>
+        <button onclick="adminSignOut()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</button>
       </div>
     </aside>
 
@@ -90,63 +91,130 @@
       <!-- ===== DASHBOARD ===== -->
       <section id="view-dashboard" class="admin-view active">
         <div class="admin-topbar">
-          <h1>Dashboard</h1>
-          <a href="index.html" class="btn btn-outline btn-sm" target="_blank">View Storefront ↗</a>
+          <div>
+            <h1>Dashboard</h1>
+            <p class="admin-topbar-subtitle" id="dashboardWelcome">Welcome back! Here's what's happening with your store.</p>
+          </div>
+          <div class="admin-topbar-actions">
+            <a href="index.html" class="btn btn-outline btn-sm" target="_blank">View Storefront ↗</a>
+            <button class="btn btn-primary btn-sm" onclick="showAdminView('reports')">
+              <i class="fa-solid fa-download"></i> Export Report
+            </button>
+          </div>
         </div>
 
         <div class="stat-grid">
           <div class="stat-card">
-            <div><div class="value" id="statTodaySales">₹0</div><div class="label">Sales Today</div></div>
+            <div>
+              <div class="value" id="statTotalOrders">0</div>
+              <div class="label">Total Orders</div>
+              <div class="stat-change" id="statTotalOrdersChange"></div>
+            </div>
+            <div class="stat-icon indigo"><i class="fa-solid fa-cart-shopping"></i></div>
+          </div>
+          <div class="stat-card">
+            <div>
+              <div class="value" id="statTotalRevenue">₹0</div>
+              <div class="label">Total Sales</div>
+              <div class="stat-change" id="statTotalRevenueChange"></div>
+            </div>
             <div class="stat-icon green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
           </div>
           <div class="stat-card">
-            <div><div class="value" id="statTotalOrders">0</div><div class="label">Total Orders</div></div>
+            <div>
+              <div class="value" id="statTotalCustomers">0</div>
+              <div class="label">Total Customers</div>
+              <div class="stat-change" id="statTotalCustomersChange"></div>
+            </div>
+            <div class="stat-icon green"><i class="fa-solid fa-users"></i></div>
+          </div>
+          <div class="stat-card">
+            <div>
+              <div class="value" id="statTotalProducts">0</div>
+              <div class="label">Total Products</div>
+              <div class="stat-change" id="statTotalProductsChange"></div>
+            </div>
             <div class="stat-icon indigo"><i class="fa-solid fa-box"></i></div>
           </div>
           <div class="stat-card">
-            <div><div class="value" id="statTotalRevenue">₹0</div><div class="label">Total Revenue</div></div>
-            <div class="stat-icon amber"><i class="fa-solid fa-chart-line"></i></div>
-          </div>
-          <div class="stat-card">
-            <div><div class="value" id="statPendingOrders">0</div><div class="label">Pending Orders</div></div>
-            <div class="stat-icon danger"><i class="fa-solid fa-clock"></i></div>
-          </div>
-          <div class="stat-card" title="Counts installs from Chrome/Edge/Android — iOS Safari has no way to report 'Add to Home Screen' installs, so iPhone installs aren't included here.">
-            <div><div class="value" id="statAppInstalls">0</div><div class="label">App Installs</div></div>
-            <div class="stat-icon indigo"><i class="fa-solid fa-mobile-screen-button"></i></div>
+            <div>
+              <div class="value" id="statActiveOffers">0</div>
+              <div class="label">Active Offers</div>
+            </div>
+            <div class="stat-icon danger"><i class="fa-solid fa-tag"></i></div>
           </div>
         </div>
 
-        <div class="admin-grid-2">
+        <div class="stat-card stat-card-mini" title="Counts installs from Chrome/Edge/Android — iOS Safari has no way to report 'Add to Home Screen' installs, so iPhone installs aren't included here.">
+          <div class="stat-icon amber"><i class="fa-solid fa-mobile-screen-button"></i></div>
+          <div><div class="value" id="statAppInstalls">0</div><div class="label">App Installs</div></div>
+        </div>
+
+        <div class="admin-grid-3">
           <div class="admin-panel">
-            <h3>Orders — Last 7 Days</h3>
+            <h3>Orders Trend <span class="admin-panel-subtitle">Last 7 days</span></h3>
             <div class="chart-wrap">
               <canvas id="ordersChart"></canvas>
             </div>
           </div>
           <div class="admin-panel">
-            <h3>Top Products</h3>
-            <div id="topProductsList">Loading…</div>
+            <h3>Sales Overview <span class="admin-panel-subtitle">By store</span></h3>
+            <div class="chart-wrap chart-wrap-donut">
+              <canvas id="salesByStoreChart"></canvas>
+              <div class="donut-center-label">
+                <span id="salesByStoreTotal">₹0</span>
+                <span>Total Sales</span>
+              </div>
+            </div>
+            <div id="salesByStoreLegend" class="donut-legend"></div>
+          </div>
+          <div class="admin-panel">
+            <h3>Order Status</h3>
+            <div id="ordersByStatusList">Loading…</div>
           </div>
         </div>
 
         <div class="admin-grid-2">
           <div class="admin-panel">
-            <h3>Products by Store</h3>
-            <div id="productsByStoreList">Loading…</div>
+            <div class="admin-panel-header-row">
+              <h3>Top Selling Products</h3>
+              <button class="admin-view-all-link" onclick="showAdminView('products')">View All</button>
+            </div>
+            <div id="topProductsList">Loading…</div>
           </div>
           <div class="admin-panel">
-            <h3>Orders by Status</h3>
-            <div id="ordersByStatusList">Loading…</div>
+            <h3>Products by Store</h3>
+            <div id="productsByStoreList">Loading…</div>
           </div>
         </div>
 
         <div class="admin-panel">
-          <h3>Recent Orders</h3>
+          <h3><i class="fa-solid fa-bolt" style="color:var(--marigold-600);"></i> Quick Actions</h3>
+          <div class="quick-actions-grid">
+            <button class="quick-action-card green" onclick="showAdminView('products'); toggleProductForm();">
+              <i class="fa-solid fa-plus"></i>
+              <span>Add Product</span>
+            </button>
+            <button class="quick-action-card indigo" onclick="showAdminView('categories')">
+              <i class="fa-solid fa-grip"></i>
+              <span>Add Category</span>
+            </button>
+            <button class="quick-action-card amber" onclick="showAdminView('coupons')">
+              <i class="fa-solid fa-ticket"></i>
+              <span>Add Offer</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-header-row">
+            <h3>Latest Orders</h3>
+            <button class="admin-view-all-link" onclick="showAdminView('orders')">View All</button>
+          </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
-                <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr>
+                <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Action</th></tr>
               </thead>
               <tbody id="recentOrdersBody"></tbody>
             </table>
@@ -820,6 +888,15 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Estimated delivery time</label>
       <input id="editAreaEta" placeholder="e.g. 30–60 min" />
       <button class="btn btn-primary" onclick="updateDeliveryArea()">Save</button>
+    </div>
+  </div>
+
+  <!-- ===== ORDER DETAIL ===== -->
+  <div id="orderDetailModal" class="modal hidden">
+    <div class="modal-content order-detail-modal-content">
+      <button onclick="closeOrderDetail()">×</button>
+      <h3>Order Details</h3>
+      <div id="orderDetailContent">Loading…</div>
     </div>
   </div>
 

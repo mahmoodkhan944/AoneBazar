@@ -10,6 +10,7 @@ let allProductsCache = [];
 let allCategoriesCache = [];
 let editingProductId = null;
 let ordersChartInstance = null;
+let salesByStoreChartInstance = null;
 
 const WHATSAPP_NUMBER = "918009555567";
 
@@ -151,10 +152,20 @@ async function loadDashboard() {
     return;
   }
 
-  document.getElementById("statTodaySales").innerText = "₹" + Math.round(stats.today_sales || 0);
   document.getElementById("statTotalOrders").innerText = stats.total_orders || 0;
   document.getElementById("statTotalRevenue").innerText = "₹" + Math.round(stats.total_revenue || 0);
-  document.getElementById("statPendingOrders").innerText = stats.pending_orders || 0;
+  document.getElementById("statTotalCustomers").innerText = stats.total_customers || 0;
+  document.getElementById("statTotalProducts").innerText = stats.total_products || 0;
+  document.getElementById("statActiveOffers").innerText = stats.active_offers || 0;
+
+  // "vs last month" — current total against what it stood at the
+  // start of this month, i.e. real growth, not a guessed number.
+  // A metric with nothing recorded before this month (e.g. a brand
+  // new store) shows "New" instead of a division-by-zero percentage.
+  renderStatChange("statTotalOrdersChange", stats.total_orders, stats.orders_before_this_month);
+  renderStatChange("statTotalRevenueChange", stats.total_revenue, stats.revenue_before_this_month);
+  renderStatChange("statTotalCustomersChange", stats.total_customers, stats.customers_before_this_month);
+  renderStatChange("statTotalProductsChange", stats.total_products, stats.products_before_this_month);
 
   // Separate lightweight query rather than folding into the RPC above
   // — keeps that function untouched, and a missing/not-yet-migrated
@@ -166,6 +177,7 @@ async function loadDashboard() {
   });
 
   renderOrdersChart(stats.orders_last_7_days || []);
+  renderSalesByStoreChart(stats.sales_by_store || []);
 
   const STORE_LABELS = { supermarket: "Supermarket", grocery: "Grocery", cafe: "Cafe" };
   const storeEl = document.getElementById("productsByStoreList");
@@ -182,7 +194,17 @@ async function loadDashboard() {
     `).join("");
   }
 
-  const STATUS_LABELS = { NEW: "New", PROCESSING: "Processing", OUT_FOR_DELIVERY: "Out for Delivery", DELIVERED: "Delivered", CANCELLED: "Cancelled" };
+  // Same colour language as the status pills used everywhere else in
+  // the admin (Orders table, Recent Orders) — just as a small dot
+  // here instead of a full pill, to match a denser summary list.
+  const STATUS_LABELS = { NEW: "Pending", PROCESSING: "Processing", OUT_FOR_DELIVERY: "Out for Delivery", DELIVERED: "Delivered", CANCELLED: "Cancelled" };
+  const STATUS_DOT_COLORS = {
+    NEW: "var(--marigold-600)",
+    PROCESSING: "var(--indigo-700)",
+    OUT_FOR_DELIVERY: "#8e5fd6",
+    DELIVERED: "var(--green-700)",
+    CANCELLED: "var(--danger-600)"
+  };
   const statusEl = document.getElementById("ordersByStatusList");
   const statusRows = stats.orders_by_status || [];
 
@@ -190,9 +212,12 @@ async function loadDashboard() {
     statusEl.innerHTML = "<p style='color:var(--ink-faint);font-size:0.85rem;'>No orders yet</p>";
   } else {
     statusEl.innerHTML = statusRows.map(s => `
-      <div class="top-product-row">
-        <div><span class="status-pill ${s.status}">${STATUS_LABELS[s.status] || s.status}</span></div>
-        <div class="rev">${s.count}</div>
+      <div class="status-dot-row">
+        <div class="status-dot-label">
+          <span class="status-dot" style="background:${STATUS_DOT_COLORS[s.status] || 'var(--ink-faint)'};"></span>
+          ${STATUS_LABELS[s.status] || s.status}
+        </div>
+        <div class="status-dot-count">${s.count}</div>
       </div>
     `).join("");
   }
@@ -226,8 +251,90 @@ async function loadDashboard() {
       <td data-label="Payment">${paymentBreakdownHtml(o)}</td>
       <td data-label="Status"><span class="status-pill ${o.status}">${o.status}</span></td>
       <td data-label="Date">${new Date(o.created_at).toLocaleDateString()}</td>
+      <td><button class="table-actions-view-btn" onclick="openOrderDetailModal('${o.id}')"><i class="fa-solid fa-eye"></i> View</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No orders yet</td></tr>`;
+  `).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No orders yet</td></tr>`;
+}
+
+/** Order Details modal — fetches this one order fresh (not relying
+ *  on the Orders tab having been opened yet this session) and shows
+ *  everything about it right there, instead of sending the admin
+ *  off to the full Orders table just to look at a single order. */
+async function openOrderDetailModal(orderId) {
+  const modal = document.getElementById("orderDetailModal");
+  const content = document.getElementById("orderDetailContent");
+  if (!modal || !content) return;
+
+  modal.classList.remove("hidden");
+  content.innerHTML = "Loading…";
+
+  const { data: row, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !row) {
+    content.innerHTML = `<p style="color:var(--danger-600);">Could not load this order.</p>`;
+    return;
+  }
+
+  const o = mapOrderRow(row);
+
+  const itemsHtml = (o.items || []).map(it => `
+    <div class="order-detail-item-row">
+      <span>${it.name} <span class="qty">× ${it.qty}</span></span>
+      <span>₹${it.price * it.qty}</span>
+    </div>
+  `).join("");
+
+  content.innerHTML = `
+    <div class="order-detail-header-row">
+      <div>
+        <div class="order-detail-id">${o.id}</div>
+        <div class="order-detail-date">${o.date}</div>
+      </div>
+      <span class="status-pill ${o.status}">${o.status}</span>
+    </div>
+
+    <div class="order-detail-section">
+      <h4>Customer</h4>
+      <p>${o.name}<br>${o.phone}<br>${o.address || ""}</p>
+    </div>
+
+    <div class="order-detail-section">
+      <h4>Items</h4>
+      ${itemsHtml}
+    </div>
+
+    <div class="order-detail-section order-detail-totals">
+      <div class="order-detail-item-row"><span>Subtotal</span><span>₹${o.subtotal}</span></div>
+      ${o.discount > 0 ? `<div class="order-detail-item-row"><span>Discount${o.couponCode ? ` (${o.couponCode})` : ""}</span><span>−₹${o.discount}</span></div>` : ""}
+      <div class="order-detail-item-row"><span>Delivery</span><span>${o.deliveryCharge > 0 ? "₹" + o.deliveryCharge : "Free"}</span></div>
+      <div class="order-detail-item-row order-detail-total-row"><span>Total</span><span>₹${o.total}</span></div>
+    </div>
+
+    <div class="order-detail-section">
+      <h4>Payment</h4>
+      <div>${paymentBreakdownHtml(o)}</div>
+      ${o.paymentScreenshotUrl
+        ? `<a href="${o.paymentScreenshotUrl}" target="_blank" rel="noopener noreferrer"><img src="${o.paymentScreenshotUrl}" alt="Payment screenshot" class="order-detail-screenshot" /></a>`
+        : ""
+      }
+    </div>
+
+    <div class="table-actions" style="margin-top:16px;">
+      <button onclick="updateOrderStatus('${o.id}','PROCESSING').then(() => openOrderDetailModal('${o.id}'))">Processing</button>
+      <button onclick="updateOrderStatus('${o.id}','OUT_FOR_DELIVERY').then(() => openOrderDetailModal('${o.id}'))">Out for Delivery</button>
+      <button onclick="updateOrderStatus('${o.id}','DELIVERED').then(() => openOrderDetailModal('${o.id}'))">Delivered</button>
+      <button onclick='downloadInvoiceById("${o.id}")'>Invoice</button>
+    </div>
+  `;
+}
+
+function closeOrderDetail() {
+  const modal = document.getElementById("orderDetailModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 /** Small "Half — ₹350 paid, ₹350 due" / "Full — ₹700 paid" label,
@@ -287,6 +394,95 @@ function renderOrdersChart(days) {
   // (especially right after the dashboard becomes visible) — nudging
   // a resize one frame later fixes the "chart looks cut off" glitch.
   requestAnimationFrame(() => ordersChartInstance && ordersChartInstance.resize());
+}
+
+/** The stat cards' "↑12% vs last month" line — computed from real
+ *  totals (current vs. what the total stood at the start of this
+ *  month), never a guessed number. Shows "New" instead of a
+ *  percentage when there's nothing to compare against yet (e.g. the
+ *  first month a store has any data at all). */
+function renderStatChange(elId, current, before) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+
+  current = Number(current) || 0;
+  before = Number(before) || 0;
+
+  if (before <= 0) {
+    el.innerHTML = current > 0
+      ? `<span class="stat-change-note">New this month</span>`
+      : "";
+    return;
+  }
+
+  const pct = Math.round(((current - before) / before) * 100);
+  const isUp = pct >= 0;
+  el.className = "stat-change " + (isUp ? "up" : "down");
+  el.innerHTML = `<i class="fa-solid fa-arrow-${isUp ? "up" : "down"}"></i> ${Math.abs(pct)}%<span class="stat-change-note">vs last month</span>`;
+}
+
+const STORE_CHART_LABELS = { supermarket: "AOne Bazaar", grocery: "AOne Kirana Store", cafe: "AOne Cafe" };
+const STORE_CHART_COLORS = { supermarket: "#c17a3d", grocery: "#2f6fd6", cafe: "#1e7a46" };
+
+/** "Sales Overview" donut — revenue per store, computed server-side
+ *  by matching each order's line items back to their product's
+ *  store (see sales_by_store in get_admin_dashboard_stats()), since
+ *  a single order can include items from all three stores at once. */
+function renderSalesByStoreChart(rows) {
+  const canvas = document.getElementById("salesByStoreChart");
+  const legendEl = document.getElementById("salesByStoreLegend");
+  const totalEl = document.getElementById("salesByStoreTotal");
+  if (!canvas) return;
+
+  const total = rows.reduce((sum, r) => sum + Number(r.revenue || 0), 0);
+  if (totalEl) totalEl.textContent = "₹" + Math.round(total).toLocaleString("en-IN");
+
+  if (salesByStoreChartInstance) salesByStoreChartInstance.destroy();
+
+  if (rows.length === 0) {
+    if (legendEl) legendEl.innerHTML = `<p style="color:var(--ink-faint);font-size:0.85rem;">No sales yet</p>`;
+    return;
+  }
+
+  salesByStoreChartInstance = new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels: rows.map(r => STORE_CHART_LABELS[r.store] || r.store),
+      datasets: [{
+        data: rows.map(r => Number(r.revenue || 0)),
+        backgroundColor: rows.map(r => STORE_CHART_COLORS[r.store] || "#999"),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 100,
+      cutout: "72%",
+      plugins: { legend: { display: false }, tooltip: { enabled: true } }
+    }
+  });
+
+  requestAnimationFrame(() => salesByStoreChartInstance && salesByStoreChartInstance.resize());
+
+  if (legendEl) {
+    legendEl.innerHTML = rows.map(r => {
+      const revenue = Number(r.revenue || 0);
+      const pct = total > 0 ? Math.round((revenue / total) * 100) : 0;
+      return `
+        <div class="donut-legend-row">
+          <div class="donut-legend-label">
+            <span class="donut-legend-dot" style="background:${STORE_CHART_COLORS[r.store] || "#999"};"></span>
+            ${STORE_CHART_LABELS[r.store] || r.store}
+          </div>
+          <div class="donut-legend-value">
+            <strong>₹${Math.round(revenue).toLocaleString("en-IN")}</strong>
+            <span>${pct}%</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 }
 
 /***********************
@@ -431,9 +627,18 @@ function notifyCustomerOnWhatsApp(order, status) {
   window.open(`https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`, "_blank");
 }
 
-function downloadInvoiceById(id) {
-  const order = cachedOrders.find(o => o.id === id);
-  if (!order) { alert("Order not found"); return; }
+async function downloadInvoiceById(id) {
+  let order = cachedOrders.find(o => o.id === id);
+
+  // Not in cache yet (e.g. invoked from the Dashboard's Order
+  // Details modal before the Orders tab has ever been opened this
+  // session) — fetch it fresh instead of failing.
+  if (!order) {
+    const { data: row, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+    if (error || !row) { alert("Order not found"); return; }
+    order = mapOrderRow(row);
+  }
+
   downloadInvoice(order);
 }
 
