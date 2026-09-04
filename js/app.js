@@ -3159,17 +3159,97 @@ async function toggleMegaMenu() {
   }
 }
 
+/** Bottom nav "Categories" — opens the exact same category list as
+ *  the header's "All Categories" mega menu, but in its own modal so
+ *  it shows up immediately, front and center, instead of nested
+ *  inside the (on mobile, hidden-by-default) hamburger nav where a
+ *  shopper would have to notice and tap "All Categories" a second
+ *  time to actually see anything. */
+async function openMobileCategoriesMenu() {
+  const modal = document.getElementById("mobileCategoriesModal");
+  if (!modal) return;
+
+  modal.classList.remove("hidden");
+  if (!megaMenuLoaded) {
+    await loadMegaMenu();
+    megaMenuLoaded = true;
+  }
+}
+
+function closeMobileCategoriesMenu() {
+  const modal = document.getElementById("mobileCategoriesModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/** Guesses a sensible icon for a category purely from its name — no
+ *  admin picking required. Checked as a list of (keywords → icon)
+ *  rules, first match wins; falls back to a generic tag icon for
+ *  anything that doesn't match a known pattern. Keeping this as
+ *  plain keyword matching (rather than, say, an admin-picked icon
+ *  field) means a brand-new category shows up with a reasonable
+ *  icon immediately, the moment it's created. */
+function getCategoryIcon(name) {
+  const n = (name || "").toLowerCase();
+  const rules = [
+    [["furniture", "almirah", "wardrobe", "sofa", "cabinet", "dressing", "chair"], "fa-couch"],
+    [["bed"], "fa-bed"],
+    [["fan"], "fa-fan"],
+    [["cooler", "air conditioner", " ac ", "cooling"], "fa-wind"],
+    [["refrigerator", "freezer", "fridge"], "fa-snowflake"],
+    [["kettle", "mixer", "grinder", "induction", "juicer", "cooker", "appliance", "iron", "toaster", "blender"], "fa-blender"],
+    [["electronics", "mobile", "laptop", "tv", "television", "speaker", "camera"], "fa-mobile-screen"],
+    [["light", "bulb", "lamp"], "fa-lightbulb"],
+    [["bottle"], "fa-bottle-water"],
+    [["atta", "flour", "grain", "rice", "wheat"], "fa-wheat-awn"],
+    [["dal", "pulses", "lentil"], "fa-seedling"],
+    [["oil", "ghee"], "fa-bottle-droplet"],
+    [["spice", "masala"], "fa-pepper-hot"],
+    [["dairy", "milk", "paneer", "cheese", "curd"], "fa-cheese"],
+    [["biscuit", "namkeen", "snack", "chips"], "fa-cookie-bite"],
+    [["chocolate", "sweet", "mithai", "candy", "dessert"], "fa-candy-cane"],
+    [["bakery", "bread", "cake"], "fa-bread-slice"],
+    [["tea", "coffee"], "fa-mug-hot"],
+    [["juice", "beverage", "drink", "soda", "cold drink"], "fa-bottle-water"],
+    [["ice cream", "kulfi"], "fa-ice-cream"],
+    [["vegetable", "veggies", "sabzi"], "fa-carrot"],
+    [["fruit"], "fa-apple-whole"],
+    [["pizza"], "fa-pizza-slice"],
+    [["burger", "sandwich"], "fa-burger"],
+    [["roll", "wrap", "noodle", "pasta"], "fa-utensils"],
+    [["cleaning", "detergent", "soap", "broom", "phenyl"], "fa-broom"],
+    [["personal care", "cosmetic", "beauty", "makeup", "shampoo"], "fa-pump-soap"],
+    [["baby", "kids", "toy"], "fa-baby"],
+    [["pet"], "fa-paw"],
+    [["stationery", "pen", "book"], "fa-pen"],
+    [["grocery", "kirana", "daily", "essential"], "fa-basket-shopping"],
+    [["cafe", "food", "meal"], "fa-utensils"]
+  ];
+
+  for (const [keywords, icon] of rules) {
+    if (keywords.some(k => n.includes(k))) return icon;
+  }
+  return "fa-tag";
+}
+
 async function loadMegaMenu() {
   const menu = document.getElementById("megaMenu");
-  if (!menu) return;
+  const mobileContent = document.getElementById("mobileCategoriesContent");
+  if (!menu && !mobileContent) return;
 
+  // Only top-level (parent) categories — sub-categories are reached
+  // by opening the parent first inside a store, same as the store's
+  // own category tiles, so this stays a short, scannable list
+  // instead of every single sub-category flattened together.
   const { data: rows, error } = await supabase
     .from("categories")
-    .select("store, name, name_hi")
+    .select("store, name, name_hi, parent_id")
+    .is("parent_id", null)
     .order("name");
 
   if (error || !rows || rows.length === 0) {
-    menu.innerHTML = `<div class="mega-menu-empty">No categories yet</div>`;
+    const emptyHtml = `<div class="mega-menu-empty">No categories yet</div>`;
+    if (menu) menu.innerHTML = emptyHtml;
+    if (mobileContent) mobileContent.innerHTML = emptyHtml;
     console.error(error);
     return;
   }
@@ -3189,16 +3269,19 @@ async function loadMegaMenu() {
     groups[label].push(r);
   });
 
-  menu.innerHTML = Object.entries(groups).map(([group, items]) => `
+  const groupsHtml = Object.entries(groups).map(([group, items]) => `
     <div class="mega-menu-group">
       <h4>${group}</h4>
       <ul>
         ${items.map(c => `
-          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}">${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
+          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}" onclick="closeMobileCategoriesMenu()"><i class="fa-solid ${getCategoryIcon(c.name)} mega-menu-icon"></i>${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
         `).join("")}
       </ul>
     </div>
   `).join("");
+
+  if (menu) menu.innerHTML = groupsHtml;
+  if (mobileContent) mobileContent.innerHTML = groupsHtml;
 }
 
 // Close the mega-menu when clicking outside it

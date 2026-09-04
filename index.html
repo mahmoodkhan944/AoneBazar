@@ -87,6 +87,9 @@
     <a href="index.html" class="mobile-bottom-nav-item active">
       <i class="fa-solid fa-house"></i><span>Home</span>
     </a>
+    <button class="mobile-bottom-nav-item" onclick="openMobileCategoriesMenu()">
+      <i class="fa-solid fa-grip"></i><span>Categories</span>
+    </button>
     <button class="mobile-bottom-nav-item" onclick="openWishlist()">
       <i class="fa-solid fa-heart"></i><span>Wishlist</span>
     </button>
@@ -96,6 +99,9 @@
     </button>
     <button class="mobile-bottom-nav-item" onclick="openMyOrders()">
       <i class="fa-solid fa-box"></i><span>Orders</span>
+    </button>
+    <button class="mobile-bottom-nav-item" onclick="logoutUser()">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i><span>Logout</span>
     </button>
   </nav>
 
@@ -376,6 +382,15 @@
       <button onclick="closeMyOrders()">×</button>
       <h3>My Orders</h3>
       <div id="myOrdersList"></div>
+    </div>
+  </div>
+
+  <!-- ============ MOBILE CATEGORIES (bottom-nav "Categories") ============ -->
+  <div id="mobileCategoriesModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeMobileCategoriesMenu()">×</button>
+      <h3>All Categories</h3>
+      <div id="mobileCategoriesContent" class="mega-menu mega-menu-mobile"></div>
     </div>
   </div>
 

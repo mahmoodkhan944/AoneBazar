@@ -2285,11 +2285,22 @@
 }
 
 .mega-menu-group a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.86rem;
   color: var(--ink-soft);
   transition: color var(--fast) var(--ease);
 }
 .mega-menu-group a:hover { color: var(--green-700); }
+
+.mega-menu-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  text-align: center;
+  color: var(--green-700);
+  font-size: 0.85rem;
+}
 
 .mega-menu-empty {
   grid-column: 1 / -1;
@@ -2297,6 +2308,24 @@
   color: var(--ink-faint);
   font-size: 0.9rem;
   padding: 20px 0;
+}
+
+/* The mega menu's normal styling positions it as an absolute
+   dropdown anchored to the header button — inside the "Categories"
+   modal it just needs to sit as regular flowing content instead. */
+.mega-menu-mobile {
+  position: static;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  animation: none;
 }
 
 /* ---------------- PAYMENT CHOICE (half / full) ---------------- */
@@ -2454,28 +2483,30 @@
 
   /* Wishlist / Orders / Cart move down to the bottom nav bar on
      mobile — that's what was crowding the header and pushing the
-     brand name off-screen. Logout moves into the hamburger dropdown. */
+     brand name off-screen. Logout moves into the bottom nav too —
+     !important here because this needs to win over the base
+     .icon-btn / .logout-btn rules regardless of their own specificity
+     or source order. */
   .header-actions .icon-btn,
   .header-actions .logout-btn,
   #userGreeting {
-    display: none;
+    display: none !important;
   }
 
-  .mobile-nav-logout {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    margin-top: 8px;
-    padding: 12px 14px;
-    border: none;
-    border-top: 1px solid var(--line);
-    background: none;
-    color: var(--danger-600);
-    font-weight: 600;
-    font-size: 0.92rem;
-    border-radius: 0;
+  /* The container itself also needs to go, not just its children —
+     otherwise it still sits in the header's flex row as an empty
+     box, leaving a gap between the hamburger button and the actual
+     right edge instead of the hamburger being flush against it. */
+  .header-actions {
+    display: none !important;
   }
+
+  .mobile-nav-logout { display: none; }
+
+  /* "All Categories" and Logout both moved to the bottom nav bar
+     (Categories, Logout) — no need for them a second time inside
+     the hamburger dropdown too. */
+  .mega-menu-wrap { display: none; }
 
   .mobile-bottom-nav { display: flex !important; }
   body { padding-bottom: 70px; }
@@ -2509,19 +2540,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   border: none;
   background: none;
-  padding: 6px 2px;
+  padding: 6px 1px;
   border-radius: 12px;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: var(--ink-soft);
   text-decoration: none;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
-.mobile-bottom-nav-item i { font-size: 1.15rem; transition: transform var(--fast) var(--ease); }
+.mobile-bottom-nav-item i { font-size: 1.02rem; transition: transform var(--fast) var(--ease); }
 
 .mobile-bottom-nav-item.active,
 .mobile-bottom-nav-item:active {
