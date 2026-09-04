@@ -2227,6 +2227,7 @@
   .mobile-bottom-nav { display: flex !important; }
   body { padding-bottom: 70px; }
   #whatsappFloat { bottom: 80px; }
+  .back-to-top-btn { bottom: 146px; }
   #cartBar { bottom: 80px; }
 }
 
