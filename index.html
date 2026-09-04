@@ -317,8 +317,24 @@
         </div>
         <p style="font-size:0.82rem;margin-top:10px;" id="paymentChoiceNote">Pay the remaining amount on delivery.</p>
         <img id="upiQrImage" alt="UPI QR code" style="width:180px;height:180px;margin:10px auto;border-radius:8px;border:1px solid var(--line);" />
+        <div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="downloadQrCode()">
+            <i class="fa-solid fa-download"></i> Download QR
+          </button>
+        </div>
         <p style="font-size:0.85rem;">UPI ID: <b id="upiIdLabel"></b></p>
-        <p style="font-size:0.78rem;color:var(--ink-faint);margin-top:6px;">After paying, tap below — your order details will open in WhatsApp. Please attach your payment screenshot there.</p>
+        <p style="font-size:0.78rem;color:var(--ink-faint);margin-top:6px;">After paying, upload your screenshot below and tap "I've Paid" — your order details will also open in WhatsApp.</p>
+
+        <div class="payment-screenshot-upload">
+          <label for="paymentScreenshotInput" class="payment-screenshot-label">
+            <i class="fa-solid fa-camera"></i>
+            <span id="paymentScreenshotLabelText">Upload payment screenshot (required)</span>
+          </label>
+          <input type="file" id="paymentScreenshotInput" accept="image/*" onchange="handlePaymentScreenshotSelected(this)" hidden />
+          <img id="paymentScreenshotPreview" class="payment-screenshot-preview hidden" alt="Payment screenshot preview" />
+          <div id="paymentScreenshotWarning" class="hidden"></div>
+        </div>
+
         <div id="deliveryCheckoutWarning" class="hidden"></div>
         <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="backToCartForm()">⬅ Back</button>
       </div>

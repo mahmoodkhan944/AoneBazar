@@ -301,6 +301,61 @@
 }
 #deliveryCheckoutWarning .delivery-check-message { margin-top: 0; }
 
+.payment-screenshot-upload {
+  margin-top: 14px;
+}
+
+.payment-screenshot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.payment-screenshot-label:hover { border-color: var(--green-700); color: var(--green-700); }
+.payment-screenshot-label.has-file {
+  border-style: solid;
+  border-color: var(--green-700);
+  color: var(--green-700);
+  background: var(--green-100);
+}
+
+.payment-screenshot-preview {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  margin: 10px auto 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  object-fit: contain;
+}
+
+#paymentScreenshotWarning {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #fdecea;
+  border: 1px solid #f3c6c1;
+  border-radius: var(--radius-sm);
+}
+#paymentScreenshotWarning .delivery-check-message { margin-top: 0; }
+
+.shake-attention {
+  animation: shake-attention 0.4s ease;
+}
+@keyframes shake-attention {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
 /* Store picker cards */
 .cards {
   display: grid;

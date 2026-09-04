@@ -1687,6 +1687,17 @@ async function placeOrder() {
     }
   }
 
+  // A payment screenshot is required before an order can go through
+  // — this is the free stand-in for a real payment gateway: it can't
+  // verify the payment actually happened, but it stops an order
+  // going through on nothing but an honor-system "I've Paid" click.
+  if (!selectedPaymentScreenshotFile) {
+    showPaymentScreenshotWarning();
+    document.getElementById("paymentScreenshotWarning")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  hidePaymentScreenshotWarning();
+
   const id = generateOrderID();
 
   let subtotal = 0;
@@ -1726,6 +1737,30 @@ async function placeOrder() {
 
   const invoiceNo = generateInvoiceNumber();
 
+  // Upload the screenshot before saving the order, so the admin has
+  // something to check against the order right away instead of
+  // waiting on a separate WhatsApp attachment.
+  let paymentScreenshotUrl = null;
+  const fileExt = (selectedPaymentScreenshotFile.name.split(".").pop() || "jpg").toLowerCase();
+  const filePath = `${id}-${Date.now()}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("payment-screenshots")
+    .upload(filePath, selectedPaymentScreenshotFile);
+
+  if (uploadError) {
+    alert("Could not upload payment screenshot, please try again: " + uploadError.message);
+    return;
+  }
+
+  const { data: urlData } = supabase.storage.from("payment-screenshots").getPublicUrl(filePath);
+  paymentScreenshotUrl = urlData.publicUrl;
+
+  // WhatsApp's click-to-chat link can only pre-fill text, not attach
+  // an actual image file — so instead the already-uploaded
+  // screenshot's link goes straight into the message, one tap away.
+  message += `%0APayment Screenshot: ${paymentScreenshotUrl}`;
+
   const { error } = await supabase.from("orders").insert({
     id,
     invoice_no: invoiceNo,
@@ -1740,6 +1775,7 @@ async function placeOrder() {
     delivery_charge: deliveryCharge,
     total,
     payment: "COD",
+    payment_screenshot_url: paymentScreenshotUrl,
     status: "NEW"
   });
 
@@ -1791,6 +1827,79 @@ async function placeOrder() {
 
 let selectedPaymentOption = "half"; // "half" | "full"
 let currentPayableTotal = 0;
+let selectedPaymentScreenshotFile = null;
+
+/** Doesn't block the upload label/preview from updating — the "I've
+ *  Paid" button stays clickable either way, and placeOrder() itself
+ *  is what actually stops the order and shows the Hindi reminder
+ *  below the upload button if nothing's been picked yet. */
+function handlePaymentScreenshotSelected(input) {
+  const file = input.files && input.files[0];
+  const label = document.getElementById("paymentScreenshotLabelText");
+  const labelEl = document.querySelector(".payment-screenshot-label");
+  const preview = document.getElementById("paymentScreenshotPreview");
+
+  if (!file) {
+    selectedPaymentScreenshotFile = null;
+    if (label) label.textContent = "Upload payment screenshot (required)";
+    if (labelEl) labelEl.classList.remove("has-file");
+    if (preview) preview.classList.add("hidden");
+    return;
+  }
+
+  selectedPaymentScreenshotFile = file;
+  if (label) label.textContent = file.name.length > 28 ? file.name.slice(0, 25) + "…" : file.name;
+  if (labelEl) labelEl.classList.add("has-file");
+  hidePaymentScreenshotWarning();
+
+  if (preview) {
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+  }
+}
+
+/** The small inline Hindi reminder shown right under the upload
+ *  button when "I've Paid" is tapped with no screenshot picked yet
+ *  — placed and worded so it's impossible to miss, instead of a
+ *  generic top-of-page alert. */
+function showPaymentScreenshotWarning() {
+  const box = document.getElementById("paymentScreenshotWarning");
+  if (!box) return;
+
+  box.innerHTML = `
+    <p class="delivery-check-message delivery-check-no">
+      <i class="fa-solid fa-circle-exclamation"></i> कृपया पहले पेमेंट का स्क्रीनशॉट अटैच करें, उसके बाद ही ऑर्डर होगा।
+    </p>`;
+  box.classList.remove("hidden");
+
+  const labelEl = document.querySelector(".payment-screenshot-label");
+  if (labelEl) {
+    labelEl.classList.add("shake-attention");
+    setTimeout(() => labelEl.classList.remove("shake-attention"), 500);
+  }
+}
+
+function hidePaymentScreenshotWarning() {
+  const box = document.getElementById("paymentScreenshotWarning");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+}
+
+/** Resets the screenshot picker back to empty — used whenever the
+ *  payment step is (re)opened, so a stale file from a previous
+ *  attempt (or a previous cart) never carries over silently. */
+function resetPaymentScreenshotPicker() {
+  selectedPaymentScreenshotFile = null;
+  const input = document.getElementById("paymentScreenshotInput");
+  const label = document.getElementById("paymentScreenshotLabelText");
+  const labelEl = document.querySelector(".payment-screenshot-label");
+  const preview = document.getElementById("paymentScreenshotPreview");
+
+  if (input) input.value = "";
+  if (label) label.textContent = "Upload payment screenshot (required)";
+  if (labelEl) labelEl.classList.remove("has-file");
+  if (preview) { preview.classList.add("hidden"); preview.src = ""; }
+  hidePaymentScreenshotWarning();
+}
 
 function proceedToPayment() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -1850,6 +1959,7 @@ function proceedToPayment() {
   document.getElementById("paymentStep").classList.remove("hidden");
   document.getElementById("confirmOrderBtn").classList.remove("hidden");
   hideDeliveryCheckoutWarning();
+  resetPaymentScreenshotPicker();
 }
 
 function choosePaymentOption(option) {
@@ -1875,6 +1985,34 @@ function updatePaymentQr() {
     `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
 }
 
+/** Saves the currently-shown UPI QR code as an image file. Fetched
+ *  as a blob first (rather than a plain <a download> on the image
+ *  URL directly) so it actually downloads instead of just opening
+ *  in a new tab, which is what cross-origin image links often do
+ *  otherwise. Falls back to opening it in a new tab if the fetch
+ *  itself gets blocked for any reason, so the shopper can still
+ *  long-press/save it manually. */
+async function downloadQrCode() {
+  const img = document.getElementById("upiQrImage");
+  if (!img || !img.src) return;
+
+  try {
+    const response = await fetch(img.src);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = "AOne-Bazaar-UPI-QR.png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    window.open(img.src, "_blank");
+  }
+}
+
 function backToCartForm() {
   document.getElementById("cartFormStep").classList.remove("hidden");
   document.getElementById("minOrderNotice").classList.remove("hidden");
@@ -1882,6 +2020,7 @@ function backToCartForm() {
   document.getElementById("paymentStep").classList.add("hidden");
   document.getElementById("confirmOrderBtn").classList.add("hidden");
   hideDeliveryCheckoutWarning();
+  resetPaymentScreenshotPicker();
 }
 
 

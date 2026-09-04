@@ -273,13 +273,14 @@ function mapOrderRow(row) {
     deliveryCharge: row.delivery_charge || 0,
     total: row.total,
     status: row.status,
+    paymentScreenshotUrl: row.payment_screenshot_url || null,
     date: new Date(row.created_at).toLocaleString()
   };
 }
 
 async function loadOrders() {
   const body = document.getElementById("ordersBody");
-  body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="8" style="text-align:center;">Loading…</td></tr>`;
 
   const { data: rows, error } = await supabase
     .from("orders")
@@ -287,7 +288,7 @@ async function loadOrders() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="7">Could not load orders</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8">Could not load orders</td></tr>`;
     console.error(error);
     return;
   }
@@ -305,7 +306,7 @@ function renderOrdersTable(list) {
   const body = document.getElementById("ordersBody");
 
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No orders found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-faint);">No orders found</td></tr>`;
     document.getElementById("ordersPagination").innerHTML = "";
     return;
   }
@@ -318,6 +319,10 @@ function renderOrdersTable(list) {
       <td data-label="Customer">${o.name}</td>
       <td data-label="Phone">${o.phone}</td>
       <td data-label="Total">₹${o.total}</td>
+      <td data-label="Payment Proof">${o.paymentScreenshotUrl
+        ? `<a href="${o.paymentScreenshotUrl}" target="_blank" rel="noopener noreferrer"><img src="${o.paymentScreenshotUrl}" alt="Payment screenshot" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line);" /></a>`
+        : `<span style="color:var(--ink-faint);font-size:0.8rem;">None</span>`
+      }</td>
       <td data-label="Status"><span class="status-pill ${o.status}">${o.status}</span></td>
       <td data-label="Date">${o.date}</td>
       <td>
