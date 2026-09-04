@@ -214,10 +214,35 @@ async function loadDashboard() {
       <td class="cell-title">${o.id}</td>
       <td data-label="Customer">${o.customer_name}</td>
       <td data-label="Total">₹${o.total}</td>
+      <td data-label="Payment">${paymentBreakdownHtml(o)}</td>
       <td data-label="Status"><span class="status-pill ${o.status}">${o.status}</span></td>
       <td data-label="Date">${new Date(o.created_at).toLocaleDateString()}</td>
     </tr>
-  `).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);">No orders yet</td></tr>`;
+  `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No orders yet</td></tr>`;
+}
+
+/** Small "Half — ₹350 paid, ₹350 due" / "Full — ₹700 paid" label,
+ *  shared by the dashboard's Recent Orders (raw snake_case DB rows),
+ *  the full Orders table (camelCase via mapOrderRow), and the
+ *  invoice — so an admin can see at a glance how much of an order
+ *  is actually settled without opening anything else. Falls back
+ *  gracefully for older orders placed before this was tracked. */
+function paymentBreakdownHtml(o) {
+  const amountPaid = o.amount_paid ?? o.amountPaid;
+  const paymentOption = o.payment_option ?? o.paymentOption;
+  const balanceDue = o.balance_due ?? o.balanceDue;
+
+  if (amountPaid == null) {
+    return `<span style="color:var(--ink-faint);font-size:0.8rem;">—</span>`;
+  }
+
+  const optionLabel = paymentOption === "full" ? "Full" : "Half";
+  const paidPart = `${optionLabel} — ₹${amountPaid} paid`;
+  const duePart = balanceDue > 0
+    ? `<span style="color:var(--marigold-700, #b8860b);">₹${balanceDue} due</span>`
+    : `<span style="color:var(--green-700);">fully paid</span>`;
+
+  return `<div style="font-size:0.82rem;">${paidPart}<br>${duePart}</div>`;
 }
 
 function renderOrdersChart(days) {
@@ -273,6 +298,9 @@ function mapOrderRow(row) {
     deliveryCharge: row.delivery_charge || 0,
     total: row.total,
     status: row.status,
+    paymentOption: row.payment_option || null,
+    amountPaid: row.amount_paid,
+    balanceDue: row.balance_due,
     paymentScreenshotUrl: row.payment_screenshot_url || null,
     date: new Date(row.created_at).toLocaleString()
   };
@@ -280,7 +308,7 @@ function mapOrderRow(row) {
 
 async function loadOrders() {
   const body = document.getElementById("ordersBody");
-  body.innerHTML = `<tr><td colspan="8" style="text-align:center;">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="9" style="text-align:center;">Loading…</td></tr>`;
 
   const { data: rows, error } = await supabase
     .from("orders")
@@ -288,7 +316,7 @@ async function loadOrders() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="8">Could not load orders</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9">Could not load orders</td></tr>`;
     console.error(error);
     return;
   }
@@ -306,7 +334,7 @@ function renderOrdersTable(list) {
   const body = document.getElementById("ordersBody");
 
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-faint);">No orders found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--ink-faint);">No orders found</td></tr>`;
     document.getElementById("ordersPagination").innerHTML = "";
     return;
   }
@@ -319,6 +347,7 @@ function renderOrdersTable(list) {
       <td data-label="Customer">${o.name}</td>
       <td data-label="Phone">${o.phone}</td>
       <td data-label="Total">₹${o.total}</td>
+      <td data-label="Payment">${paymentBreakdownHtml(o)}</td>
       <td data-label="Payment Proof">${o.paymentScreenshotUrl
         ? `<a href="${o.paymentScreenshotUrl}" target="_blank" rel="noopener noreferrer"><img src="${o.paymentScreenshotUrl}" alt="Payment screenshot" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line);" /></a>`
         : `<span style="color:var(--ink-faint);font-size:0.8rem;">None</span>`
@@ -551,7 +580,49 @@ async function downloadInvoice(order) {
   doc.text("TOTAL", sx1, y + 1);
   doc.text("Rs. " + order.total, sx2, y + 1, { align: "right" });
 
-  y += 24;
+  y += 20;
+  if (y > 250) { doc.addPage(); y = 20; }
+
+  // ---- Payment breakdown (half/full UPI + balance on delivery) —
+  // older invoices from before this was tracked just skip the
+  // section entirely instead of showing blank/zero values. ----
+  if (order.amountPaid != null) {
+    doc.setDrawColor(...LINE);
+    doc.setFillColor(...PAPER);
+    const screenshotLine = order.paymentScreenshotUrl ? 8 : 0;
+    doc.roundedRect(sx1 - 6, y, 68, 22 + screenshotLine, 2, 2, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...INK_SOFT);
+    doc.text("PAYMENT", sx1 - 2, y + 7);
+
+    const optionLabel = order.paymentOption === "full" ? "Full (UPI)" : "Half (UPI)";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...INK);
+    doc.text(optionLabel + " paid", sx1 - 2, y + 13);
+    doc.text("Rs. " + order.amountPaid, sx2 - 4, y + 13, { align: "right" });
+
+    if (order.balanceDue > 0) {
+      doc.setTextColor(198, 130, 30);
+      doc.text("Due on delivery", sx1 - 2, y + 19);
+      doc.text("Rs. " + order.balanceDue, sx2 - 4, y + 19, { align: "right" });
+    } else {
+      doc.setTextColor(...GREEN);
+      doc.text("Fully paid — nothing due", sx1 - 2, y + 19);
+    }
+
+    if (order.paymentScreenshotUrl) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(50, 90, 200);
+      doc.textWithLink("View payment screenshot →", sx1 - 2, y + 26, { url: order.paymentScreenshotUrl });
+    }
+
+    y += 22 + screenshotLine + 8;
+  }
+
   if (y > 270) { doc.addPage(); y = 30; }
 
   // ---- Footer ----

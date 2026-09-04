@@ -1787,6 +1787,9 @@ async function placeOrder() {
     delivery_charge: deliveryCharge,
     total,
     payment: "COD",
+    payment_option: selectedPaymentOption,
+    amount_paid: amountPaid,
+    balance_due: balanceDue,
     payment_screenshot_url: paymentScreenshotUrl,
     status: "NEW"
   });
