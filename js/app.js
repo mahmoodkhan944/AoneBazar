@@ -1620,6 +1620,23 @@ async function placeOrder() {
     return;
   }
 
+  // Guard against a race where this runs before the background
+  // session restore (see AUTH STATE further down) has finished —
+  // without this, a customer who just reloaded the page and checks
+  // out quickly ends up with customer_id: null, which Supabase's
+  // security rule silently rejects. The order still goes out over
+  // WhatsApp either way, so it *looks* like it worked, but it never
+  // actually lands in the admin dashboard. Make sure we actually
+  // have (or can recreate) a session before building the order.
+  if (!currentSupabaseUser) {
+    const { data } = await supabase.auth.getSession();
+    currentSupabaseUser = data.session ? data.session.user : null;
+  }
+  if (!currentSupabaseUser) {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (!error) currentSupabaseUser = data.user;
+  }
+
   const name = customerName.value.trim();
   const address = customerAddress.value.trim();
 
