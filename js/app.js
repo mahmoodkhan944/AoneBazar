@@ -1605,6 +1605,31 @@ function removeCoupon() {
 /***********************
     ORDER
 ************************/
+/** Shown inline inside the payment step (above "← Back" and "I've
+ *  Paid") when the typed address doesn't match any admin-listed
+ *  delivery area — a plain alert() would float over the whole page
+ *  and cover the QR code, so this stays inside the cart instead,
+ *  right where the customer is already looking. */
+function showDeliveryCheckoutWarning(address) {
+  const box = document.getElementById("deliveryCheckoutWarning");
+  if (!box) return;
+
+  const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${address}" — could you add it if not?`);
+  box.innerHTML = `
+    <p class="delivery-check-message delivery-check-no">
+      <i class="fa-solid fa-circle-xmark"></i> Sorry, we don't deliver to this address yet.
+    </p>
+    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
+      <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
+    </a>`;
+  box.classList.remove("hidden");
+}
+
+function hideDeliveryCheckoutWarning() {
+  const box = document.getElementById("deliveryCheckoutWarning");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+}
+
 async function placeOrder() {
 
   const user = JSON.parse(localStorage.getItem("user"));
@@ -1643,6 +1668,23 @@ async function placeOrder() {
   if (!name || !address) {
     alert("Enter name and address");
     return;
+  }
+
+  // Only accept orders for addresses inside an area the admin has
+  // actually listed as deliverable (see Admin → Delivery Areas). If
+  // no delivery areas have been set up at all yet, this doesn't
+  // block anything — the restriction only kicks in once the admin
+  // has actually configured a delivery zone.
+  hideDeliveryCheckoutWarning();
+  const deliveryAreas = await loadDeliveryAreasCache();
+  if (deliveryAreas.length > 0) {
+    const addressLower = address.toLowerCase();
+    const isDeliverable = deliveryAreas.some(a => addressLower.includes(a.area_name.toLowerCase()));
+
+    if (!isDeliverable) {
+      showDeliveryCheckoutWarning(address);
+      return;
+    }
   }
 
   const id = generateOrderID();
@@ -1807,6 +1849,7 @@ function proceedToPayment() {
   document.getElementById("proceedToPaymentBtn").classList.add("hidden");
   document.getElementById("paymentStep").classList.remove("hidden");
   document.getElementById("confirmOrderBtn").classList.remove("hidden");
+  hideDeliveryCheckoutWarning();
 }
 
 function choosePaymentOption(option) {
@@ -1838,6 +1881,7 @@ function backToCartForm() {
   document.getElementById("proceedToPaymentBtn").classList.remove("hidden");
   document.getElementById("paymentStep").classList.add("hidden");
   document.getElementById("confirmOrderBtn").classList.add("hidden");
+  hideDeliveryCheckoutWarning();
 }
 
 

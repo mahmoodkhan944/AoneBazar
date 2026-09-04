@@ -292,6 +292,15 @@
 }
 .delivery-check-wa-btn:hover { background: #e9fbf1; }
 
+#deliveryCheckoutWarning {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #fdecea;
+  border: 1px solid #f3c6c1;
+  border-radius: var(--radius-sm);
+}
+#deliveryCheckoutWarning .delivery-check-message { margin-top: 0; }
+
 /* Store picker cards */
 .cards {
   display: grid;
