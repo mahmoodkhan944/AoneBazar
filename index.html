@@ -230,7 +230,7 @@
   <!-- ============ STORE / PRODUCTS ============ -->
   <section id="storeSection" class="store hidden">
     <div class="container">
-      <button class="backBtn" onclick="closeStore()">⬅ Back</button>
+      <button id="storeBackBtn" class="backBtn" onclick="closeStore()">⬅ Back</button>
       <div class="store-title-row">
         <h2 id="storeTitle"></h2>
         <button class="btn btn-outline btn-sm" onclick="shareCurrentStore()">
@@ -243,27 +243,33 @@
         <i class="fa-solid fa-chevron-down category-collapsed-bar-chevron"></i>
       </button>
       <div id="categoryTiles" class="category-tiles"></div>
-      <input
-        type="text"
-        id="storeSearch"
-        placeholder="Search products in this store…"
-        oninput="searchStoreProducts()"
-        class="input-pill store-search-input"
-      />
-      <div class="filter-row">
-        <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
-          <option value="">Shop by Brand — All Brands</option>
-        </select>
-        <select id="sortFilter" onchange="applySortAndRender()" class="input-pill sort-filter">
-          <option value="relevance">Sort by — Relevance</option>
-          <option value="price_low">Price — Low to High</option>
-          <option value="price_high">Price — High to Low</option>
-          <option value="discount">Discount — High to Low</option>
-          <option value="rating">Rating — High to Low</option>
-        </select>
+
+      <div class="store-content-row">
+        <div id="categoryDetailSidebar" class="category-detail-sidebar hidden"></div>
+        <div class="store-main-col">
+          <input
+            type="text"
+            id="storeSearch"
+            placeholder="Search products in this store…"
+            oninput="searchStoreProducts()"
+            class="input-pill store-search-input"
+          />
+          <div class="filter-row">
+            <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
+              <option value="">Shop by Brand — All Brands</option>
+            </select>
+            <select id="sortFilter" onchange="applySortAndRender()" class="input-pill sort-filter">
+              <option value="relevance">Sort by — Relevance</option>
+              <option value="price_low">Price — Low to High</option>
+              <option value="price_high">Price — High to Low</option>
+              <option value="discount">Discount — High to Low</option>
+              <option value="rating">Rating — High to Low</option>
+            </select>
+          </div>
+          <div id="productGrid" class="products"></div>
+          <div id="storeProductsPagination" class="pagination"></div>
+        </div>
       </div>
-      <div id="productGrid" class="products"></div>
-      <div id="storeProductsPagination" class="pagination"></div>
     </div>
   </section>
 

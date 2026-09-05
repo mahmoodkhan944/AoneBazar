@@ -219,6 +219,7 @@ let categoryHierarchy = { topLevel: [], subByParentId: {} };
 // that parent's category record; null means we're on the normal
 // top-level tile screen.
 let currentParentCategoryView = null;
+let currentCategoryDetailParent = null; // the parent record when the sidebar detail page is open, else null
 
 async function loadCategoryHindiMap(store) {
   categoryHindiMap = {};
@@ -334,6 +335,7 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   currentStore = key;
   currentSectionKey = null; // leaving any "View All" section page, if we were on one
   currentParentCategoryView = null; // start fresh, not mid-drill-down from a previous store
+  currentCategoryDetailParent = null; // start fresh, not mid-way through a previous store's category detail page
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
@@ -349,6 +351,10 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   if (categoryTilesEl) categoryTilesEl.classList.remove("hidden");
   const tilesBackBtn = document.getElementById("tilesBackBtn");
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
+  const categoryDetailSidebarEl = document.getElementById("categoryDetailSidebar");
+  if (categoryDetailSidebarEl) { categoryDetailSidebarEl.classList.add("hidden"); categoryDetailSidebarEl.innerHTML = ""; }
+  const storeBackBtnEl = document.getElementById("storeBackBtn");
+  if (storeBackBtnEl) storeBackBtnEl.onclick = closeStore;
 
   // Show skeletons immediately — the store's own products/categories
   // are about to be fetched, and this is a visibly better first
@@ -396,26 +402,6 @@ async function openStore(key, jumpToCategory, jumpToPage) {
     productGrid.innerHTML = "<p>No products yet</p>";
     document.getElementById("categoryTiles").innerHTML = "";
     return;
-  }
-
-  // Jumping straight to a sub-category (e.g. from the mega-menu) —
-  // show that sub-category's tile screen (with its siblings), not
-  // the top-level tiles, so the shopper sees where they landed.
-  if (jumpToCategory && subcategoryNames.has(jumpToCategory)) {
-    const allSubs = Object.values(categoryHierarchy.subByParentId).flat();
-    const subRecord = allSubs.find(c => c.name === jumpToCategory);
-    const parentRecord = subRecord && categoryHierarchy.topLevel.find(c => c.id === subRecord.parent_id);
-    if (parentRecord) currentParentCategoryView = parentRecord;
-  }
-
-  // Jumping straight to a parent category — land on its sub-category
-  // tile screen (like tapping its tile would), while the product
-  // grid below still fills with that parent's full combined list via
-  // selectStoreCategory below.
-  if (jumpToCategory && topLevelNames.includes(jumpToCategory)) {
-    const parentRecord = categoryHierarchy.topLevel.find(c => c.name === jumpToCategory);
-    const hasSubs = parentRecord && (categoryHierarchy.subByParentId[parentRecord.id] || []).length > 0;
-    if (hasSubs) currentParentCategoryView = parentRecord;
   }
 
   renderCategoryTiles(key, store, cats);
@@ -512,7 +498,13 @@ function selectStoreCategory(key, store, cat, startPage) {
   // Categories" keeps the tile bar visible since that's still
   // browsing, not a finished pick.
   const isLeafSelection = !!cat && subs.length === 0;
-  setCategoryTilesVisible(!isLeafSelection);
+  // The category-detail sidebar page manages #categoryTiles/#tilesBackBtn
+  // visibility itself (see openCategoryDetailPage/exitCategoryDetailPage)
+  // — this collapse-on-selection behaviour is only for the normal
+  // overview screen, so it stays out of the way while the sidebar's open.
+  if (!currentCategoryDetailParent) {
+    setCategoryTilesVisible(!isLeafSelection);
+  }
 
   // Picking a category fresh (from a tile click) always starts back
   // on page 1 — startPage is only ever meaningful when we're
@@ -891,61 +883,11 @@ function renderCategoryTiles(key, store, cats) {
 
   const escapeAttr = str => String(str).replace(/"/g, "&quot;");
 
-  // Drilled into a parent category ("Furniture") — show its
-  // children (Almirah, Sofa, Bed) plus a way back, instead of the
-  // normal top-level tile screen.
-  if (currentParentCategoryView) {
-    const parent = currentParentCategoryView;
-    const subs = categoryHierarchy.subByParentId[parent.id] || [];
-
-    const backTile = `
-      <button type="button" class="category-tile category-tile-back-btn" data-tile-back>
-        <span class="category-tile-img-wrap category-tile-all">
-          <i class="fa-solid fa-arrow-left"></i>
-        </span>
-        <span class="category-tile-label">Back</span>
-      </button>
-    `;
-
-    const subTiles = subs.map(sub => {
-      const items = store.categories[sub.name] || [];
-      const thumb = (items[0] && items[0].images && items[0].images[0]) || "images/logo192.png";
-
-      return `
-        <button type="button" class="category-tile" data-tile-category="${escapeAttr(sub.name)}">
-          <span class="category-tile-img-wrap">
-            <img src="${thumb}" alt="${escapeAttr(sub.name)}" loading="lazy" />
-          </span>
-          <span class="category-tile-label">${displayCategoryName(sub.name)}</span>
-        </button>
-      `;
-    }).join("");
-
-    container.innerHTML = `<div class="category-tiles-heading">${displayCategoryName(parent.name)}</div>` + backTile + subTiles;
-
-    container.querySelector("[data-tile-back]").onclick = () => {
-      currentParentCategoryView = null;
-      renderCategoryTiles(key, store, cats);
-      // Back to the top-level tiles should feel like landing on the
-      // store fresh again — every product, same as "All Categories".
-      selectStoreCategory(key, store, null);
-    };
-
-    container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
-      tile.onclick = () => {
-        selectStoreCategory(key, store, tile.dataset.tileCategory);
-      };
-    });
-
-    return;
-  }
-
-  // Normal top-level screen: "All Categories" first, then every
-  // top-level category — every tile's thumbnail is forced into the
-  // same circle treatment as a sub-category tile (see
-  // .category-tile-img-wrap in style.css), whether it has
-  // sub-categories or not; only the small layer-group badge in the
-  // corner marks a tile as a parent that drills down.
+  // Simple, single flat row — "All Categories" first, then every
+  // top-level category as its own circular tile. A category with its
+  // own sub-categories gets a small badge and opens the dedicated
+  // sidebar detail page (see openCategoryDetailPage); a plain
+  // category with no children just filters products right here.
   const allTile = `
     <button type="button" class="category-tile" data-tile-category="">
       <span class="category-tile-img-wrap category-tile-all">
@@ -997,19 +939,106 @@ function renderCategoryTiles(key, store, cats) {
       const cat = tile.dataset.tileCategory || null;
 
       if (cat && tile.hasAttribute("data-has-subs")) {
-        currentParentCategoryView = categoryHierarchy.topLevel.find(c => c.name === cat);
-        renderCategoryTiles(key, store, cats);
-        // Fill the product grid with this category's full combined
-        // list right away (own + every sub-category), same as
-        // "All Categories" shows everything at once — no need to
-        // drill into a specific sub-category just to see products.
-        selectStoreCategory(key, store, cat);
+        const parentRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
+        if (parentRecord) openCategoryDetailPage(key, store, parentRecord);
         return;
       }
 
       selectStoreCategory(key, store, cat);
     };
   });
+}
+
+/** Opens the dedicated page for one parent category — a persistent
+ *  sidebar of its sub-categories on the left, filters/sort and the
+ *  product grid on the right, so a shopper can jump between (say)
+ *  Atta / Rice / Dal / Besan without ever leaving this focused view.
+ *  preselectedSub picks which sidebar item starts active; without
+ *  one, it defaults to the parent's own combined product list
+ *  (own + every sub-category at once). */
+function openCategoryDetailPage(key, store, parentRecord, preselectedSub) {
+  currentCategoryDetailParent = parentRecord;
+
+  const overviewTiles = document.getElementById("categoryTiles");
+  const tilesBackBtn = document.getElementById("tilesBackBtn");
+  const sidebar = document.getElementById("categoryDetailSidebar");
+  if (overviewTiles) overviewTiles.classList.add("hidden");
+  if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
+  if (sidebar) sidebar.classList.remove("hidden");
+
+  storeTitle.innerText = displayCategoryName(parentRecord.name);
+
+  // The regular "⬅ Back" button should back out of this page to the
+  // store's category overview, not leave the store entirely — restored
+  // to its normal behaviour by exitCategoryDetailPage() below.
+  const backBtn = document.getElementById("storeBackBtn");
+  if (backBtn) backBtn.onclick = () => exitCategoryDetailPage(key, store);
+
+  renderCategoryDetailSidebar(key, store, parentRecord, preselectedSub);
+  selectStoreCategory(key, store, preselectedSub || parentRecord.name);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderCategoryDetailSidebar(key, store, parentRecord, activeSub) {
+  const sidebar = document.getElementById("categoryDetailSidebar");
+  if (!sidebar) return;
+
+  const subs = categoryHierarchy.subByParentId[parentRecord.id] || [];
+  const escapeAttr = str => String(str).replace(/"/g, "&quot;");
+
+  const getThumb = name => {
+    const items = store.categories[name] || [];
+    const thumb = items[0] && items[0].images && items[0].images[0];
+    return thumb || "images/logo192.png";
+  };
+
+  // The "All {Parent}" item borrows its own thumbnail if it has
+  // directly-tagged products, otherwise the first sub-category's —
+  // same fallback the main tile bar uses for a parent with nothing
+  // of its own.
+  const parentThumb = (store.categories[parentRecord.name] || []).length > 0
+    ? getThumb(parentRecord.name)
+    : (subs[0] ? getThumb(subs[0].name) : "images/logo192.png");
+
+  const itemHtml = (name, label, thumb, isActive) => `
+    <button type="button" class="category-detail-sidebar-item ${isActive ? "active" : ""}" data-sidebar-category="${escapeAttr(name)}">
+      <span class="category-detail-sidebar-img-wrap">
+        <img src="${thumb}" alt="${escapeAttr(name)}" loading="lazy" />
+      </span>
+      <span class="category-detail-sidebar-label">${label}</span>
+    </button>
+  `;
+
+  sidebar.innerHTML =
+    itemHtml(parentRecord.name, "All " + displayCategoryName(parentRecord.name), parentThumb, !activeSub) +
+    subs.map(sub => itemHtml(sub.name, displayCategoryName(sub.name), getThumb(sub.name), activeSub === sub.name)).join("");
+
+  sidebar.querySelectorAll("[data-sidebar-category]").forEach(item => {
+    item.onclick = () => {
+      sidebar.querySelectorAll(".category-detail-sidebar-item").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      selectStoreCategory(key, store, item.dataset.sidebarCategory);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+  });
+}
+
+/** Leaves the category detail page and goes back to the store's
+ *  normal category overview (the sectioned square-tile grid) — the
+ *  "⬅ Back" button's job while the detail page is open. */
+function exitCategoryDetailPage(key, store) {
+  currentCategoryDetailParent = null;
+
+  const overviewTiles = document.getElementById("categoryTiles");
+  const sidebar = document.getElementById("categoryDetailSidebar");
+  if (overviewTiles) overviewTiles.classList.remove("hidden");
+  if (sidebar) { sidebar.classList.add("hidden"); sidebar.innerHTML = ""; }
+
+  const backBtn = document.getElementById("storeBackBtn");
+  if (backBtn) backBtn.onclick = closeStore;
+
+  storeTitle.innerText = store.title;
+  selectStoreCategory(key, store, null);
 }
 
 function closeStore() {
@@ -1200,6 +1229,7 @@ function openProductSection(key, title, startPage) {
   currentCategory = null;
   currentSectionKey = key;
   currentParentCategoryView = null;
+  currentCategoryDetailParent = null;
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
@@ -1216,6 +1246,10 @@ function openProductSection(key, title, startPage) {
   }
   const tilesBackBtn = document.getElementById("tilesBackBtn");
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
+  const categoryDetailSidebarEl = document.getElementById("categoryDetailSidebar");
+  if (categoryDetailSidebarEl) { categoryDetailSidebarEl.classList.add("hidden"); categoryDetailSidebarEl.innerHTML = ""; }
+  const storeBackBtnEl = document.getElementById("storeBackBtn");
+  if (storeBackBtnEl) storeBackBtnEl.onclick = closeStore;
   const brandFilter = document.getElementById("brandFilter");
   if (brandFilter) brandFilter.classList.add("hidden");
   const sortFilter = document.getElementById("sortFilter");
@@ -2844,16 +2878,25 @@ function orderTrackerHtml(status) {
   ];
 
   const activeIndex = Math.max(0, steps.findIndex(s => s.key === status));
+  // Once the order is actually delivered, there's no "current, still
+  // in progress" step left — every step, including the last one,
+  // should read as done (green checkmark), not the truck/house icon
+  // that implies it's still on its way.
+  const isFullyDelivered = status === "DELIVERED";
 
   return `
     <div class="order-tracker">
-      ${steps.map((s, i) => `
+      ${steps.map((s, i) => {
+        const isDone = i < activeIndex || (isFullyDelivered && i === activeIndex);
+        const isCurrent = i === activeIndex && !isFullyDelivered;
+        return `
         ${i > 0 ? `<div class="tracker-line ${i <= activeIndex ? "completed" : ""}"></div>` : ""}
-        <div class="tracker-step ${i < activeIndex ? "completed" : ""} ${i === activeIndex ? "current" : ""}">
-          <div class="tracker-dot"><i class="fa-solid ${i < activeIndex ? "fa-check" : s.icon}"></i></div>
+        <div class="tracker-step ${isDone ? "completed" : ""} ${isCurrent ? "current" : ""}">
+          <div class="tracker-dot"><i class="fa-solid ${isDone ? "fa-check" : s.icon}"></i></div>
           <span>${s.label}</span>
         </div>
-      `).join("")}
+      `;
+      }).join("")}
     </div>
   `;
 }
