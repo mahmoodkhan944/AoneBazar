@@ -3385,7 +3385,7 @@ async function loadMegaMenu() {
       <h4>${group}</h4>
       <ul>
         ${items.map(c => `
-          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}" onclick="closeMobileCategoriesMenu()">${c.icon_url ? `<img src="${c.icon_url}" alt="" class="mega-menu-icon-img" />` : `<i class="fa-solid ${getCategoryIcon(c.name)} mega-menu-icon"></i>`}${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
+          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}" onclick="closeMobileCategoriesMenu()"><i class="fa-solid ${getCategoryIcon(c.name)} mega-menu-icon"></i>${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
         `).join("")}
       </ul>
     </div>
