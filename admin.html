@@ -426,6 +426,16 @@
                 </button>
               </div>
             </div>
+            <div>
+              <label>Icon (optional)</label>
+              <div class="category-icon-upload">
+                <label for="catIconInput" class="category-icon-upload-label">
+                  <img id="catIconPreview" src="" alt="" class="hidden" />
+                  <span id="catIconUploadText"><i class="fa-solid fa-image"></i> Choose icon</span>
+                </label>
+                <input type="file" id="catIconInput" accept="image/*" onchange="handleCategoryIconSelected(this, 'catIconPreview', 'catIconUploadText')" hidden />
+              </div>
+            </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addCategory()">Add Category</button>
         </div>
@@ -854,6 +864,14 @@
       <select id="editCatParent">
         <option value="">— None (this is a main category) —</option>
       </select>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Icon (optional)</label>
+      <div class="category-icon-upload">
+        <label for="editCatIconInput" class="category-icon-upload-label">
+          <img id="editCatIconPreview" src="" alt="" class="hidden" />
+          <span id="editCatIconUploadText"><i class="fa-solid fa-image"></i> Choose icon</span>
+        </label>
+        <input type="file" id="editCatIconInput" accept="image/*" onchange="handleCategoryIconSelected(this, 'editCatIconPreview', 'editCatIconUploadText')" hidden />
+      </div>
       <button class="btn btn-primary" style="margin-top:14px;" onclick="updateCategory()">Save</button>
     </div>
   </div>

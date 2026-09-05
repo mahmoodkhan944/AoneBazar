@@ -1829,6 +1829,7 @@ function renderCategoriesTree(list) {
         <div class="cat-tree-sub">
           <div class="cat-tree-sub-info">
             <span class="cat-tree-sub-arrow">↳</span>
+            ${sub.icon_url ? `<img src="${sub.icon_url}" alt="" class="cat-tree-icon" />` : ""}
             <span>${sub.name}${sub.name_hi ? `<span class="cat-tree-hi"> (${sub.name_hi})</span>` : ""}</span>
             ${categoryStatsHtml(sub)}
           </div>
@@ -1843,7 +1844,7 @@ function renderCategoriesTree(list) {
         <div class="cat-tree-group">
           <div class="cat-tree-main">
             <div class="cat-tree-main-info">
-              <i class="fa-solid fa-folder" style="color:var(--marigold-600);"></i>
+              ${main.icon_url ? `<img src="${main.icon_url}" alt="" class="cat-tree-icon" />` : `<i class="fa-solid fa-folder" style="color:var(--marigold-600);"></i>`}
               <strong>${main.name}</strong>
               ${main.name_hi ? `<span class="cat-tree-hi">${main.name_hi}</span>` : ""}
               <span class="cat-tree-store-tag">${main.store}</span>
@@ -1879,6 +1880,59 @@ function filterCategories() {
   renderCategoriesTree(filtered);
 }
 
+/** Shared by both the Add Category form and the Edit Category modal
+ *  — just updates the little preview thumbnail, the actual upload
+ *  happens on save (see uploadCategoryIconIfSelected). */
+function handleCategoryIconSelected(input, previewId, textId) {
+  const file = input.files && input.files[0];
+  const preview = document.getElementById(previewId);
+  const text = document.getElementById(textId);
+
+  if (!file) {
+    if (preview) { preview.classList.add("hidden"); preview.src = ""; }
+    if (text) text.classList.remove("hidden");
+    return;
+  }
+
+  if (preview) {
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+  }
+  if (text) text.classList.add("hidden");
+}
+
+/** Uploads whatever file is currently picked in the given input (if
+ *  any) to the category-icons bucket and returns its public URL.
+ *  Returns undefined if nothing was picked (caller should then keep
+ *  whatever icon_url the category already had), or null if the
+ *  upload itself failed (an alert is already shown either way). */
+async function uploadCategoryIconIfSelected(inputId) {
+  const input = document.getElementById(inputId);
+  const file = input && input.files && input.files[0];
+  if (!file) return undefined;
+
+  const fileExt = (file.name.split(".").pop() || "png").toLowerCase();
+  const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+  const { error } = await supabase.storage.from("category-icons").upload(filePath, file);
+  if (error) {
+    alert("Could not upload icon, saving without it: " + error.message);
+    return null;
+  }
+
+  const { data } = supabase.storage.from("category-icons").getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+function resetCategoryIconPicker(inputId, previewId, textId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const text = document.getElementById(textId);
+  if (input) input.value = "";
+  if (preview) { preview.classList.add("hidden"); preview.src = ""; }
+  if (text) text.classList.remove("hidden");
+}
+
 async function addCategory() {
   const isSubMode = document.querySelector(".cat-type-btn.active")?.dataset.type === "sub";
   const store = document.getElementById("catStore").value;
@@ -1889,7 +1943,10 @@ async function addCategory() {
   if (!name) { alert("Enter a category name"); return; }
   if (isSubMode && !parent_id) { alert("Pick a main category for this sub-category to nest under"); return; }
 
-  const { error } = await supabase.from("categories").insert({ store, name, name_hi, parent_id });
+  const icon_url = await uploadCategoryIconIfSelected("catIconInput");
+  if (icon_url === null) return; // upload failed, alert already shown
+
+  const { error } = await supabase.from("categories").insert({ store, name, name_hi, parent_id, icon_url: icon_url || null });
 
   if (error) {
     alert(error.code === "23505" ? "That category already exists" : "Could not add: " + error.message);
@@ -1899,6 +1956,7 @@ async function addCategory() {
   document.getElementById("catName").value = "";
   document.getElementById("catNameHi").value = "";
   if (!isSubMode) document.getElementById("catParent").value = "";
+  resetCategoryIconPicker("catIconInput", "catIconPreview", "catIconUploadText");
   loadCategoriesView();
 }
 
@@ -1918,6 +1976,15 @@ function editCategory(c) {
   document.getElementById("editCatNameHi").value = c.name_hi || "";
   populateParentCategoryDropdown("editCatParent", c.store, c.id);
   document.getElementById("editCatParent").value = c.parent_id || "";
+
+  resetCategoryIconPicker("editCatIconInput", "editCatIconPreview", "editCatIconUploadText");
+  if (c.icon_url) {
+    const preview = document.getElementById("editCatIconPreview");
+    const text = document.getElementById("editCatIconUploadText");
+    if (preview) { preview.src = c.icon_url; preview.classList.remove("hidden"); }
+    if (text) text.classList.add("hidden");
+  }
+
   document.getElementById("editCategoryModal").classList.remove("hidden");
 }
 
@@ -1944,9 +2011,15 @@ async function updateCategory() {
   // longer exists anywhere).
   const before = allCategoriesCache.find(c => c.id === editingCategoryId);
 
+  const newIconUrl = await uploadCategoryIconIfSelected("editCatIconInput");
+  if (newIconUrl === null) return; // upload failed, alert already shown
+  // undefined means "nothing new was picked" — keep whatever icon
+  // this category already had instead of wiping it out.
+  const icon_url = newIconUrl !== undefined ? newIconUrl : (before ? before.icon_url : null);
+
   const { error } = await supabase
     .from("categories")
-    .update({ store, name, name_hi, parent_id })
+    .update({ store, name, name_hi, parent_id, icon_url })
     .eq("id", editingCategoryId);
 
   if (error) {

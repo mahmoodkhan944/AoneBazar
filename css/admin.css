@@ -710,6 +710,41 @@ body.admin-body {
   font-size: 0.96rem;
 }
 
+.cat-tree-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+/* ---------------- CATEGORY ICON UPLOAD ---------------- */
+.category-icon-upload-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  transition: border-color var(--fast) var(--ease);
+}
+.category-icon-upload-label:hover { border-color: var(--green-700); }
+
+.category-icon-upload-label img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
 .cat-tree-hi {
   color: var(--ink-faint);
   font-weight: 400;

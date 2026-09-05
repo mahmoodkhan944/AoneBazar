@@ -227,7 +227,7 @@ async function loadCategoryHindiMap(store) {
 
   const { data: rows, error } = await supabase
     .from("categories")
-    .select("id, name, name_hi, parent_id")
+    .select("id, name, name_hi, parent_id, icon_url")
     .eq("store", store)
     .order("name");
 
@@ -883,11 +883,76 @@ function renderCategoryTiles(key, store, cats) {
 
   const escapeAttr = str => String(str).replace(/"/g, "&quot;");
 
-  // Simple, single flat row — "All Categories" first, then every
-  // top-level category as its own circular tile. A category with its
-  // own sub-categories gets a small badge and opens the dedicated
-  // sidebar detail page (see openCategoryDetailPage); a plain
-  // category with no children just filters products right here.
+  const getThumb = (name, catRecord, subs) => {
+    if (catRecord && catRecord.icon_url) return catRecord.icon_url;
+
+    const items = store.categories[name] || [];
+    let thumb = items[0] && items[0].images && items[0].images[0];
+
+    // A parent category with no products of its own (everything's
+    // filed under its sub-categories instead) borrows a thumbnail
+    // from the first sub-category that has one.
+    if (!thumb && subs) {
+      for (const sub of subs) {
+        const subItems = store.categories[sub.name];
+        if (subItems && subItems[0] && subItems[0].images && subItems[0].images[0]) {
+          thumb = subItems[0].images[0];
+          break;
+        }
+      }
+    }
+    return thumb || "images/logo192.png";
+  };
+
+  // Drilled into a parent category ("Biscuits & Namkeen") — replace
+  // the top-level tile row with a "Back" tile plus its own
+  // sub-categories, right here in the same spot, instead of a
+  // separate page.
+  if (currentParentCategoryView) {
+    const parent = currentParentCategoryView;
+    const subs = categoryHierarchy.subByParentId[parent.id] || [];
+
+    const backTile = `
+      <button type="button" class="category-tile category-tile-back-btn" data-tile-back>
+        <span class="category-tile-img-wrap category-tile-all">
+          <i class="fa-solid fa-arrow-left"></i>
+        </span>
+        <span class="category-tile-label">Back</span>
+      </button>
+    `;
+
+    const subTiles = subs.map(sub => `
+      <button type="button" class="category-tile" data-tile-category="${escapeAttr(sub.name)}">
+        <span class="category-tile-img-wrap">
+          <img src="${getThumb(sub.name, sub)}" alt="${escapeAttr(sub.name)}" loading="lazy" />
+        </span>
+        <span class="category-tile-label">${displayCategoryName(sub.name)}</span>
+      </button>
+    `).join("");
+
+    container.innerHTML = `<div class="category-tiles-heading">${displayCategoryName(parent.name)}</div>` + backTile + subTiles;
+
+    container.querySelector("[data-tile-back]").onclick = () => {
+      currentParentCategoryView = null;
+      renderCategoryTiles(key, store, cats);
+      // Back to the top-level tiles should feel like landing on the
+      // store fresh again — every product, same as "All Categories".
+      selectStoreCategory(key, store, null);
+    };
+
+    container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
+      tile.onclick = () => {
+        selectStoreCategory(key, store, tile.dataset.tileCategory);
+      };
+    });
+
+    return;
+  }
+
+  // Normal top-level screen: "All Categories" first, then every
+  // top-level category — a category with sub-categories gets a small
+  // badge and drills down into them (right here) instead of
+  // filtering products directly.
   const allTile = `
     <button type="button" class="category-tile" data-tile-category="">
       <span class="category-tile-img-wrap category-tile-all">
@@ -901,23 +966,7 @@ function renderCategoryTiles(key, store, cats) {
     const catRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
     const subs = catRecord ? (categoryHierarchy.subByParentId[catRecord.id] || []) : [];
     const hasSubs = subs.length > 0;
-
-    const items = store.categories[cat] || [];
-    let thumb = items[0] && items[0].images && items[0].images[0];
-
-    // A parent category with no products of its own (everything's
-    // filed under its sub-categories instead) borrows a thumbnail
-    // from the first sub-category that has one.
-    if (!thumb && hasSubs) {
-      for (const sub of subs) {
-        const subItems = store.categories[sub.name];
-        if (subItems && subItems[0] && subItems[0].images && subItems[0].images[0]) {
-          thumb = subItems[0].images[0];
-          break;
-        }
-      }
-    }
-    thumb = thumb || "images/logo192.png";
+    const thumb = getThumb(cat, catRecord, subs);
 
     return `
       <button type="button" class="category-tile" data-tile-category="${escapeAttr(cat)}" ${hasSubs ? "data-has-subs" : ""}>
@@ -939,8 +988,13 @@ function renderCategoryTiles(key, store, cats) {
       const cat = tile.dataset.tileCategory || null;
 
       if (cat && tile.hasAttribute("data-has-subs")) {
-        const parentRecord = categoryHierarchy.topLevel.find(c => c.name === cat);
-        if (parentRecord) openCategoryDetailPage(key, store, parentRecord);
+        currentParentCategoryView = categoryHierarchy.topLevel.find(c => c.name === cat);
+        renderCategoryTiles(key, store, cats);
+        // Fill the product grid with this category's full combined
+        // list right away (own + every sub-category), same as
+        // "All Categories" shows everything at once — no need to
+        // drill into a specific sub-category just to see products.
+        selectStoreCategory(key, store, cat);
         return;
       }
 
@@ -995,23 +1049,30 @@ function renderCategoryDetailSidebar(key, store, parentRecord, activeSub) {
   // The "All {Parent}" item borrows its own thumbnail if it has
   // directly-tagged products, otherwise the first sub-category's —
   // same fallback the main tile bar uses for a parent with nothing
-  // of its own.
-  const parentThumb = (store.categories[parentRecord.name] || []).length > 0
+  // of its own. An admin-uploaded icon always wins over either.
+  const parentThumb = parentRecord.icon_url || ((store.categories[parentRecord.name] || []).length > 0
     ? getThumb(parentRecord.name)
-    : (subs[0] ? getThumb(subs[0].name) : "images/logo192.png");
+    : (subs[0] ? getThumb(subs[0].name) : "images/logo192.png"));
 
-  const itemHtml = (name, label, thumb, isActive) => `
+  const itemHtml = (name, englishLabel, hindiLabel, thumb, isActive) => `
     <button type="button" class="category-detail-sidebar-item ${isActive ? "active" : ""}" data-sidebar-category="${escapeAttr(name)}">
       <span class="category-detail-sidebar-img-wrap">
         <img src="${thumb}" alt="${escapeAttr(name)}" loading="lazy" />
       </span>
-      <span class="category-detail-sidebar-label">${label}</span>
+      <span class="category-detail-sidebar-label">
+        <span class="category-detail-sidebar-label-en">${englishLabel}</span>
+        ${hindiLabel ? `<span class="category-detail-sidebar-label-hi">${hindiLabel}</span>` : ""}
+      </span>
     </button>
   `;
 
+  // English and Hindi go on their own stacked lines — combining them
+  // into a single "Name (नाम)" string (like the rest of the site
+  // does) made labels too long for this narrow sidebar and got them
+  // cut off with "…" instead of being fully readable.
   sidebar.innerHTML =
-    itemHtml(parentRecord.name, "All " + displayCategoryName(parentRecord.name), parentThumb, !activeSub) +
-    subs.map(sub => itemHtml(sub.name, displayCategoryName(sub.name), getThumb(sub.name), activeSub === sub.name)).join("");
+    itemHtml(parentRecord.name, "All " + parentRecord.name, parentRecord.name_hi, parentThumb, !activeSub) +
+    subs.map(sub => itemHtml(sub.name, sub.name, sub.name_hi, sub.icon_url || getThumb(sub.name), activeSub === sub.name)).join("");
 
   sidebar.querySelectorAll("[data-sidebar-category]").forEach(item => {
     item.onclick = () => {
@@ -3285,7 +3346,7 @@ async function loadMegaMenu() {
   // instead of every single sub-category flattened together.
   const { data: rows, error } = await supabase
     .from("categories")
-    .select("store, name, name_hi, parent_id")
+    .select("store, name, name_hi, parent_id, icon_url")
     .is("parent_id", null)
     .order("name");
 
@@ -3317,7 +3378,7 @@ async function loadMegaMenu() {
       <h4>${group}</h4>
       <ul>
         ${items.map(c => `
-          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}" onclick="closeMobileCategoriesMenu()"><i class="fa-solid ${getCategoryIcon(c.name)} mega-menu-icon"></i>${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
+          <li><a href="index.html?store=${c.store}&category=${encodeURIComponent(c.name)}" onclick="closeMobileCategoriesMenu()">${c.icon_url ? `<img src="${c.icon_url}" alt="" class="mega-menu-icon-img" />` : `<i class="fa-solid ${getCategoryIcon(c.name)} mega-menu-icon"></i>`}${c.name}${c.name_hi ? ` <span class="mega-menu-hi">(${c.name_hi})</span>` : ""}</a></li>
         `).join("")}
       </ul>
     </div>
