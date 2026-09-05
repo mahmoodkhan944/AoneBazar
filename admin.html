@@ -583,10 +583,16 @@
         </div>
 
         <div class="admin-panel">
-          <h3>Contact Info (reference)</h3>
+          <h3>Contact Page</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Powers the Contact page, the footer, and every "Call us" / "WhatsApp" / "View on Map" link across the site.
+          </p>
           <div class="admin-form-grid">
-            <div><label>Phone</label><input id="cf_contact_phone" /></div>
-            <div><label>Address</label><input id="cf_contact_address" /></div>
+            <div><label>Phone (shown &amp; used for call links)</label><input id="cf_contact_phone" placeholder="+91 8009555567" /></div>
+            <div><label>WhatsApp number (digits only, with country code)</label><input id="cf_contact_whatsapp" placeholder="918009555567" /></div>
+            <div><label>Address</label><input id="cf_contact_address" placeholder="Master Naseem Complex, Lahideeh Bazar, Azamgarh" /></div>
+            <div><label>Business hours</label><input id="cf_contact_hours" placeholder="Open daily, 9 AM – 9 PM" /></div>
+            <div><label>Google Maps link</label><input id="cf_contact_map_url" placeholder="https://maps.app.goo.gl/..." /></div>
           </div>
         </div>
 

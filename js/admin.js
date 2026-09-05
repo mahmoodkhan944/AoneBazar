@@ -853,7 +853,9 @@ async function downloadInvoice(order) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...INK_SOFT);
-  doc.text("Master Naseem Complex, Lahideeh Bazar, Azamgarh  |  +91 8009555567", 105, y, { align: "center" });
+  const invoiceAddress = (window.siteContent && window.siteContent.contact_address) || "Master Naseem Complex, Lahideeh Bazar, Azamgarh";
+  const invoicePhone = (window.siteContent && window.siteContent.contact_phone) || "+91 8009555567";
+  doc.text(`${invoiceAddress}  |  ${invoicePhone}`, 105, y, { align: "center" });
   y += 5;
   doc.text("This is a computer generated invoice.", 105, y, { align: "center" });
 
@@ -2410,7 +2412,10 @@ async function loadSiteContentForm() {
   document.getElementById("cf_banner_text").value = content.banner_text || "";
   document.getElementById("cf_about_intro").value = content.about_intro || "";
   document.getElementById("cf_contact_phone").value = content.contact_phone || "";
+  document.getElementById("cf_contact_whatsapp").value = content.contact_whatsapp || "";
   document.getElementById("cf_contact_address").value = content.contact_address || "";
+  document.getElementById("cf_contact_hours").value = content.contact_hours || "";
+  document.getElementById("cf_contact_map_url").value = content.contact_map_url || "";
   document.getElementById("cf_upi_id").value = content.upi_id || "";
   document.getElementById("cf_min_order").value = content.min_order || "100";
   document.getElementById("cf_delivery_charge").value = content.delivery_charge || "30";
@@ -2434,7 +2439,10 @@ async function saveSiteContent() {
     banner_text: document.getElementById("cf_banner_text").value.trim(),
     about_intro: document.getElementById("cf_about_intro").value.trim(),
     contact_phone: document.getElementById("cf_contact_phone").value.trim(),
+    contact_whatsapp: document.getElementById("cf_contact_whatsapp").value.trim(),
     contact_address: document.getElementById("cf_contact_address").value.trim(),
+    contact_hours: document.getElementById("cf_contact_hours").value.trim(),
+    contact_map_url: document.getElementById("cf_contact_map_url").value.trim(),
     upi_id: document.getElementById("cf_upi_id").value.trim(),
     min_order: document.getElementById("cf_min_order").value.trim() || "100",
     delivery_charge: document.getElementById("cf_delivery_charge").value.trim() || "30",

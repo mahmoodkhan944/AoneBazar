@@ -120,7 +120,7 @@ async function checkDeliveryAvailability() {
     <p class="delivery-check-message delivery-check-no">
       <i class="fa-solid fa-circle-xmark"></i> Sorry, delivery isn't available in your area yet.
     </p>
-    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
+    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
       <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
     </a>`;
 }
@@ -142,7 +142,14 @@ let currentSectionKey = null; // set while viewing a "View All" auto-section pag
 let currentSupabaseUser = null;
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
-const WHATSAPP_NUMBER = "918009555567";
+
+/** The one place every WhatsApp link on the storefront gets its
+ *  number from — reads the admin's Contact Page setting once
+ *  site_content has loaded, falling back to today's real number so
+ *  nothing breaks on the very first paint before that finishes. */
+function getWhatsAppNumber() {
+  return (window.siteContent && window.siteContent.contact_whatsapp) || "918009555567";
+}
 
 // Defaults used until site_content has loaded (or if the admin
 // hasn't set these yet) — the live values come from window.siteContent,
@@ -1753,7 +1760,7 @@ function showDeliveryCheckoutWarning(address) {
     <p class="delivery-check-message delivery-check-no">
       <i class="fa-solid fa-circle-xmark"></i> Sorry, we don't deliver to this address yet.
     </p>
-    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
+    <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
       <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
     </a>`;
   box.classList.remove("hidden");
@@ -1954,7 +1961,7 @@ async function placeOrder() {
   };
 
   window.open(
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`,
+    `https://wa.me/${getWhatsAppNumber()}?text=${message}`,
     "_blank"
   );
 
@@ -2997,7 +3004,7 @@ function updateWhatsAppCTA() {
     message += `%0AHello, I want to place an order`;
   }
 
-  const url = `https://wa.me/918009555567?text=${message}`;
+  const url = `https://wa.me/${getWhatsAppNumber()}?text=${message}`;
 
   btn.href = url;
 }

@@ -337,6 +337,26 @@ if (!window.__AONE_SUPABASE_READY__) {
         if (content[key]) el.innerHTML = renderLegalText(content[key]);
       });
 
+      // Links that need a real href built from a site_content value
+      // — a plain [data-content] swap only changes visible text, not
+      // where the link actually goes, so tel:/wa.me/map links need
+      // their own little transform per key.
+      document.querySelectorAll("[data-content-href]").forEach(el => {
+        const key = el.getAttribute("data-content-href");
+        const raw = content[key];
+        if (!raw) return;
+
+        if (key === "contact_phone") {
+          el.href = "tel:" + raw.replace(/[^\d+]/g, "");
+        } else if (key === "contact_whatsapp") {
+          const digits = raw.replace(/\D/g, "");
+          const message = el.getAttribute("data-wa-message") || "";
+          el.href = `https://wa.me/${digits}` + (message ? `?text=${encodeURIComponent(message)}` : "");
+        } else {
+          el.href = raw;
+        }
+      });
+
       renderSocialLinks(content);
     };
 
