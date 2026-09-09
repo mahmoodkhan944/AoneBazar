@@ -118,10 +118,10 @@ async function checkDeliveryAvailability() {
   const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${query}" — could you add it if not?`);
   resultEl.innerHTML = `
     <p class="delivery-check-message delivery-check-no">
-      <i class="fa-solid fa-circle-xmark"></i> Sorry, delivery isn't available in your area yet.
+      <i class="fa-solid fa-circle-xmark"></i> माफ़ कीजिए, हम अभी इस पते पर डिलीवरी नहीं करते हैं।
     </p>
     <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
-      <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
+      <i class="fa-brands fa-whatsapp"></i> अपने पते पर डिलीवरी के लिए व्हाट्सएप पर मैसेज करें
     </a>`;
 }
 
@@ -206,6 +206,13 @@ function saveCart() {
 
   const countBottom = document.getElementById("cartCountBottom");
   if (countBottom) countBottom.innerText = total;
+
+  // Keeps the floating "X items • View Cart" bar in sync with every
+  // cart change too — it used to only get set once at page load, so
+  // it kept showing stale item counts (e.g. after an order was
+  // placed and the cart was cleared) instead of updating live like
+  // the header badge does.
+  updateCartBar();
 }
 
 /***********************
@@ -1756,8 +1763,8 @@ function showDeliveryCheckoutWarning(address, reason) {
   if (!box) return;
 
   const message = reason === "mixed-cart"
-    ? "Sorry, one or more items in your cart can't be delivered to this address yet — only the specially-marked item(s) can. Try ordering the rest separately, or ask us below."
-    : "Sorry, we don't deliver to this address yet.";
+    ? "माफ़ कीजिए, आपके कार्ट में से कुछ प्रोडक्ट अभी इस पते पर डिलीवर नहीं हो सकते — सिर्फ खास तौर पर चिह्नित प्रोडक्ट ही हो सकते हैं। बाकी को अलग से ऑर्डर करें, या नीचे हमसे पूछें।"
+    : "माफ़ कीजिए, हम अभी इस पते पर डिलीवरी नहीं करते हैं।";
 
   const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${address}" — could you add it if not?`);
   box.innerHTML = `
@@ -1765,7 +1772,7 @@ function showDeliveryCheckoutWarning(address, reason) {
       <i class="fa-solid fa-circle-xmark"></i> ${message}
     </p>
     <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
-      <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
+      <i class="fa-brands fa-whatsapp"></i> अपने पते पर डिलीवरी के लिए व्हाट्सएप पर मैसेज करें
     </a>`;
   box.classList.remove("hidden");
 }
@@ -2088,7 +2095,7 @@ function resetPaymentScreenshotPicker() {
   hidePaymentScreenshotWarning();
 }
 
-function proceedToPayment() {
+async function proceedToPayment() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
@@ -2108,6 +2115,39 @@ function proceedToPayment() {
   if (!name || !address) {
     alert("Enter name and address");
     return;
+  }
+
+  // Checked here — before the payment/QR step ever appears — rather
+  // than waiting until "I've Paid" is tapped, so an undeliverable
+  // address is caught right away instead of after the shopper's
+  // already gone through UPI payment.
+  hideDeliveryCheckoutWarning();
+  const deliveryAreas = await loadDeliveryAreasCache();
+  if (deliveryAreas.length > 0) {
+    const addressLower = address.toLowerCase();
+    const matchedGlobalArea = deliveryAreas.some(a => addressLower.includes(a.area_name.toLowerCase()));
+
+    let isDeliverable = matchedGlobalArea;
+    let blockedReason = null;
+
+    if (!matchedGlobalArea) {
+      const cartHasExtraZoneProduct = cart.some(p => p.deliver_to_all_extra_zones);
+
+      if (cartHasExtraZoneProduct) {
+        const { data: extraZones } = await supabase.from("extra_delivery_zones").select("area_name");
+        const matchedExtraZone = (extraZones || []).find(z => addressLower.includes(z.area_name.toLowerCase()));
+
+        if (matchedExtraZone) {
+          isDeliverable = cart.every(p => p.deliver_to_all_extra_zones);
+          if (!isDeliverable) blockedReason = "mixed-cart";
+        }
+      }
+    }
+
+    if (!isDeliverable) {
+      showDeliveryCheckoutWarning(address, blockedReason);
+      return;
+    }
   }
 
   const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
@@ -3055,8 +3095,7 @@ function updateCartBar() {
     bar.classList.add("hidden");
   }
 }
-saveCart();
-updateCartBar();
+saveCart(); // also runs updateCartBar() internally now
 
 function goHome() {
   // Reuses the exact same "leave the store" logic as the ⬅ Back
