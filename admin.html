@@ -552,7 +552,7 @@
       <section id="view-extra-delivery-zones" class="admin-view">
         <div class="admin-topbar"><h1>Extra Delivery Zones</h1></div>
         <p style="font-size:0.88rem;color:var(--ink-soft);margin-top:-10px;max-width:640px;">
-          A completely separate list from "Delivery Areas" above — this one has no effect on normal delivery by itself. It only exists so specific products (edit a product → "Extra Delivery Areas" checkbox) can be marked deliverable to one or more of these zones too, beyond your usual delivery area.
+          A completely separate list from "Delivery Areas" above — this one has no effect on normal delivery by itself. It only exists so specific products (edit a product → "Extra Delivery Areas" checkbox) can be marked deliverable to one or more of these zones too, beyond your usual delivery area. Each zone can have its own specific localities under it too.
         </p>
 
         <div class="admin-panel">
@@ -568,12 +568,7 @@
 
         <div class="admin-panel">
           <h3>All Extra Zones</h3>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Area</th><th>Actions</th></tr></thead>
-              <tbody id="extraDeliveryZonesBody"></tbody>
-            </table>
-          </div>
+          <div id="extraZonesTree"></div>
           <div id="extraDeliveryZonesPagination" class="pagination"></div>
         </div>
       </section>
@@ -962,6 +957,26 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Estimated delivery time</label>
       <input id="editAreaEta" placeholder="e.g. 30–60 min" />
       <button class="btn btn-primary" onclick="updateDeliveryArea()">Save</button>
+    </div>
+  </div>
+
+  <div id="editExtraZoneModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeExtraZoneEdit()">×</button>
+      <h3>Edit Extra Zone</h3>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Area / Locality name</label>
+      <input id="editExtraZoneName" placeholder="e.g. Azamgarh City" />
+      <button class="btn btn-primary" onclick="updateExtraDeliveryZone()">Save</button>
+    </div>
+  </div>
+
+  <div id="editExtraZoneAreaModal" class="modal hidden">
+    <div class="modal-content">
+      <button onclick="closeExtraZoneAreaEdit()">×</button>
+      <h3>Edit Locality</h3>
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Locality name</label>
+      <input id="editExtraZoneAreaName" placeholder="e.g. Saraimeer Main Market" />
+      <button class="btn btn-primary" onclick="updateExtraDeliveryZoneArea()">Save</button>
     </div>
   </div>
 

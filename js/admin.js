@@ -879,53 +879,94 @@ function toggleProductForm() {
 /***********************
     EXTRA DELIVERY ZONES
     A separate list from the main Delivery Areas — only used to
-    populate the checklist a product can opt into (see the "Extra
-    Delivery Areas" checkbox on the product form).
+    populate the "Extra Delivery Areas" checkbox a product can opt
+    into. Each zone can also have its own specific localities nested
+    under it, each independently active/inactive — checkout matches
+    against a zone's own name AND every active locality under it.
 ************************/
 
+let currentExtraZonesList = [];
+let expandedExtraZoneId = null; // which zone's locality list is currently open, if any
+
 async function loadExtraDeliveryZones() {
-  const body = document.getElementById("extraDeliveryZonesBody");
-  body.innerHTML = `<tr><td colspan="2" style="text-align:center;">Loading…</td></tr>`;
+  const container = document.getElementById("extraZonesTree");
+  container.innerHTML = `<p style="text-align:center;color:var(--ink-faint);">Loading…</p>`;
 
-  const { data: rows, error } = await supabase.from("extra_delivery_zones").select("*").order("area_name");
+  const [{ data: zones, error: zonesError }, { data: areas, error: areasError }] = await Promise.all([
+    supabase.from("extra_delivery_zones").select("*").order("area_name"),
+    supabase.from("extra_delivery_zone_areas").select("*").order("area_name")
+  ]);
 
-  if (error) {
-    body.innerHTML = `<tr><td colspan="2">Could not load extra delivery zones</td></tr>`;
+  if (zonesError || areasError) {
+    container.innerHTML = `<p style="color:var(--danger-600);">Could not load extra delivery zones</p>`;
     return;
   }
 
-  extraDeliveryZonesPage = 1;
-  renderExtraDeliveryZonesTable(rows || []);
+  currentExtraZonesList = (zones || []).map(z => ({
+    ...z,
+    localities: (areas || []).filter(a => a.zone_id === z.id)
+  }));
+
+  renderExtraZonesTree();
 }
 
-let extraDeliveryZonesPage = 1;
-let currentExtraDeliveryZonesList = [];
+function renderExtraZonesTree() {
+  const container = document.getElementById("extraZonesTree");
 
-function renderExtraDeliveryZonesTable(list) {
-  currentExtraDeliveryZonesList = list;
-  const body = document.getElementById("extraDeliveryZonesBody");
-
-  if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--ink-faint);">No extra zones added yet</td></tr>`;
-    document.getElementById("extraDeliveryZonesPagination").innerHTML = "";
+  if (currentExtraZonesList.length === 0) {
+    container.innerHTML = `<p style="text-align:center;color:var(--ink-faint);">No extra zones added yet</p>`;
     return;
   }
 
-  const pageItems = paginateArray(list, extraDeliveryZonesPage, PAGE_SIZE);
+  container.innerHTML = currentExtraZonesList.map(z => `
+    <div class="cat-tree-group">
+      <div class="cat-tree-main">
+        <div class="cat-tree-main-info">
+          <i class="fa-solid fa-map-location-dot" style="color:var(--indigo-800);"></i>
+          <strong>${z.area_name}</strong>
+          <span class="status-pill ${z.active ? 'DELIVERED' : 'CANCELLED'}">${z.active ? "Active" : "Off"}</span>
+          <span class="cat-tree-stats">${z.localities.length} localit${z.localities.length === 1 ? "y" : "ies"}</span>
+        </div>
+        <div class="table-actions">
+          <button onclick="toggleExtraZoneLocalities('${z.id}')">${expandedExtraZoneId === z.id ? "Hide" : "Manage"} Localities</button>
+          <button onclick='editExtraDeliveryZone(${jsonAttr(z)})'>Edit</button>
+          <button onclick="toggleExtraDeliveryZone('${z.id}', ${!z.active})">${z.active ? "Deactivate" : "Activate"}</button>
+          <button class="danger" onclick="deleteExtraDeliveryZone('${z.id}')">Delete</button>
+        </div>
+      </div>
 
-  body.innerHTML = pageItems.map(z => `
-    <tr>
-      <td class="cell-title">${z.area_name}</td>
-      <td><div class="table-actions"><button class="danger" onclick="deleteExtraDeliveryZone('${z.id}')">Delete</button></div></td>
-    </tr>
+      ${expandedExtraZoneId === z.id ? `
+        <div style="padding:14px 0 4px 30px;">
+          <div class="admin-form-grid" style="margin-bottom:10px;">
+            <input id="newLocalityInput-${z.id}" placeholder="e.g. Saraimeer Main Market" />
+            <button class="btn btn-primary btn-sm" onclick="addExtraDeliveryZoneArea('${z.id}')">Add Locality</button>
+          </div>
+          ${z.localities.length === 0
+            ? `<p style="font-size:0.85rem;color:var(--ink-faint);">No localities under this zone yet — the zone name itself still matches on its own.</p>`
+            : z.localities.map(a => `
+              <div class="cat-tree-sub">
+                <div class="cat-tree-sub-info">
+                  <span class="cat-tree-sub-arrow">↳</span>
+                  <span>${a.area_name}</span>
+                  <span class="status-pill ${a.active ? 'DELIVERED' : 'CANCELLED'}">${a.active ? "Active" : "Off"}</span>
+                </div>
+                <div class="table-actions">
+                  <button onclick='editExtraDeliveryZoneArea(${jsonAttr(a)})'>Edit</button>
+                  <button onclick="toggleExtraDeliveryZoneArea('${a.id}', ${!a.active})">${a.active ? "Deactivate" : "Activate"}</button>
+                  <button class="danger" onclick="deleteExtraDeliveryZoneArea('${a.id}')">Delete</button>
+                </div>
+              </div>
+            `).join("")
+          }
+        </div>
+      ` : ""}
+    </div>
   `).join("");
-
-  renderPagination("extraDeliveryZonesPagination", list.length, extraDeliveryZonesPage, PAGE_SIZE, "goToExtraDeliveryZonesPage");
 }
 
-function goToExtraDeliveryZonesPage(n) {
-  extraDeliveryZonesPage = n;
-  renderExtraDeliveryZonesTable(currentExtraDeliveryZonesList);
+function toggleExtraZoneLocalities(zoneId) {
+  expandedExtraZoneId = expandedExtraZoneId === zoneId ? null : zoneId;
+  renderExtraZonesTree();
 }
 
 async function addExtraDeliveryZone() {
@@ -939,9 +980,85 @@ async function addExtraDeliveryZone() {
   loadExtraDeliveryZones();
 }
 
+async function toggleExtraDeliveryZone(id, active) {
+  const { error } = await supabase.from("extra_delivery_zones").update({ active }).eq("id", id);
+  if (error) { alert("Could not update: " + error.message); return; }
+  loadExtraDeliveryZones();
+}
+
+let editingExtraZoneId = null;
+
+function editExtraDeliveryZone(z) {
+  editingExtraZoneId = z.id;
+  document.getElementById("editExtraZoneName").value = z.area_name;
+  document.getElementById("editExtraZoneModal").classList.remove("hidden");
+}
+
+function closeExtraZoneEdit() {
+  document.getElementById("editExtraZoneModal").classList.add("hidden");
+}
+
+async function updateExtraDeliveryZone() {
+  const area_name = document.getElementById("editExtraZoneName").value.trim();
+  if (!area_name) { alert("Enter an area / locality name"); return; }
+
+  const { error } = await supabase.from("extra_delivery_zones").update({ area_name }).eq("id", editingExtraZoneId);
+  if (error) { alert("Could not update: " + error.message); return; }
+
+  closeExtraZoneEdit();
+  loadExtraDeliveryZones();
+}
+
 async function deleteExtraDeliveryZone(id) {
-  if (!(await customConfirm("Delete this extra delivery zone? Products already tagged with it will no longer deliver there.", "Delete"))) return;
+  if (!(await customConfirm("Delete this extra delivery zone and all its localities? Products already tagged with it will no longer deliver there.", "Delete"))) return;
   const { error } = await supabase.from("extra_delivery_zones").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  loadExtraDeliveryZones();
+}
+
+async function addExtraDeliveryZoneArea(zoneId) {
+  const input = document.getElementById(`newLocalityInput-${zoneId}`);
+  const area_name = input.value.trim();
+  if (!area_name) { alert("Enter a locality name"); return; }
+
+  const { error } = await supabase.from("extra_delivery_zone_areas").insert({ zone_id: zoneId, area_name });
+  if (error) { alert("Could not add: " + error.message); return; }
+
+  loadExtraDeliveryZones();
+}
+
+async function toggleExtraDeliveryZoneArea(id, active) {
+  const { error } = await supabase.from("extra_delivery_zone_areas").update({ active }).eq("id", id);
+  if (error) { alert("Could not update: " + error.message); return; }
+  loadExtraDeliveryZones();
+}
+
+let editingExtraZoneAreaId = null;
+
+function editExtraDeliveryZoneArea(a) {
+  editingExtraZoneAreaId = a.id;
+  document.getElementById("editExtraZoneAreaName").value = a.area_name;
+  document.getElementById("editExtraZoneAreaModal").classList.remove("hidden");
+}
+
+function closeExtraZoneAreaEdit() {
+  document.getElementById("editExtraZoneAreaModal").classList.add("hidden");
+}
+
+async function updateExtraDeliveryZoneArea() {
+  const area_name = document.getElementById("editExtraZoneAreaName").value.trim();
+  if (!area_name) { alert("Enter a locality name"); return; }
+
+  const { error } = await supabase.from("extra_delivery_zone_areas").update({ area_name }).eq("id", editingExtraZoneAreaId);
+  if (error) { alert("Could not update: " + error.message); return; }
+
+  closeExtraZoneAreaEdit();
+  loadExtraDeliveryZones();
+}
+
+async function deleteExtraDeliveryZoneArea(id) {
+  if (!(await customConfirm("Delete this locality?", "Delete"))) return;
+  const { error } = await supabase.from("extra_delivery_zone_areas").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadExtraDeliveryZones();
 }

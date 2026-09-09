@@ -38,6 +38,30 @@ async function loadDeliveryAreasCache() {
   return deliveryAreasCache;
 }
 
+/** Every currently-active Extra Delivery Zone name, plus every
+ *  currently-active locality nested under each one — the full set
+ *  an address can match against for a "delivers to all Extra
+ *  Delivery Zones" product. An inactive zone's own name is excluded,
+ *  but if the admin deactivates just one locality under an otherwise
+ *  active zone, the rest of that zone's localities (and the zone's
+ *  own name) still count. */
+async function getActiveExtraZoneAreaNames() {
+  const { data: zones } = await supabase.from("extra_delivery_zones").select("id, area_name").eq("active", true);
+  const activeZoneIds = (zones || []).map(z => z.id);
+  const names = (zones || []).map(z => z.area_name);
+
+  if (activeZoneIds.length > 0) {
+    const { data: areas } = await supabase
+      .from("extra_delivery_zone_areas")
+      .select("area_name")
+      .eq("active", true)
+      .in("zone_id", activeZoneIds);
+    (areas || []).forEach(a => names.push(a.area_name));
+  }
+
+  return names;
+}
+
 /** As the shopper types ("L") every admin-listed area starting with
  *  that text ("Lahideeh", "Lohta"...) shows up as a clickable
  *  suggestion — picking one fills the box and checks it right away,
@@ -1266,7 +1290,7 @@ async function loadAutoProductSections() {
   let extraZoneTitle = "Also Delivers to Extra Areas";
 
   if (extraZoneProducts.length > 0) {
-    const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").order("area_name");
+    const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").eq("active", true).order("area_name");
     const zoneNames = (zones || []).map(z => z.area_name);
     if (zoneNames.length > 0) {
       extraZoneTitle = `These Products Deliver to ${zoneNames.join(", ")} Area`;
@@ -1871,8 +1895,8 @@ async function placeOrder() {
       const cartHasExtraZoneProduct = cart.some(p => p.deliver_to_all_extra_zones);
 
       if (cartHasExtraZoneProduct) {
-        const { data: extraZones } = await supabase.from("extra_delivery_zones").select("area_name");
-        const matchedExtraZone = (extraZones || []).find(z => addressLower.includes(z.area_name.toLowerCase()));
+        const extraZoneAreaNames = await getActiveExtraZoneAreaNames();
+        const matchedExtraZone = extraZoneAreaNames.find(name => addressLower.includes(name.toLowerCase()));
 
         if (matchedExtraZone) {
           isDeliverable = cart.every(p => p.deliver_to_all_extra_zones);
@@ -2156,8 +2180,8 @@ async function proceedToPayment() {
       const cartHasExtraZoneProduct = cart.some(p => p.deliver_to_all_extra_zones);
 
       if (cartHasExtraZoneProduct) {
-        const { data: extraZones } = await supabase.from("extra_delivery_zones").select("area_name");
-        const matchedExtraZone = (extraZones || []).find(z => addressLower.includes(z.area_name.toLowerCase()));
+        const extraZoneAreaNames = await getActiveExtraZoneAreaNames();
+        const matchedExtraZone = extraZoneAreaNames.find(name => addressLower.includes(name.toLowerCase()));
 
         if (matchedExtraZone) {
           isDeliverable = cart.every(p => p.deliver_to_all_extra_zones);
@@ -2619,8 +2643,7 @@ async function loadProductPage() {
   const deliveryInfoEl = document.getElementById("detailDeliveryInfo");
   if (deliveryInfoEl) {
     if (p.deliver_to_all_extra_zones) {
-      const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").order("area_name");
-      const zoneNames = (zones || []).map(z => z.area_name);
+      const zoneNames = await getActiveExtraZoneAreaNames();
       deliveryInfoEl.innerHTML = `
         <p class="delivery-check-message delivery-check-yes" style="margin-bottom:0;">
           <i class="fa-solid fa-truck-fast"></i> This item delivers to your usual area${zoneNames.length > 0 ? `, plus: ${zoneNames.join(", ")}` : ""}
