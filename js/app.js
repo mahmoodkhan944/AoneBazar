@@ -2755,10 +2755,19 @@ async function loadProductPage() {
   const deliveryInfoEl = document.getElementById("detailDeliveryInfo");
   if (deliveryInfoEl) {
     if (p.deliver_to_all_extra_zones) {
-      const zoneNames = await getActiveExtraZoneAreaNames();
+      // Kept short and specific on purpose — "Lahideeh area" is the
+      // store's actual main delivery zone, not the dozens of
+      // individual localities configured under Delivery Areas
+      // (which made this line unreadably long). Each extra zone is
+      // named the same simple way: "{zone} area".
+      const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").eq("active", true).order("area_name");
+      const extraZoneNames = (zones || []).map(z => z.area_name);
+
+      const allAreas = ["Lahideeh", ...extraZoneNames].map(n => `${n} area`);
+
       deliveryInfoEl.innerHTML = `
         <p class="delivery-check-message delivery-check-yes" style="margin-bottom:0;">
-          <i class="fa-solid fa-truck-fast"></i> This item delivers to your usual area${zoneNames.length > 0 ? `, plus: ${zoneNames.join(", ")}` : ""}
+          <i class="fa-solid fa-truck-fast"></i> This item delivers to ${allAreas.join(", ")}
         </p>
       `;
       deliveryInfoEl.classList.remove("hidden");
