@@ -121,6 +121,12 @@ function showAdminView(name) {
   // resetting to the dashboard.
   history.replaceState(null, "", "#" + name);
 
+  // A fresh, deliberate switch to the Products tab starts clean at
+  // page 1 — only an in-place refresh after saving/editing (which
+  // calls loadProducts() directly, not through here) keeps whatever
+  // page was already showing.
+  if (name === "products") productsPage = 1;
+
   if (VIEW_LOADERS[name]) VIEW_LOADERS[name]();
 
   closeAdminSidebar(); // tapping a nav item on mobile should close the drawer
@@ -1306,8 +1312,16 @@ async function loadProducts() {
   }
 
   allProductsCache = rows || [];
-  productsPage = 1;
-  renderProductsTable(allProductsCache);
+
+  // Re-applies whatever store filter / search text is already sitting
+  // in the boxes, and keeps whatever page the admin was on — this
+  // runs after every save/activate/delete too (see updateProduct,
+  // addProduct, toggleProductStock, deleteProduct), and without this
+  // it used to silently reset back to "All Stores", page 1, every
+  // single time, right after editing a product in a store's filtered
+  // list further down the pages.
+  applyProductsFilter({ resetPage: false });
+
   loadCategoryOptions(document.getElementById("pStore").value);
 
   // Populate the "homepage section" datalist so the admin can reuse an
@@ -1335,6 +1349,13 @@ function renderProductsTable(list) {
     document.getElementById("productsPagination").innerHTML = "";
     return;
   }
+
+  // A page number left over from a longer, unfiltered list can end up
+  // past the end of a shorter, filtered one (e.g. was on page 5,
+  // then picked a store with only 2 pages) — fall back to the last
+  // real page instead of rendering nothing.
+  const maxPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if (productsPage > maxPage) productsPage = maxPage;
 
   const pageItems = paginateArray(list, productsPage, PAGE_SIZE);
 
@@ -1364,7 +1385,13 @@ function goToProductsPage(n) {
   renderProductsTable(currentProductsList);
 }
 
-function filterProducts() {
+/** Filters allProductsCache by whatever's currently in the search box
+ *  and store dropdown, and renders it. resetPage=true (the default,
+ *  used when the admin actually changes the search/store filter
+ *  themselves via filterProducts()) jumps back to page 1, since a
+ *  new filter is a fresh view. resetPage=false (used by loadProducts()
+ *  after a save/refresh) keeps whatever page was already showing. */
+function applyProductsFilter({ resetPage = true } = {}) {
   const q = document.getElementById("productSearch").value.toLowerCase();
   const storeFilter = document.getElementById("productStoreFilter").value;
 
@@ -1373,8 +1400,12 @@ function filterProducts() {
     (!storeFilter || p.store === storeFilter)
   );
 
-  productsPage = 1;
+  if (resetPage) productsPage = 1;
   renderProductsTable(filtered);
+}
+
+function filterProducts() {
+  applyProductsFilter({ resetPage: true });
 }
 
 async function toggleProductStock(id, newStatus) {
