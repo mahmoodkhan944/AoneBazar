@@ -59,6 +59,9 @@
         <button class="admin-nav-item" data-view="delivery-areas" onclick="showAdminView('delivery-areas')">
           <i class="fa-solid fa-location-dot"></i> Delivery Areas
         </button>
+        <button class="admin-nav-item" data-view="extra-delivery-zones" onclick="showAdminView('extra-delivery-zones')">
+          <i class="fa-solid fa-map-location-dot"></i> Extra Delivery Zones
+        </button>
         <button class="admin-nav-item" data-view="reviews" onclick="showAdminView('reviews')">
           <i class="fa-solid fa-star"></i> Reviews
         </button>
@@ -353,6 +356,13 @@
               <div id="pSpecs" class="spec-rows"></div>
               <button type="button" class="btn btn-outline btn-sm" onclick="addSpecRow('pSpecs')">+ Add Specification</button>
             </div>
+            <div class="full">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pHasExtraAreas" onchange="toggleExtraAreasChecklist('pHasExtraAreas', 'pExtraAreasChecklist')" style="width:auto;" />
+                This product also delivers to some Extra Delivery Zones
+              </label>
+              <div id="pExtraAreasChecklist" class="extra-areas-checklist hidden"></div>
+            </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addProduct()">Save Product</button>
         </div>
@@ -533,6 +543,36 @@
             </table>
           </div>
           <div id="deliveryAreasPagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <!-- ===== EXTRA DELIVERY ZONES ===== -->
+      <section id="view-extra-delivery-zones" class="admin-view">
+        <div class="admin-topbar"><h1>Extra Delivery Zones</h1></div>
+        <p style="font-size:0.88rem;color:var(--ink-soft);margin-top:-10px;max-width:640px;">
+          A completely separate list from "Delivery Areas" above — this one has no effect on normal delivery by itself. It only exists so specific products (edit a product → "Extra Delivery Areas" checkbox) can be marked deliverable to one or more of these zones too, beyond your usual delivery area.
+        </p>
+
+        <div class="admin-panel">
+          <h3>Add a Zone</h3>
+          <div class="admin-form-grid">
+            <div>
+              <label>Area / Locality name</label>
+              <input id="extraZoneNameInput" placeholder="e.g. Azamgarh City" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addExtraDeliveryZone()">Add Zone</button>
+        </div>
+
+        <div class="admin-panel">
+          <h3>All Extra Zones</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Area</th><th>Actions</th></tr></thead>
+              <tbody id="extraDeliveryZonesBody"></tbody>
+            </table>
+          </div>
+          <div id="extraDeliveryZonesPagination" class="pagination"></div>
         </div>
       </section>
 
@@ -842,6 +882,12 @@
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:14px 0 4px;">Product Specifications (optional)</label>
       <div id="editSpecs" class="spec-rows"></div>
       <button type="button" class="btn btn-outline btn-sm" onclick="addSpecRow('editSpecs')">+ Add Specification</button>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px;">
+        <input type="checkbox" id="editHasExtraAreas" onchange="toggleExtraAreasChecklist('editHasExtraAreas', 'editExtraAreasChecklist')" style="width:auto;" />
+        This product also delivers to some Extra Delivery Zones
+      </label>
+      <div id="editExtraAreasChecklist" class="extra-areas-checklist hidden"></div>
 
       <button class="btn btn-primary" style="margin-top:14px;" onclick="updateProduct()">Save</button>
     </div>

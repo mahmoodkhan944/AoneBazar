@@ -1751,14 +1751,18 @@ function removeCoupon() {
  *  delivery area — a plain alert() would float over the whole page
  *  and cover the QR code, so this stays inside the cart instead,
  *  right where the customer is already looking. */
-function showDeliveryCheckoutWarning(address) {
+function showDeliveryCheckoutWarning(address, reason) {
   const box = document.getElementById("deliveryCheckoutWarning");
   if (!box) return;
+
+  const message = reason === "mixed-cart"
+    ? "Sorry, one or more items in your cart can't be delivered to this address yet — only the specially-marked item(s) can. Try ordering the rest separately, or ask us below."
+    : "Sorry, we don't deliver to this address yet.";
 
   const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${address}" — could you add it if not?`);
   box.innerHTML = `
     <p class="delivery-check-message delivery-check-no">
-      <i class="fa-solid fa-circle-xmark"></i> Sorry, we don't deliver to this address yet.
+      <i class="fa-solid fa-circle-xmark"></i> ${message}
     </p>
     <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
       <i class="fa-brands fa-whatsapp"></i> Ask us on WhatsApp
@@ -1816,14 +1820,38 @@ async function placeOrder() {
   // no delivery areas have been set up at all yet, this doesn't
   // block anything — the restriction only kicks in once the admin
   // has actually configured a delivery zone.
+  //
+  // A product can also carry its own extra_delivery_areas — set on
+  // specific products the shop is happy to send further than usual
+  // (see Admin → Products → Extra Delivery Areas). But that only
+  // covers THAT product: if the address falls in one of these extra
+  // areas (not the store's normal zone), EVERY item in the cart must
+  // support that same area, or the whole order is blocked — a
+  // "normal" item genuinely can't be delivered somewhere the store
+  // doesn't reach, even riding along with a special-delivery item.
   hideDeliveryCheckoutWarning();
   const deliveryAreas = await loadDeliveryAreasCache();
   if (deliveryAreas.length > 0) {
     const addressLower = address.toLowerCase();
-    const isDeliverable = deliveryAreas.some(a => addressLower.includes(a.area_name.toLowerCase()));
+    const matchedGlobalArea = deliveryAreas.some(a => addressLower.includes(a.area_name.toLowerCase()));
+
+    let isDeliverable = matchedGlobalArea;
+    let blockedReason = null;
+
+    if (!matchedGlobalArea) {
+      const allExtraAreaNames = [...new Set(cart.flatMap(p => p.extra_delivery_areas || []))];
+      const matchedExtraArea = allExtraAreaNames.find(areaName => addressLower.includes(areaName.toLowerCase()));
+
+      if (matchedExtraArea) {
+        isDeliverable = cart.every(p =>
+          (p.extra_delivery_areas || []).some(a => a.toLowerCase() === matchedExtraArea.toLowerCase())
+        );
+        if (!isDeliverable) blockedReason = "mixed-cart";
+      }
+    }
 
     if (!isDeliverable) {
-      showDeliveryCheckoutWarning(address);
+      showDeliveryCheckoutWarning(address, blockedReason);
       return;
     }
   }

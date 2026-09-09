@@ -101,6 +101,7 @@ const VIEW_LOADERS = {
   categories: loadCategoriesView,
   coupons: loadCoupons,
   "delivery-areas": loadDeliveryAreas,
+  "extra-delivery-zones": loadExtraDeliveryZones,
   reviews: loadReviews,
   content: loadSiteContentForm,
   users: loadUsers,
@@ -869,7 +870,124 @@ async function downloadInvoice(order) {
 function toggleProductForm() {
   const panel = document.getElementById("productFormPanel");
   panel.classList.toggle("hidden");
-  if (!panel.classList.contains("hidden")) loadCategoryOptions(document.getElementById("pStore").value);
+  if (!panel.classList.contains("hidden")) {
+    loadCategoryOptions(document.getElementById("pStore").value);
+    document.getElementById("pHasExtraAreas").checked = false;
+    document.getElementById("pExtraAreasChecklist").classList.add("hidden");
+    document.getElementById("pExtraAreasChecklist").innerHTML = "";
+  }
+}
+
+/** Shared by the Add and Edit product forms — shows/hides the
+ *  checklist of Extra Delivery Zones when the checkbox is
+ *  toggled, loading the zone list into it the first time it opens. */
+async function toggleExtraAreasChecklist(checkboxId, checklistId, selectedNames) {
+  const checkbox = document.getElementById(checkboxId);
+  const checklist = document.getElementById(checklistId);
+  if (!checkbox || !checklist) return;
+
+  if (!checkbox.checked) {
+    checklist.classList.add("hidden");
+    return;
+  }
+
+  checklist.classList.remove("hidden");
+
+  if (!checklist.dataset.loaded) {
+    const { data: zones, error } = await supabase.from("extra_delivery_zones").select("area_name").order("area_name");
+    const selected = new Set(selectedNames || []);
+
+    if (error || !zones || zones.length === 0) {
+      checklist.innerHTML = `<span style="font-size:0.82rem;color:var(--ink-faint);">No extra zones added yet — see Admin → Extra Delivery Zones</span>`;
+    } else {
+      checklist.innerHTML = zones.map(z => `
+        <label>
+          <input type="checkbox" value="${z.area_name}" ${selected.has(z.area_name) ? "checked" : ""} />
+          ${z.area_name}
+        </label>
+      `).join("");
+    }
+    checklist.dataset.loaded = "1";
+  }
+}
+
+function getCheckedExtraAreas(hasAreasCheckboxId, checklistId) {
+  const hasAreas = document.getElementById(hasAreasCheckboxId);
+  if (!hasAreas || !hasAreas.checked) return [];
+
+  const checklist = document.getElementById(checklistId);
+  if (!checklist) return [];
+  return Array.from(checklist.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
+}
+
+/***********************
+    EXTRA DELIVERY ZONES
+    A separate list from the main Delivery Areas — only used to
+    populate the checklist a product can opt into (see the "Extra
+    Delivery Areas" checkbox on the product form).
+************************/
+
+async function loadExtraDeliveryZones() {
+  const body = document.getElementById("extraDeliveryZonesBody");
+  body.innerHTML = `<tr><td colspan="2" style="text-align:center;">Loading…</td></tr>`;
+
+  const { data: rows, error } = await supabase.from("extra_delivery_zones").select("*").order("area_name");
+
+  if (error) {
+    body.innerHTML = `<tr><td colspan="2">Could not load extra delivery zones</td></tr>`;
+    return;
+  }
+
+  extraDeliveryZonesPage = 1;
+  renderExtraDeliveryZonesTable(rows || []);
+}
+
+let extraDeliveryZonesPage = 1;
+let currentExtraDeliveryZonesList = [];
+
+function renderExtraDeliveryZonesTable(list) {
+  currentExtraDeliveryZonesList = list;
+  const body = document.getElementById("extraDeliveryZonesBody");
+
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--ink-faint);">No extra zones added yet</td></tr>`;
+    document.getElementById("extraDeliveryZonesPagination").innerHTML = "";
+    return;
+  }
+
+  const pageItems = paginateArray(list, extraDeliveryZonesPage, PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(z => `
+    <tr>
+      <td class="cell-title">${z.area_name}</td>
+      <td><div class="table-actions"><button class="danger" onclick="deleteExtraDeliveryZone('${z.id}')">Delete</button></div></td>
+    </tr>
+  `).join("");
+
+  renderPagination("extraDeliveryZonesPagination", list.length, extraDeliveryZonesPage, PAGE_SIZE, "goToExtraDeliveryZonesPage");
+}
+
+function goToExtraDeliveryZonesPage(n) {
+  extraDeliveryZonesPage = n;
+  renderExtraDeliveryZonesTable(currentExtraDeliveryZonesList);
+}
+
+async function addExtraDeliveryZone() {
+  const area_name = document.getElementById("extraZoneNameInput").value.trim();
+  if (!area_name) { alert("Enter an area / locality name"); return; }
+
+  const { error } = await supabase.from("extra_delivery_zones").insert({ area_name });
+  if (error) { alert("Could not add: " + error.message); return; }
+
+  document.getElementById("extraZoneNameInput").value = "";
+  loadExtraDeliveryZones();
+}
+
+async function deleteExtraDeliveryZone(id) {
+  if (!(await customConfirm("Delete this extra delivery zone? Products already tagged with it will no longer deliver there.", "Delete"))) return;
+  const { error } = await supabase.from("extra_delivery_zones").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  loadExtraDeliveryZones();
 }
 
 document.addEventListener("change", e => {
@@ -1189,6 +1307,7 @@ async function addProduct() {
   const files = document.getElementById("pImage").files;
   const variants = collectVariants("pVariants");
   const specs = collectSpecs("pSpecs");
+  const extra_delivery_areas = getCheckedExtraAreas("pHasExtraAreas", "pExtraAreasChecklist");
 
   if (!name || !category) {
     alert("Fill in name and category");
@@ -1231,7 +1350,8 @@ async function addProduct() {
 
   const { error } = await supabase.from("products").insert({
     store, category, brand, name, name_hi, description, description_hi, price: effectivePrice, mrp, images: imageURLs, variants, specs,
-    featured_section, featured_order
+    featured_section, featured_order,
+    extra_delivery_areas
   });
 
   if (error) {
@@ -1252,6 +1372,8 @@ async function addProduct() {
   document.getElementById("pImage").value = "";
   document.getElementById("pVariants").innerHTML = "";
   document.getElementById("pSpecs").innerHTML = "";
+  document.getElementById("pHasExtraAreas").checked = false;
+  document.getElementById("pExtraAreasChecklist").classList.add("hidden");
   loadProducts();
 }
 
@@ -1278,6 +1400,17 @@ async function editProduct(p) {
 
   renderVariantRows("editVariants", p.variants || []);
   renderSpecRows("editSpecs", p.specs || []);
+
+  const hasExtraAreas = (p.extra_delivery_areas || []).length > 0;
+  const editHasExtraAreasEl = document.getElementById("editHasExtraAreas");
+  const editChecklistEl = document.getElementById("editExtraAreasChecklist");
+  editHasExtraAreasEl.checked = hasExtraAreas;
+  delete editChecklistEl.dataset.loaded; // force a fresh reload so it re-checks the right boxes for THIS product
+  editChecklistEl.innerHTML = "";
+  editChecklistEl.classList.toggle("hidden", !hasExtraAreas);
+  if (hasExtraAreas) {
+    toggleExtraAreasChecklist("editHasExtraAreas", "editExtraAreasChecklist", p.extra_delivery_areas);
+  }
 
   await populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", p.store, p.category);
 
@@ -1600,6 +1733,7 @@ async function updateProduct() {
   const category = getSelectedProductCategory("editCategory", "editSubCategory");
   const variants = collectVariants("editVariants");
   const specs = collectSpecs("editSpecs");
+  const extra_delivery_areas = getCheckedExtraAreas("editHasExtraAreas", "editExtraAreasChecklist");
 
   let images = [...editRemainingImages];
   const files = document.getElementById("editImage").files;
@@ -1624,7 +1758,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order };
+  const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order, extra_delivery_areas };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 

@@ -1015,6 +1015,30 @@ body.admin-body {
   margin-bottom: 10px;
 }
 
+.extra-areas-checklist {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extra-areas-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+.extra-areas-checklist input[type="checkbox"] { width: auto; }
+
 .spec-row {
   display: grid;
   grid-template-columns: 1fr 1fr 32px;
