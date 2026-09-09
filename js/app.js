@@ -2826,37 +2826,6 @@ window.onload = function () {
   }
 };
 
-/** "Frequently Bought Together" — the handful of products the admin
- *  picked when editing this one (see Admin → Products → Frequently
- *  Bought Together). Reuses the same compact card used on the
- *  homepage's featured rows, since it's the same "small horizontal
- *  row of add-to-cart cards" shape. */
-async function loadRelatedProducts(p) {
-  const section = document.getElementById("relatedProductsSection");
-  const row = document.getElementById("relatedProductsRow");
-  if (!section || !row) return;
-
-  const ids = p.related_products || [];
-  if (ids.length === 0) {
-    section.classList.add("hidden");
-    return;
-  }
-
-  const { data: related, error } = await supabase
-    .from("products")
-    .select("*")
-    .in("id", ids)
-    .eq("in_stock", true);
-
-  if (error || !related || related.length === 0) {
-    section.classList.add("hidden");
-    return;
-  }
-
-  row.innerHTML = related.map(rp => featuredProductCardHtml(rp)).join("");
-  section.classList.remove("hidden");
-}
-
 /***********************
     PRODUCT PAGE (product.html?id=...)
     Gives every product its own shareable URL instead of only
@@ -2983,8 +2952,6 @@ async function loadProductPage() {
       deliveryInfoEl.classList.add("hidden");
     }
   }
-
-  await loadRelatedProducts(p);
 
   const addBtn = document.getElementById("addToCartBtn");
   if (p.in_stock === false) {

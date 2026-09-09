@@ -886,32 +886,7 @@ function toggleProductForm() {
   if (!panel.classList.contains("hidden")) {
     loadCategoryOptions(document.getElementById("pStore").value);
     document.getElementById("pHasExtraAreas").checked = false;
-    populateRelatedProductsSelect("pRelatedProducts", document.getElementById("pStore").value);
   }
-}
-
-/** Fills a "Frequently Bought Together" multi-select with every
- *  other product in the same store (name only, cheapest sorted
- *  alphabetically) — shared by the Add and Edit product forms.
- *  excludeId leaves a product out of its own suggestion list when
- *  editing it. */
-async function populateRelatedProductsSelect(selectId, store, selectedIds, excludeId) {
-  const select = document.getElementById(selectId);
-  if (!select || !store) return;
-
-  const { data: products, error } = await supabase
-    .from("products")
-    .select("id, name")
-    .eq("store", store)
-    .order("name");
-
-  if (error) return;
-
-  const selected = new Set(selectedIds || []);
-  select.innerHTML = (products || [])
-    .filter(p => p.id !== excludeId)
-    .map(p => `<option value="${p.id}" ${selected.has(p.id) ? "selected" : ""}>${p.name}</option>`)
-    .join("") || `<option disabled>No other products in this store yet</option>`;
 }
 
 /***********************
@@ -1104,7 +1079,6 @@ async function deleteExtraDeliveryZoneArea(id) {
 document.addEventListener("change", e => {
   if (e.target && e.target.id === "pStore") {
     loadCategoryOptions(e.target.value);
-    populateRelatedProductsSelect("pRelatedProducts", e.target.value);
   }
   if (e.target && e.target.id === "catStore") populateParentCategoryDropdown("catParent", e.target.value);
   if (e.target && e.target.id === "editCatStore") populateParentCategoryDropdown("editCatParent", e.target.value, editingCategoryId);
@@ -1422,7 +1396,6 @@ async function addProduct() {
   const variants = collectVariants("pVariants");
   const specs = collectSpecs("pSpecs");
   const deliver_to_all_extra_zones = document.getElementById("pHasExtraAreas").checked;
-  const related_products = Array.from(document.getElementById("pRelatedProducts").selectedOptions).map(o => o.value);
 
   if (!name || !category) {
     alert("Fill in name and category");
@@ -1466,7 +1439,7 @@ async function addProduct() {
   const { error } = await supabase.from("products").insert({
     store, category, brand, name, name_hi, description, description_hi, price: effectivePrice, mrp, images: imageURLs, variants, specs,
     featured_section, featured_order,
-    deliver_to_all_extra_zones, related_products
+    deliver_to_all_extra_zones
   });
 
   if (error) {
@@ -1488,7 +1461,6 @@ async function addProduct() {
   document.getElementById("pVariants").innerHTML = "";
   document.getElementById("pSpecs").innerHTML = "";
   document.getElementById("pHasExtraAreas").checked = false;
-  populateRelatedProductsSelect("pRelatedProducts", store);
   loadProducts();
 }
 
@@ -1516,7 +1488,6 @@ async function editProduct(p) {
   renderVariantRows("editVariants", p.variants || []);
   renderSpecRows("editSpecs", p.specs || []);
   document.getElementById("editHasExtraAreas").checked = !!p.deliver_to_all_extra_zones;
-  populateRelatedProductsSelect("editRelatedProducts", p.store, p.related_products, p.id);
 
   await populateProductCategoryDropdowns("editCategory", "editSubCategoryWrap", "editSubCategory", p.store, p.category);
 
@@ -1840,7 +1811,6 @@ async function updateProduct() {
   const variants = collectVariants("editVariants");
   const specs = collectSpecs("editSpecs");
   const deliver_to_all_extra_zones = document.getElementById("editHasExtraAreas").checked;
-  const related_products = Array.from(document.getElementById("editRelatedProducts").selectedOptions).map(o => o.value);
 
   let images = [...editRemainingImages];
   const files = document.getElementById("editImage").files;
@@ -1865,7 +1835,7 @@ async function updateProduct() {
     return;
   }
 
-  const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order, deliver_to_all_extra_zones, related_products };
+  const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order, deliver_to_all_extra_zones };
 
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 

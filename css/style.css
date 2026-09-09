@@ -2408,29 +2408,6 @@
   display: none;              /* Chrome, Safari, new Edge */
 }
 
-.related-products-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-
-.related-products-section h3 {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  margin-bottom: 14px;
-}
-
-.related-products-row {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.related-products-row::-webkit-scrollbar { display: none; }
-
 .featured-card {
   position: relative;
   flex: 0 0 auto;
