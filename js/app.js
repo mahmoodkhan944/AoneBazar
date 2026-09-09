@@ -763,8 +763,9 @@ function renderProductGrid(items, emptyMessage) {
     productGrid.innerHTML += `
       <div class="product${outOfStock ? " product-out-of-stock" : ""}">
         <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
-        <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
+        <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;position:relative;display:block;">
           <img src="${p.images ? p.images[0] : p.img}">
+          ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
           <h4>${displayProductName(p)}</h4>
           <p id="price-${p.id}">${priceHtml}</p>
         </a>
@@ -1158,7 +1159,8 @@ const AUTO_SECTION_TITLES = {
   "best-deals": "Best Deals",
   "new-products": "New Products",
   "trending": "Trending Now",
-  "top-rated": "Top Rated"
+  "top-rated": "Top Rated",
+  "extra-zone": "Also Delivers to Extra Areas"
 };
 
 /** Mirrors setHomepageFeaturedVisible — these rows are homepage-
@@ -1253,6 +1255,24 @@ async function loadAutoProductSections() {
       return rb.avg - ra.avg || rb.count - ra.count;
     });
 
+  // Products flagged "delivers to all Extra Delivery Zones" (see
+  // Admin → Products) — a dedicated showcase so shoppers outside the
+  // usual delivery area, or anyone curious, can see at a glance
+  // which items reach further than the rest of the catalog. The
+  // title names the actual zone(s) on file rather than a generic
+  // "extra areas" — pulled live, so adding a second zone later
+  // updates the title automatically instead of needing a re-edit.
+  const extraZoneProducts = allProducts.filter(p => p.deliver_to_all_extra_zones);
+  let extraZoneTitle = "Also Delivers to Extra Areas";
+
+  if (extraZoneProducts.length > 0) {
+    const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").order("area_name");
+    const zoneNames = (zones || []).map(z => z.area_name);
+    if (zoneNames.length > 0) {
+      extraZoneTitle = `These Products Deliver to ${zoneNames.join(", ")} Area`;
+    }
+  }
+
   const usedIds = new Set();
   const takeUnique = (list, n) => {
     const picked = [];
@@ -1266,6 +1286,7 @@ async function loadAutoProductSections() {
   };
 
   const sections = [
+    { key: "extra-zone", title: extraZoneTitle, items: extraZoneProducts.slice(0, AUTO_SECTIONS_PER_ROW), full: extraZoneProducts },
     { key: "best-deals", title: "Best Deals", items: takeUnique(bestDeals, AUTO_SECTIONS_PER_ROW), full: bestDeals },
     { key: "new-products", title: "New Products", items: takeUnique(newProducts, AUTO_SECTIONS_PER_ROW), full: newProducts, isNew: true },
     { key: "trending", title: "Trending Now", items: takeUnique(trending, AUTO_SECTIONS_PER_ROW), full: trending },
@@ -1418,8 +1439,9 @@ function featuredProductCardHtml(p, opts) {
     <div class="featured-card">
       ${isNew ? `<span class="new-badge">NEW</span>` : ""}
       <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
-      <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;">
+      <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;position:relative;display:block;">
         <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
+        ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
         <h4>${displayProductName(p)}</h4>
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
       </a>
@@ -2591,6 +2613,22 @@ async function loadProductPage() {
       specsEl.classList.remove("hidden");
     } else {
       specsEl.classList.add("hidden");
+    }
+  }
+
+  const deliveryInfoEl = document.getElementById("detailDeliveryInfo");
+  if (deliveryInfoEl) {
+    if (p.deliver_to_all_extra_zones) {
+      const { data: zones } = await supabase.from("extra_delivery_zones").select("area_name").order("area_name");
+      const zoneNames = (zones || []).map(z => z.area_name);
+      deliveryInfoEl.innerHTML = `
+        <p class="delivery-check-message delivery-check-yes" style="margin-bottom:0;">
+          <i class="fa-solid fa-truck-fast"></i> This item delivers to your usual area${zoneNames.length > 0 ? `, plus: ${zoneNames.join(", ")}` : ""}
+        </p>
+      `;
+      deliveryInfoEl.classList.remove("hidden");
+    } else {
+      deliveryInfoEl.classList.add("hidden");
     }
   }
 
