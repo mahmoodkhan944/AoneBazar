@@ -100,6 +100,7 @@ const VIEW_LOADERS = {
   products: loadProducts,
   categories: loadCategoriesView,
   coupons: loadCoupons,
+  "abandoned-carts": loadAbandonedCarts,
   "delivery-areas": loadDeliveryAreas,
   "extra-delivery-zones": loadExtraDeliveryZones,
   reviews: loadReviews,
@@ -2436,6 +2437,79 @@ async function deleteCoupon(id) {
   const { error } = await supabase.from("coupons").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
   loadCoupons();
+}
+
+/***********************
+    ABANDONED CARTS
+    Live cart snapshots (see cart_snapshots table) synced by the
+    storefront whenever a logged-in customer's cart changes. Nothing
+    here sends anything automatically — every row's WhatsApp button
+    just opens a pre-filled chat for the admin to send themselves.
+************************/
+
+/** "2h 15m ago" — plain and readable, no library needed for a
+ *  single relative-time string. */
+function timeAgoText(isoString) {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  if (hours < 24) return `${hours}h ${remMinutes}m ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+async function loadAbandonedCarts() {
+  const box = document.getElementById("abandonedCartsList");
+  box.innerHTML = "Loading…";
+
+  const { data: rows, error } = await supabase
+    .from("cart_snapshots")
+    .select("*")
+    .order("updated_at", { ascending: true });
+
+  if (error) {
+    box.innerHTML = `<p style="color:var(--danger-600);">Could not load abandoned carts: ${error.message}</p>`;
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    box.innerHTML = `<p style="text-align:center;color:var(--ink-faint);">No live carts right now — every logged-in customer's cart is empty.</p>`;
+    return;
+  }
+
+  const ABANDONED_AFTER_MS = 2 * 60 * 60 * 1000; // matches the storefront's own reminder-banner threshold
+
+  box.innerHTML = rows.map(row => {
+    const isStale = Date.now() - new Date(row.updated_at).getTime() > ABANDONED_AFTER_MS;
+    const itemsSummary = (row.items || []).map(it => `${it.name} × ${it.qty}`).join(", ");
+
+    const digitsOnly = String(row.phone || "").replace(/\D/g, "");
+    const fullNumber = digitsOnly.length === 10 ? "91" + digitsOnly : digitsOnly;
+    const message = `Hi! We noticed you left some items (${itemsSummary}) in your AOne Bazaar cart worth ₹${row.total}. Still interested? We can help you complete the order — just reply here!`;
+    const waLink = `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
+
+    return `
+      <div class="cat-tree-group">
+        <div class="cat-tree-main">
+          <div class="cat-tree-main-info">
+            <i class="fa-solid fa-cart-shopping" style="color:${isStale ? "var(--danger-600)" : "var(--marigold-600)"};"></i>
+            <strong>${row.phone || "Unknown number"}</strong>
+            <span class="status-pill ${isStale ? "CANCELLED" : "PROCESSING"}">${isStale ? "Abandoned" : "Active"}</span>
+            <span class="cat-tree-stats">${timeAgoText(row.updated_at)} · ₹${row.total}</span>
+          </div>
+          <div class="table-actions">
+            <a class="btn btn-primary btn-sm" href="${waLink}" target="_blank" rel="noopener noreferrer">
+              <i class="fa-brands fa-whatsapp"></i> Message on WhatsApp
+            </a>
+          </div>
+        </div>
+        <div style="padding:10px 0 4px 30px;font-size:0.85rem;color:var(--ink-soft);">${itemsSummary || "No items"}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 /***********************

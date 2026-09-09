@@ -307,6 +307,8 @@ function saveCart() {
     localStorage.removeItem("cartReminderDismissedAt");
   }
 
+  syncCartSnapshotDebounced();
+
   const total = cart.reduce((a, b) => a + (b.qty || 1), 0);
 
   const count = document.getElementById("cartCount");
@@ -323,13 +325,46 @@ function saveCart() {
   updateCartBar();
 }
 
-/** No WhatsApp Business API is wired up here, so nothing can be sent
- *  to someone who isn't currently looking at the site — this is the
- *  honest, buildable version of "abandoned cart reminder": when a
- *  shopper comes BACK to the homepage with items that have sat
- *  untouched in their cart for a couple of hours, show a gentle
- *  nudge banner (dismissible, and won't re-show for a while after
- *  being dismissed) rather than silently doing nothing. */
+/** Mirrors a logged-in customer's cart into cart_snapshots so the
+ *  admin's "Abandoned Carts" page can see it — only possible once
+ *  the customer has actually logged in with their phone at some
+ *  point (adding to cart itself doesn't require that), since a
+ *  phone number is the only way the admin can identify and message
+ *  them. Debounced so rapid qty +/- clicks don't fire a write each
+ *  time, and the row is deleted outright once the cart empties. */
+let cartSnapshotSyncTimer = null;
+function syncCartSnapshotDebounced() {
+  clearTimeout(cartSnapshotSyncTimer);
+  cartSnapshotSyncTimer = setTimeout(syncCartSnapshotNow, 1500);
+}
+
+async function syncCartSnapshotNow() {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  if (!user || !user.phone) return; // never logged in — nothing we could show the admin anyway
+
+  if (!currentSupabaseUser) {
+    const { data } = await supabase.auth.getSession();
+    currentSupabaseUser = data.session ? data.session.user : null;
+  }
+  if (!currentSupabaseUser) return;
+
+  if (cart.length === 0) {
+    await supabase.from("cart_snapshots").delete().eq("user_id", currentSupabaseUser.id);
+    return;
+  }
+
+  const total = cart.reduce((a, b) => a + b.price * b.qty, 0);
+
+  await supabase.from("cart_snapshots").upsert({
+    user_id: currentSupabaseUser.id,
+    phone: user.phone,
+    items: cart.map(p => ({ name: p.name, qty: p.qty, price: p.price })),
+    total,
+    updated_at: new Date().toISOString()
+  });
+}
+
+
 function checkAbandonedCartReminder() {
   const banner = document.getElementById("abandonedCartBanner");
   if (!banner) return;

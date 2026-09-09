@@ -56,6 +56,9 @@
         <button class="admin-nav-item" data-view="coupons" onclick="showAdminView('coupons')">
           <i class="fa-solid fa-ticket"></i> Coupons
         </button>
+        <button class="admin-nav-item" data-view="abandoned-carts" onclick="showAdminView('abandoned-carts')">
+          <i class="fa-solid fa-cart-shopping"></i> Abandoned Carts
+        </button>
         <button class="admin-nav-item" data-view="delivery-areas" onclick="showAdminView('delivery-areas')">
           <i class="fa-solid fa-location-dot"></i> Delivery Areas
         </button>
@@ -518,6 +521,22 @@
             </table>
           </div>
           <div id="couponsPagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <!-- ===== ABANDONED CARTS ===== -->
+      <section id="view-abandoned-carts" class="admin-view">
+        <div class="admin-topbar"><h1>Abandoned Carts</h1></div>
+        <p style="font-size:0.88rem;color:var(--ink-soft);margin-top:-10px;max-width:680px;">
+          Live carts from customers who've logged in with their phone at some point. Someone who adds items but never logs in can't be shown here — there's no way to identify or message them. Nothing is sent automatically; tap "Message on WhatsApp" to open a pre-filled chat you can send yourself.
+        </p>
+
+        <div class="admin-panel">
+          <div class="admin-panel-header-row">
+            <h3>Current Carts</h3>
+            <button class="admin-view-all-link" onclick="loadAbandonedCarts()">Refresh</button>
+          </div>
+          <div id="abandonedCartsList">Loading…</div>
         </div>
       </section>
 
