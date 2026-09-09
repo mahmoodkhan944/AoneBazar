@@ -330,6 +330,26 @@ let categoryHierarchy = { topLevel: [], subByParentId: {} };
 let currentParentCategoryView = null;
 let currentCategoryDetailParent = null; // the parent record when the sidebar detail page is open, else null
 
+/** A simple in-app "one step back" stack — each entry is a closure
+ *  that restores the PREVIOUS screen. Every real navigational move
+ *  (entering a store, opening a category's detail page, opening a
+ *  "View All" product section) pushes one; the "⬅ Back" button
+ *  everywhere just pops and runs the last one, so it always walks
+ *  back exactly one step at a time no matter how deep the shopper
+ *  has gone — never straight to the homepage unless that really is
+ *  the previous screen. Only the logo and the "Home" link bypass
+ *  this and jump straight home (see goHome()). */
+let viewBackStack = [];
+
+function goBackOneStep() {
+  const restorePrevious = viewBackStack.pop();
+  if (restorePrevious) {
+    restorePrevious();
+  } else {
+    closeStore();
+  }
+}
+
 async function loadCategoryHindiMap(store) {
   categoryHindiMap = {};
   categoryHierarchy = { topLevel: [], subByParentId: {} };
@@ -439,12 +459,24 @@ localStorage.setItem("products", JSON.stringify(data));
 
 let currentCategory = "";
 
-async function openStore(key, jumpToCategory, jumpToPage) {
+async function openStore(key, jumpToCategory, jumpToPage, skipBackStack) {
 
   currentStore = key;
   currentSectionKey = null; // leaving any "View All" section page, if we were on one
   currentParentCategoryView = null; // start fresh, not mid-drill-down from a previous store
   currentCategoryDetailParent = null; // start fresh, not mid-way through a previous store's category detail page
+
+  // A real user click (tapping a store tile, "Enter Store", the
+  // footer's store links) leaves a "step" behind on the in-app back
+  // stack, so the "⬅ Back" button walks out one screen at a time —
+  // homepage first, then wherever they were before that — instead of
+  // every store/category change silently replacing the same view
+  // with no way back. skipBackStack=true is used when this call
+  // itself IS a back-navigation (or the initial page load restoring
+  // a shared/refreshed URL), so it doesn't push a step onto itself.
+  if (!skipBackStack) {
+    viewBackStack.push(() => closeStore());
+  }
 
   heroSection.style.display = "none";
   storeSection.classList.remove("hidden");
@@ -462,8 +494,6 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
   const categoryDetailSidebarEl = document.getElementById("categoryDetailSidebar");
   if (categoryDetailSidebarEl) { categoryDetailSidebarEl.classList.add("hidden"); categoryDetailSidebarEl.innerHTML = ""; }
-  const storeBackBtnEl = document.getElementById("storeBackBtn");
-  if (storeBackBtnEl) storeBackBtnEl.onclick = closeStore;
 
   // Show skeletons immediately — the store's own products/categories
   // are about to be fetched, and this is a visibly better first
@@ -1022,15 +1052,6 @@ function renderCategoryTiles(key, store, cats) {
     const parent = currentParentCategoryView;
     const subs = categoryHierarchy.subByParentId[parent.id] || [];
 
-    const backTile = `
-      <button type="button" class="category-tile category-tile-back-btn" data-tile-back>
-        <span class="category-tile-img-wrap category-tile-all">
-          <i class="fa-solid fa-arrow-left"></i>
-        </span>
-        <span class="category-tile-label">Back</span>
-      </button>
-    `;
-
     const subTiles = subs.map(sub => `
       <button type="button" class="category-tile" data-tile-category="${escapeAttr(sub.name)}">
         <span class="category-tile-img-wrap">
@@ -1040,18 +1061,20 @@ function renderCategoryTiles(key, store, cats) {
       </button>
     `).join("");
 
-    container.innerHTML = `<div class="category-tiles-heading">${displayCategoryName(parent.name)}</div>` + backTile + subTiles;
+    container.innerHTML = `<div class="category-tiles-heading">${displayCategoryName(parent.name)}</div>` + subTiles;
 
-    container.querySelector("[data-tile-back]").onclick = () => {
-      currentParentCategoryView = null;
-      renderCategoryTiles(key, store, cats);
-      // Back to the top-level tiles should feel like landing on the
-      // store fresh again — every product, same as "All Categories".
-      selectStoreCategory(key, store, null);
-    };
 
     container.querySelectorAll(".category-tile[data-tile-category]").forEach(tile => {
       tile.onclick = () => {
+        // Picking a specific sub-category (leaf) tile is its own step
+        // too — "⬅ Back" from the filtered product list should land
+        // back on this same sub-category tile row, not skip straight
+        // past it to the top-level categories.
+        viewBackStack.push(() => {
+          currentParentCategoryView = parent;
+          renderCategoryTiles(key, store, cats);
+          selectStoreCategory(key, store, parent.name);
+        });
         selectStoreCategory(key, store, tile.dataset.tileCategory);
       };
     });
@@ -1098,6 +1121,14 @@ function renderCategoryTiles(key, store, cats) {
       const cat = tile.dataset.tileCategory || null;
 
       if (cat && tile.hasAttribute("data-has-subs")) {
+        // Drilling into a parent category is its own "step" too —
+        // pop back to these exact top-level tiles (not home) when
+        // "⬅ Back" is pressed from inside it.
+        viewBackStack.push(() => {
+          currentParentCategoryView = null;
+          renderCategoryTiles(key, store, cats);
+          selectStoreCategory(key, store, null);
+        });
         currentParentCategoryView = categoryHierarchy.topLevel.find(c => c.name === cat);
         renderCategoryTiles(key, store, cats);
         // Fill the product grid with this category's full combined
@@ -1108,6 +1139,17 @@ function renderCategoryTiles(key, store, cats) {
         return;
       }
 
+      // A plain top-level leaf tile (no sub-categories) also
+      // collapses the tile row once picked — push a step back to
+      // these exact top-level tiles instead of skipping past that
+      // straight to wherever came before this store.
+      if (cat) {
+        viewBackStack.push(() => {
+          currentParentCategoryView = null;
+          renderCategoryTiles(key, store, cats);
+          selectStoreCategory(key, store, null);
+        });
+      }
       selectStoreCategory(key, store, cat);
     };
   });
@@ -1132,11 +1174,9 @@ function openCategoryDetailPage(key, store, parentRecord, preselectedSub) {
 
   storeTitle.innerText = displayCategoryName(parentRecord.name);
 
-  // The regular "⬅ Back" button should back out of this page to the
-  // store's category overview, not leave the store entirely — restored
-  // to its normal behaviour by exitCategoryDetailPage() below.
-  const backBtn = document.getElementById("storeBackBtn");
-  if (backBtn) backBtn.onclick = () => exitCategoryDetailPage(key, store);
+  // The "⬅ Back" button (goBackOneStep) should back out of this page
+  // to the store's category overview, not leave the store entirely.
+  viewBackStack.push(() => exitCategoryDetailPage(key, store));
 
   renderCategoryDetailSidebar(key, store, parentRecord, preselectedSub);
   selectStoreCategory(key, store, preselectedSub || parentRecord.name);
@@ -1204,9 +1244,6 @@ function exitCategoryDetailPage(key, store) {
   const sidebar = document.getElementById("categoryDetailSidebar");
   if (overviewTiles) overviewTiles.classList.remove("hidden");
   if (sidebar) { sidebar.classList.add("hidden"); sidebar.innerHTML = ""; }
-
-  const backBtn = document.getElementById("storeBackBtn");
-  if (backBtn) backBtn.onclick = closeStore;
 
   storeTitle.innerText = store.title;
   selectStoreCategory(key, store, null);
@@ -1440,8 +1477,11 @@ function openProductSection(key, title, startPage) {
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
   const categoryDetailSidebarEl = document.getElementById("categoryDetailSidebar");
   if (categoryDetailSidebarEl) { categoryDetailSidebarEl.classList.add("hidden"); categoryDetailSidebarEl.innerHTML = ""; }
-  const storeBackBtnEl = document.getElementById("storeBackBtn");
-  if (storeBackBtnEl) storeBackBtnEl.onclick = closeStore;
+
+  // "View All" is only ever opened from the homepage, so "⬅ Back"
+  // (goBackOneStep) from here always steps back to the homepage.
+  viewBackStack.push(() => closeStore());
+
   const brandFilter = document.getElementById("brandFilter");
   if (brandFilter) brandFilter.classList.add("hidden");
   const sortFilter = document.getElementById("sortFilter");
@@ -2603,7 +2643,7 @@ window.onload = function () {
   const sectionParam = backParams.get("section");
   const pageParam = parseInt(backParams.get("page"), 10) || 1;
   if (storeParam && typeof openStore === "function" && document.getElementById("storeSection")) {
-    openStore(storeParam, categoryParam, pageParam);
+    openStore(storeParam, categoryParam, pageParam, true);
   } else if (sectionParam && AUTO_SECTION_TITLES[sectionParam] && document.getElementById("storeSection")) {
     // The "View All" lists only exist once loadAutoProductSections()
     // has actually resolved, so a direct/shared link to one has to
@@ -3231,6 +3271,11 @@ function updateCartBar() {
 saveCart(); // also runs updateCartBar() internally now
 
 function goHome() {
+  // The logo and "Home" link are a hard reset, not "one step back" —
+  // clear the whole back stack so they always land on the homepage
+  // directly, no matter how many screens deep the shopper was.
+  viewBackStack = [];
+
   // Reuses the exact same "leave the store" logic as the ⬅ Back
   // button (closeStore) — that's what actually un-hides New
   // Arrivals/Trending/Best Deals/Top Rated/Why Shop again; this was

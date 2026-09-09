@@ -230,13 +230,13 @@
   <!-- ============ STORE / PRODUCTS ============ -->
   <section id="storeSection" class="store hidden">
     <div class="container">
-      <button id="storeBackBtn" class="backBtn" onclick="closeStore()">⬅ Back</button>
       <div class="store-title-row">
         <h2 id="storeTitle"></h2>
         <button class="btn btn-outline btn-sm" onclick="shareCurrentStore()">
           <i class="fa-solid fa-share-nodes"></i> Share
         </button>
       </div>
+      <button type="button" class="backBtn" onclick="goBackOneStep()" style="margin-bottom:10px;">⬅ Back</button>
       <button id="tilesBackBtn" type="button" class="category-collapsed-bar hidden" onclick="showCategoryTilesAgain()">
         <i class="fa-solid fa-border-all"></i>
         <span>Browse Categories</span>
