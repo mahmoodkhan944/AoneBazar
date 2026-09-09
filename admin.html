@@ -358,10 +358,12 @@
             </div>
             <div class="full">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pHasExtraAreas" onchange="toggleExtraAreasChecklist('pHasExtraAreas', 'pExtraAreasChecklist')" style="width:auto;" />
-                This product also delivers to some Extra Delivery Zones
+                <input type="checkbox" id="pHasExtraAreas" style="width:auto;" />
+                This product also delivers to all Extra Delivery Zones
               </label>
-              <div id="pExtraAreasChecklist" class="extra-areas-checklist hidden"></div>
+              <p style="font-size:0.78rem;color:var(--ink-soft);margin:4px 0 0;">
+                Ticking this delivers this product to every zone listed under Admin → Extra Delivery Zones, automatically — including any new ones added later.
+              </p>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addProduct()">Save Product</button>
@@ -884,10 +886,12 @@
       <button type="button" class="btn btn-outline btn-sm" onclick="addSpecRow('editSpecs')">+ Add Specification</button>
 
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px;">
-        <input type="checkbox" id="editHasExtraAreas" onchange="toggleExtraAreasChecklist('editHasExtraAreas', 'editExtraAreasChecklist')" style="width:auto;" />
-        This product also delivers to some Extra Delivery Zones
+        <input type="checkbox" id="editHasExtraAreas" style="width:auto;" />
+        This product also delivers to all Extra Delivery Zones
       </label>
-      <div id="editExtraAreasChecklist" class="extra-areas-checklist hidden"></div>
+      <p style="font-size:0.78rem;color:var(--ink-soft);margin:4px 0 0;">
+        Ticking this delivers this product to every zone listed under Admin → Extra Delivery Zones, automatically — including any new ones added later.
+      </p>
 
       <button class="btn btn-primary" style="margin-top:14px;" onclick="updateProduct()">Save</button>
     </div>

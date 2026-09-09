@@ -1821,14 +1821,14 @@ async function placeOrder() {
   // block anything — the restriction only kicks in once the admin
   // has actually configured a delivery zone.
   //
-  // A product can also carry its own extra_delivery_areas — set on
-  // specific products the shop is happy to send further than usual
-  // (see Admin → Products → Extra Delivery Areas). But that only
-  // covers THAT product: if the address falls in one of these extra
-  // areas (not the store's normal zone), EVERY item in the cart must
-  // support that same area, or the whole order is blocked — a
-  // "normal" item genuinely can't be delivered somewhere the store
-  // doesn't reach, even riding along with a special-delivery item.
+  // A product can also be marked "delivers to all Extra Delivery
+  // Zones" (see Admin → Products), a separate list of far-out areas
+  // (Admin → Extra Delivery Zones). But that only covers THAT
+  // product: if the address falls in one of these extra zones (not
+  // the store's normal area), EVERY item in the cart must have that
+  // flag too, or the whole order is blocked — a "normal" item
+  // genuinely can't be delivered somewhere the store doesn't reach,
+  // even riding along with a special-delivery item.
   hideDeliveryCheckoutWarning();
   const deliveryAreas = await loadDeliveryAreasCache();
   if (deliveryAreas.length > 0) {
@@ -1839,14 +1839,16 @@ async function placeOrder() {
     let blockedReason = null;
 
     if (!matchedGlobalArea) {
-      const allExtraAreaNames = [...new Set(cart.flatMap(p => p.extra_delivery_areas || []))];
-      const matchedExtraArea = allExtraAreaNames.find(areaName => addressLower.includes(areaName.toLowerCase()));
+      const cartHasExtraZoneProduct = cart.some(p => p.deliver_to_all_extra_zones);
 
-      if (matchedExtraArea) {
-        isDeliverable = cart.every(p =>
-          (p.extra_delivery_areas || []).some(a => a.toLowerCase() === matchedExtraArea.toLowerCase())
-        );
-        if (!isDeliverable) blockedReason = "mixed-cart";
+      if (cartHasExtraZoneProduct) {
+        const { data: extraZones } = await supabase.from("extra_delivery_zones").select("area_name");
+        const matchedExtraZone = (extraZones || []).find(z => addressLower.includes(z.area_name.toLowerCase()));
+
+        if (matchedExtraZone) {
+          isDeliverable = cart.every(p => p.deliver_to_all_extra_zones);
+          if (!isDeliverable) blockedReason = "mixed-cart";
+        }
       }
     }
 
