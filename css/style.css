@@ -2447,6 +2447,15 @@
   border-radius: var(--radius-lg);
 }
 
+/* Keeps the photo (and thumbnails) in view while the longer
+   description/specs column on the right scrolls past it — only
+   makes sense in the two-column desktop layout; the mobile
+   single-column stack below cancels this back out. */
+.product-page-layout > :first-child {
+  position: sticky;
+  top: 90px;
+}
+
 .product-page-layout .zoomImg {
   height: 380px;
 }
@@ -2477,6 +2486,9 @@
   }
   .product-page-layout .zoomImg {
     height: 260px;
+  }
+  .product-page-layout > :first-child {
+    position: static;
   }
 }
 
