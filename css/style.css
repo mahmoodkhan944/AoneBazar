@@ -455,9 +455,50 @@
   margin-bottom: 20px;
 }
 
+.store-search-wrap {
+  position: relative;
+  max-width: 360px;
+}
+
 .store-search-input {
   max-width: 360px;
   margin-bottom: 14px;
+}
+
+.store-search-suggestions {
+  position: absolute;
+  top: calc(100% - 8px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.store-search-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.store-search-suggestion-item:hover { background: var(--surface-sunken); }
+.store-search-suggestion-item img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: var(--surface-sunken);
 }
 
 .filter-row {
@@ -496,6 +537,13 @@
 .brand-filter {
   display: block;
   max-width: 260px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.price-filter {
+  display: block;
+  max-width: 220px;
   font-weight: 600;
   font-size: 0.88rem;
 }
@@ -2360,6 +2408,29 @@
   display: none;              /* Chrome, Safari, new Edge */
 }
 
+.related-products-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.related-products-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin-bottom: 14px;
+}
+
+.related-products-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.related-products-row::-webkit-scrollbar { display: none; }
+
 .featured-card {
   position: relative;
   flex: 0 0 auto;
@@ -2521,6 +2592,35 @@
   font-size: 0.88rem;
   padding: 10px 16px;
 }
+
+.abandoned-cart-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--green-100);
+  color: var(--green-900, var(--ink));
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 12px 16px;
+  position: relative;
+}
+
+.abandoned-cart-dismiss {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 4px;
+}
+.abandoned-cart-dismiss:hover { color: var(--ink); }
 
 /* ---------------- MEGA MENU ---------------- */
 .mega-menu-wrap {

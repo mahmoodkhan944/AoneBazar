@@ -294,6 +294,19 @@ function generateOrderID() {
 function saveCart() {
   localStorage.setItem("cart", JSON.stringify(cart));
 
+  // Timestamps whenever the cart actually changes (an item added,
+  // removed, or the qty adjusted) — used to spot a cart that's been
+  // sitting untouched for a while, for the abandoned-cart reminder
+  // banner. Cleared once the cart empties (order placed, or user
+  // clears it) so an old timestamp doesn't linger into a future,
+  // unrelated cart.
+  if (cart.length > 0) {
+    localStorage.setItem("cartLastUpdatedAt", String(Date.now()));
+  } else {
+    localStorage.removeItem("cartLastUpdatedAt");
+    localStorage.removeItem("cartReminderDismissedAt");
+  }
+
   const total = cart.reduce((a, b) => a + (b.qty || 1), 0);
 
   const count = document.getElementById("cartCount");
@@ -308,6 +321,41 @@ function saveCart() {
   // placed and the cart was cleared) instead of updating live like
   // the header badge does.
   updateCartBar();
+}
+
+/** No WhatsApp Business API is wired up here, so nothing can be sent
+ *  to someone who isn't currently looking at the site — this is the
+ *  honest, buildable version of "abandoned cart reminder": when a
+ *  shopper comes BACK to the homepage with items that have sat
+ *  untouched in their cart for a couple of hours, show a gentle
+ *  nudge banner (dismissible, and won't re-show for a while after
+ *  being dismissed) rather than silently doing nothing. */
+function checkAbandonedCartReminder() {
+  const banner = document.getElementById("abandonedCartBanner");
+  if (!banner) return;
+
+  const ABANDONED_AFTER_MS = 2 * 60 * 60 * 1000; // 2 hours
+  const SNOOZE_MS = 12 * 60 * 60 * 1000; // don't re-nag for 12 hours after a dismiss
+
+  const lastUpdated = Number(localStorage.getItem("cartLastUpdatedAt")) || 0;
+  const dismissedAt = Number(localStorage.getItem("cartReminderDismissedAt")) || 0;
+
+  if (cart.length === 0 || !lastUpdated) return;
+  if (Date.now() - lastUpdated < ABANDONED_AFTER_MS) return;
+  if (Date.now() - dismissedAt < SNOOZE_MS) return;
+
+  const itemCount = cart.reduce((a, b) => a + (b.qty || 1), 0);
+  const total = cart.reduce((a, b) => a + b.price * b.qty, 0);
+
+  document.getElementById("abandonedCartMessage").textContent =
+    `आपके कार्ट में ${itemCount} आइटम (₹${total}) रखे हैं — कहीं भूल तो नहीं गए?`;
+  banner.classList.remove("hidden");
+}
+
+function dismissAbandonedCartBanner() {
+  localStorage.setItem("cartReminderDismissedAt", String(Date.now()));
+  const banner = document.getElementById("abandonedCartBanner");
+  if (banner) banner.classList.add("hidden");
 }
 
 /***********************
@@ -613,6 +661,10 @@ function selectStoreCategory(key, store, cat, startPage) {
   if (storeSearch) storeSearch.value = "";
   const brandFilter = document.getElementById("brandFilter");
   if (brandFilter) brandFilter.value = "";
+  const priceRangeFilter = document.getElementById("priceRangeFilter");
+  if (priceRangeFilter) priceRangeFilter.value = "";
+  currentPriceMin = null;
+  currentPriceMax = null;
   const sortFilter = document.getElementById("sortFilter");
   if (sortFilter) sortFilter.value = "relevance";
 
@@ -714,6 +766,7 @@ function searchStoreProducts() {
   const q = (document.getElementById("storeSearch")?.value || "").trim().toLowerCase();
 
   if (!q) {
+    hideStoreSearchSuggestions();
     showProducts(currentStore, currentCategory);
     return;
   }
@@ -722,9 +775,45 @@ function searchStoreProducts() {
   const allItems = allStoreProductsSorted(data[currentStore]);
   const matches = allItems.filter(p => p.name.toLowerCase().includes(q));
 
+  renderStoreSearchSuggestions(matches, q);
+
   document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
   storeProductsPage = 1;
   renderProductGrid(matches, `No products match "${q}"`);
+}
+
+/** A short dropdown of matching product names right under the store
+ *  search box — lets a shopper jump straight to the exact product
+ *  page instead of having to scroll the (possibly still long)
+ *  filtered grid below to find it. Purely a shortcut on top of the
+ *  existing filtered grid, which still updates the same way either
+ *  way. */
+function renderStoreSearchSuggestions(matches, q) {
+  const box = document.getElementById("storeSearchSuggestions");
+  if (!box) return;
+
+  if (matches.length === 0) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  const top = matches.slice(0, 6);
+  box.innerHTML = top.map(p => {
+    const thumb = p.images && p.images[0] ? p.images[0] : (p.img || "images/logo192.png");
+    return `
+      <a href="product.html?id=${p.id}" class="store-search-suggestion-item">
+        <img src="${thumb}" alt="" loading="lazy" />
+        <span>${p.name}</span>
+      </a>
+    `;
+  }).join("");
+  box.classList.remove("hidden");
+}
+
+function hideStoreSearchSuggestions() {
+  const box = document.getElementById("storeSearchSuggestions");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
 }
 
 function showProducts(store, cat) {
@@ -848,18 +937,62 @@ function displayProductName(p) {
   return p.name_hi ? `${p.name} <span class="name-hi">(${p.name_hi})</span>` : p.name;
 }
 
+let currentPriceMin = null;
+let currentPriceMax = null;
+
+/** Filters by price on top of whatever category/brand/search
+ *  produced — applied inside renderProductGrid itself so every
+ *  existing filter path (category tap, brand pick, search, sort)
+ *  automatically respects it without each one needing its own copy
+ *  of this logic. */
+function applyPriceFilter(items) {
+  if (currentPriceMin === null && currentPriceMax === null) return items;
+  return items.filter(p => {
+    const price = getEffectivePrice(p);
+    if (currentPriceMin !== null && price < currentPriceMin) return false;
+    if (currentPriceMax !== null && price > currentPriceMax) return false;
+    return true;
+  });
+}
+
+/** The Price filter dropdown — a handful of common ranges rather
+ *  than a slider, since typing exact numbers on mobile is fiddly and
+ *  most shoppers think in rough bands anyway ("under 500", "500 to
+ *  2000"...). Re-renders whatever's currently on screen. */
+function applyPriceRangeFilter() {
+  const select = document.getElementById("priceRangeFilter");
+  if (!select) return;
+
+  const [minStr, maxStr] = select.value ? select.value.split("-") : ["", ""];
+  currentPriceMin = minStr ? Number(minStr) : null;
+  currentPriceMax = maxStr ? Number(maxStr) : null;
+
+  storeProductsPage = 1;
+  renderProductGrid(currentStoreProductsList, "No products in this category");
+}
+
 function renderProductGrid(items, emptyMessage) {
   currentStoreProductsList = items;
   productGrid.innerHTML = "";
 
-  if (items.length === 0) {
-    productGrid.innerHTML = emptyStateHtml("fa-basket-shopping", emptyMessage, "Try a different category or search term.");
+  const displayItems = applyPriceFilter(items);
+  const priceFilterActive = currentPriceMin !== null || currentPriceMax !== null;
+
+  if (displayItems.length === 0) {
+    // A price filter narrowing an otherwise non-empty list gets its
+    // own message pointing at the actual cause, instead of the
+    // generic "try a different category" that doesn't apply here.
+    const message = priceFilterActive && items.length > 0 ? "No products in this price range" : emptyMessage;
+    const subtext = priceFilterActive && items.length > 0
+      ? "Try a wider range, or clear the price filter."
+      : "Try a different category or search term.";
+    productGrid.innerHTML = emptyStateHtml("fa-basket-shopping", message, subtext);
     const pagEl = document.getElementById("storeProductsPagination");
     if (pagEl) pagEl.innerHTML = "";
     return;
   }
 
-  const pageItems = paginateArray(items, storeProductsPage, PAGE_SIZE);
+  const pageItems = paginateArray(displayItems, storeProductsPage, PAGE_SIZE);
 
   pageItems.forEach(p => {
     const hasVariants = p.variants && p.variants.length > 0;
@@ -902,7 +1035,7 @@ function renderProductGrid(items, emptyMessage) {
       </div>`;
   });
 
-  renderPagination("storeProductsPagination", items.length, storeProductsPage, PAGE_SIZE, "goToStoreProductsPage");
+  renderPagination("storeProductsPagination", displayItems.length, storeProductsPage, PAGE_SIZE, "goToStoreProductsPage");
 }
 
 /** Compact size/pack dropdown shown on a product card (grid or
@@ -1484,6 +1617,10 @@ function openProductSection(key, title, startPage) {
 
   const brandFilter = document.getElementById("brandFilter");
   if (brandFilter) brandFilter.classList.add("hidden");
+  const priceRangeFilter = document.getElementById("priceRangeFilter");
+  if (priceRangeFilter) priceRangeFilter.value = "";
+  currentPriceMin = null;
+  currentPriceMax = null;
   const sortFilter = document.getElementById("sortFilter");
   if (sortFilter) sortFilter.value = "relevance";
   const storeSearchEl = document.getElementById("storeSearch");
@@ -2654,6 +2791,37 @@ window.onload = function () {
   }
 };
 
+/** "Frequently Bought Together" — the handful of products the admin
+ *  picked when editing this one (see Admin → Products → Frequently
+ *  Bought Together). Reuses the same compact card used on the
+ *  homepage's featured rows, since it's the same "small horizontal
+ *  row of add-to-cart cards" shape. */
+async function loadRelatedProducts(p) {
+  const section = document.getElementById("relatedProductsSection");
+  const row = document.getElementById("relatedProductsRow");
+  if (!section || !row) return;
+
+  const ids = p.related_products || [];
+  if (ids.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  const { data: related, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("id", ids)
+    .eq("in_stock", true);
+
+  if (error || !related || related.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  row.innerHTML = related.map(rp => featuredProductCardHtml(rp)).join("");
+  section.classList.remove("hidden");
+}
+
 /***********************
     PRODUCT PAGE (product.html?id=...)
     Gives every product its own shareable URL instead of only
@@ -2666,10 +2834,12 @@ async function loadProductPage() {
   if (!contentEl) return; // not on product.html, nothing to do
 
   const notFoundEl = document.getElementById("productNotFound");
+  const skeletonEl = document.getElementById("productPageSkeleton");
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
 
   if (!id) {
+    if (skeletonEl) skeletonEl.classList.add("hidden");
     contentEl.classList.add("hidden");
     notFoundEl.classList.remove("hidden");
     return;
@@ -2682,11 +2852,14 @@ async function loadProductPage() {
     .maybeSingle();
 
   if (error || !p) {
+    if (skeletonEl) skeletonEl.classList.add("hidden");
     contentEl.classList.add("hidden");
     notFoundEl.classList.remove("hidden");
     return;
   }
 
+  if (skeletonEl) skeletonEl.classList.add("hidden");
+  contentEl.classList.remove("hidden");
   currentProduct = p;
   currentStore = p.store;
   logProductEvent(p, "view");
@@ -2775,6 +2948,8 @@ async function loadProductPage() {
       deliveryInfoEl.classList.add("hidden");
     }
   }
+
+  await loadRelatedProducts(p);
 
   const addBtn = document.getElementById("addToCartBtn");
   if (p.in_stock === false) {
@@ -3278,6 +3453,7 @@ function updateCartBar() {
   }
 }
 saveCart(); // also runs updateCartBar() internally now
+checkAbandonedCartReminder();
 
 function goHome() {
   // The logo and "Home" link are a hard reset, not "one step back" —

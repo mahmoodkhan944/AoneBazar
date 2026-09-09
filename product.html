@@ -101,7 +101,21 @@
         <a id="backToStoreLink" href="index.html" onclick="history.back(); return false;">⬅ Back</a>
       </div>
 
-      <div id="productPageContent" class="product-page-layout">
+      <div id="productPageSkeleton" class="product-page-layout">
+        <div>
+          <div class="imgContainer skeleton-img shimmer" style="height:380px;"></div>
+        </div>
+        <div>
+          <div class="skeleton-line shimmer" style="width:70%;height:28px;margin-bottom:14px;"></div>
+          <div class="skeleton-line shimmer" style="width:30%;height:22px;margin-bottom:20px;"></div>
+          <div class="skeleton-line shimmer" style="width:100%;height:46px;border-radius:999px;margin-bottom:20px;"></div>
+          <div class="skeleton-line shimmer" style="width:90%;margin-bottom:8px;"></div>
+          <div class="skeleton-line shimmer" style="width:80%;margin-bottom:8px;"></div>
+          <div class="skeleton-line shimmer" style="width:60%;"></div>
+        </div>
+      </div>
+
+      <div id="productPageContent" class="product-page-layout hidden">
         <div>
           <div class="imgContainer">
             <img id="detailImage" class="zoomImg" alt="Product" />
@@ -129,6 +143,11 @@
           <div id="detailDescription" class="product-description hidden"></div>
 
           <div id="detailSpecs" class="product-specs hidden"></div>
+
+          <div id="relatedProductsSection" class="related-products-section hidden">
+            <h3>Frequently Bought Together</h3>
+            <div id="relatedProductsRow" class="related-products-row"></div>
+          </div>
 
           <div id="reviewSummary" class="review-summary" style="margin-top:20px;">
             <span id="avgRatingDisplay">No ratings yet</span>

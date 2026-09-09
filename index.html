@@ -108,6 +108,14 @@
   <!-- ============ PROMO BANNER (admin-editable) ============ -->
   <div id="promoBanner" class="promo-banner hidden"></div>
 
+  <!-- ============ ABANDONED CART REMINDER ============ -->
+  <div id="abandonedCartBanner" class="abandoned-cart-banner hidden">
+    <i class="fa-solid fa-cart-shopping"></i>
+    <span id="abandonedCartMessage"></span>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCart()">कार्ट देखें</button>
+    <button type="button" class="abandoned-cart-dismiss" onclick="dismissAbandonedCartBanner()" aria-label="Dismiss">×</button>
+  </div>
+
   <!-- ============ HERO / STORE PICKER ============ -->
   <section class="hero" id="heroSection">
     <div class="container">
@@ -247,16 +255,30 @@
       <div class="store-content-row">
         <div id="categoryDetailSidebar" class="category-detail-sidebar hidden"></div>
         <div class="store-main-col">
-          <input
-            type="text"
-            id="storeSearch"
-            placeholder="Search products in this store…"
-            oninput="searchStoreProducts()"
-            class="input-pill store-search-input"
-          />
+          <div class="store-search-wrap">
+            <input
+              type="text"
+              id="storeSearch"
+              placeholder="Search products in this store…"
+              oninput="searchStoreProducts()"
+              onblur="setTimeout(hideStoreSearchSuggestions, 150)"
+              autocomplete="off"
+              class="input-pill store-search-input"
+            />
+            <div id="storeSearchSuggestions" class="store-search-suggestions hidden"></div>
+          </div>
           <div class="filter-row">
             <select id="brandFilter" onchange="filterByBrand()" class="input-pill brand-filter hidden">
               <option value="">Shop by Brand — All Brands</option>
+            </select>
+            <select id="priceRangeFilter" onchange="applyPriceRangeFilter()" class="input-pill price-filter">
+              <option value="">Price — Any</option>
+              <option value="0-200">Under ₹200</option>
+              <option value="200-500">₹200 – ₹500</option>
+              <option value="500-1000">₹500 – ₹1,000</option>
+              <option value="1000-2500">₹1,000 – ₹2,500</option>
+              <option value="2500-5000">₹2,500 – ₹5,000</option>
+              <option value="5000-">Above ₹5,000</option>
             </select>
             <select id="sortFilter" onchange="applySortAndRender()" class="input-pill sort-filter">
               <option value="relevance">Sort by — Relevance</option>
