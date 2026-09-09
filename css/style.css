@@ -278,6 +278,23 @@
 }
 .delivery-check-no i { margin-right: 4px; }
 
+.delivery-check-partial {
+  color: var(--marigold-700, #b8860b);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.delivery-check-partial i { margin-right: 4px; }
+
+.delivery-check-cta-btn {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 .delivery-check-warn {
   color: var(--ink-faint);
 }

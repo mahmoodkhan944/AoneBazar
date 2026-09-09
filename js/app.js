@@ -140,6 +140,23 @@ async function checkDeliveryAvailability() {
   }
 
   const waMessage = encodeURIComponent(`Hi! I'd like to check if you deliver to "${query}" — could you add it if not?`);
+
+  // Not in the normal delivery area — but if it matches one of the
+  // Extra Delivery Zones (or a locality under one), some specific
+  // products can still reach there, so say that instead of a flat
+  // "we don't deliver here" and point at exactly which products.
+  const matchedZone = await findMatchingExtraZone(q);
+  if (matchedZone) {
+    resultEl.innerHTML = `
+      <p class="delivery-check-message delivery-check-partial">
+        <i class="fa-solid fa-circle-info"></i> हम आपके क्षेत्र में कुछ चुनिंदा प्रोडक्ट्स ही डिलीवर करते हैं।
+      </p>
+      <button type="button" class="btn btn-primary btn-sm delivery-check-cta-btn" onclick="openExtraZoneProductsPage('${matchedZone.id}')">
+        अपने क्षेत्र में डिलीवर होने वाले प्रोडक्ट्स देखने के लिए यहां क्लिक करें
+      </button>`;
+    return;
+  }
+
   resultEl.innerHTML = `
     <p class="delivery-check-message delivery-check-no">
       <i class="fa-solid fa-circle-xmark"></i> माफ़ कीजिए, हम अभी इस पते पर डिलीवरी नहीं करते हैं।
@@ -147,6 +164,60 @@ async function checkDeliveryAvailability() {
     <a class="btn btn-outline btn-sm delivery-check-wa-btn" href="https://wa.me/${getWhatsAppNumber()}?text=${waMessage}" target="_blank" rel="noopener noreferrer">
       <i class="fa-brands fa-whatsapp"></i> अपने पते पर डिलीवरी के लिए व्हाट्सएप पर मैसेज करें
     </a>`;
+}
+
+/** Finds the active Extra Delivery Zone (if any) whose own name or
+ *  one of its active localities matches the typed text — used by
+ *  the homepage delivery check to offer "some products still reach
+ *  you" instead of a flat "we don't deliver here". */
+async function findMatchingExtraZone(addressLower) {
+  const { data: zones } = await supabase.from("extra_delivery_zones").select("id, area_name").eq("active", true);
+  if (!zones || zones.length === 0) return null;
+
+  const { data: areas } = await supabase
+    .from("extra_delivery_zone_areas")
+    .select("zone_id, area_name")
+    .eq("active", true)
+    .in("zone_id", zones.map(z => z.id));
+
+  for (const zone of zones) {
+    const localities = (areas || []).filter(a => a.zone_id === zone.id).map(a => a.area_name);
+    const allNames = [zone.area_name, ...localities];
+    if (allNames.some(name => addressLower.includes(name.toLowerCase()) || name.toLowerCase().includes(addressLower))) {
+      return { id: zone.id, area_name: zone.area_name, localities };
+    }
+  }
+  return null;
+}
+
+/** Opens the same "delivers to Extra Zones" product listing as the
+ *  homepage's auto section — but reached from the delivery-check
+ *  box, with the matched zone's own localities shown up top so the
+ *  shopper can confirm their specific area is actually covered. */
+async function openExtraZoneProductsPage(zoneId) {
+  const [{ data: zoneRow }, { data: areas }] = await Promise.all([
+    supabase.from("extra_delivery_zones").select("area_name").eq("id", zoneId).maybeSingle(),
+    supabase.from("extra_delivery_zone_areas").select("area_name").eq("zone_id", zoneId).eq("active", true).order("area_name")
+  ]);
+
+  openProductSection("extra-zone", "These Products Deliver to Your Area");
+
+  const categoryTilesEl = document.getElementById("categoryTiles");
+  if (categoryTilesEl && zoneRow) {
+    const localityNames = (areas || []).map(a => a.area_name);
+    // #categoryTiles is normally a grid of small circular tiles — for
+    // this one-off text note we override it back to plain block flow,
+    // otherwise the note gets squeezed into a single ~64px grid
+    // column and every word wraps onto its own line.
+    categoryTilesEl.style.display = "block";
+    categoryTilesEl.innerHTML = `
+      <div class="delivery-check-message delivery-check-yes" style="text-align:left;margin-bottom:16px;">
+        <i class="fa-solid fa-location-dot"></i> <b>${zoneRow.area_name}</b> क्षेत्र में इन जगहों पर डिलीवरी उपलब्ध है:
+        <br>${localityNames.length > 0 ? localityNames.join(", ") : "(अभी कोई विशेष इलाका सूचीबद्ध नहीं है — पूरा क्षेत्र मान्य है)"}
+      </div>
+    `;
+    categoryTilesEl.classList.remove("hidden");
+  }
 }
 
 const customerName = document.getElementById("customerName");
@@ -386,7 +457,7 @@ async function openStore(key, jumpToCategory, jumpToPage) {
   const storeSearchEl = document.getElementById("storeSearch");
   if (storeSearchEl) storeSearchEl.classList.remove("hidden");
   const categoryTilesEl = document.getElementById("categoryTiles");
-  if (categoryTilesEl) categoryTilesEl.classList.remove("hidden");
+  if (categoryTilesEl) { categoryTilesEl.classList.remove("hidden"); categoryTilesEl.style.display = ""; }
   const tilesBackBtn = document.getElementById("tilesBackBtn");
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
   const categoryDetailSidebarEl = document.getElementById("categoryDetailSidebar");
@@ -1363,6 +1434,7 @@ function openProductSection(key, title, startPage) {
   if (categoryTilesEl) {
     categoryTilesEl.innerHTML = "";
     categoryTilesEl.classList.add("hidden");
+    categoryTilesEl.style.display = "";
   }
   const tilesBackBtn = document.getElementById("tilesBackBtn");
   if (tilesBackBtn) tilesBackBtn.classList.add("hidden");
