@@ -1061,6 +1061,7 @@ function renderProductGrid(items, emptyMessage) {
           ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
           <h4>${displayProductName(p)}</h4>
           <p id="price-${p.id}">${priceHtml}</p>
+          <span id="rating-${p.id}">${ratingBadgeHtml(p)}</span>
         </a>
         ${variantSelect}
         <a class="btn btn-outline btn-sm" href="product.html?id=${p.id}">
@@ -1071,6 +1072,17 @@ function renderProductGrid(items, emptyMessage) {
   });
 
   renderPagination("storeProductsPagination", displayItems.length, storeProductsPage, PAGE_SIZE, "goToStoreProductsPage");
+
+  // Ratings might not be loaded yet the first time a shopper lands
+  // directly in a store (skipping the homepage, where this usually
+  // gets fetched first) — fetch them now and fill in each card's
+  // badge once they're in, rather than blocking the whole grid on it.
+  loadProductRatingsMap().then(() => {
+    pageItems.forEach(p => {
+      const el = document.getElementById(`rating-${p.id}`);
+      if (el) el.innerHTML = ratingBadgeHtml(p);
+    });
+  });
 }
 
 /** Compact size/pack dropdown shown on a product card (grid or
@@ -1752,6 +1764,7 @@ function featuredProductCardHtml(p, opts) {
         ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
         <h4>${displayProductName(p)}</h4>
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
+        ${ratingBadgeHtml(p)}
       </a>
       ${hasVariants ? variantDropdownHtml(p, false) : ""}
       ${hasVariants
