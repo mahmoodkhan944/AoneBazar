@@ -2325,11 +2325,52 @@ async function placeOrder() {
     status: "NEW"
   });
 
+  let dbSaveFailed = !!error;
+
   if (error) {
-    // If this fires, the customer isn't fully logged in via Firebase
-    // yet (RLS needs a verified identity to accept the order). The
-    // order still goes out over WhatsApp so the shop doesn't miss it.
-    console.warn("Order not saved to Supabase (needs login):", error.message);
+    console.warn("Order insert failed, retrying once with a fresh session:", error.message);
+
+    // The most common cause here is a stale/expired anonymous session
+    // — currentSupabaseUser looked set, but Supabase's RLS check
+    // still rejected it because the underlying session had actually
+    // gone invalid. One clean retry with a brand-new sign-in clears
+    // that up far more often than not, instead of silently losing
+    // the order every time this happens.
+    const { data: retryAuth, error: retryAuthError } = await supabase.auth.signInAnonymously();
+    if (!retryAuthError && retryAuth.user) {
+      currentSupabaseUser = retryAuth.user;
+      const { error: retryError } = await supabase.from("orders").insert({
+        id,
+        invoice_no: invoiceNo,
+        customer_id: currentSupabaseUser.id,
+        customer_phone: user.phone,
+        customer_name: name,
+        address,
+        items: cart.map(p => ({ id: p.id, name: p.name + (p.variantLabel ? ` (${p.variantLabel})` : ""), price: p.price, qty: p.qty })),
+        subtotal,
+        coupon_code: appliedCoupon ? appliedCoupon.code : null,
+        discount,
+        delivery_charge: deliveryCharge,
+        total,
+        payment: "COD",
+        payment_option: selectedPaymentOption,
+        amount_paid: amountPaid,
+        balance_due: balanceDue,
+        payment_screenshot_url: paymentScreenshotUrl,
+        status: "NEW"
+      });
+      dbSaveFailed = !!retryError;
+      if (retryError) console.error("Order insert retry also failed:", retryError.message);
+    }
+  }
+
+  if (dbSaveFailed) {
+    // Still sent over WhatsApp either way (below) so the shop never
+    // actually loses the order itself — but flagged clearly, both to
+    // the shop (right in the message, so they know to add it to the
+    // system by hand) and to the customer (so they don't wrongly
+    // assume it'll show up in "My Orders" when it currently won't).
+    message += `%0A%0A⚠️ *NOT SAVED IN SYSTEM* — please add this order manually.`;
   } else if (appliedCoupon) {
     const { error: redeemError } = await supabase.rpc("redeem_coupon", { p_code: appliedCoupon.code });
     if (redeemError) console.warn("Coupon redeem failed:", redeemError.message);
@@ -2366,6 +2407,14 @@ async function placeOrder() {
     `https://wa.me/${getWhatsAppNumber()}?text=${message}`,
     "_blank"
   );
+
+  if (dbSaveFailed) {
+    // Deliberately after the WhatsApp tab opens, not instead of it —
+    // the shop already has the order either way; this just makes
+    // sure the customer isn't left thinking it'll show up in "My
+    // Orders" when, this one time, it won't.
+    alert("Your order was sent to the shop on WhatsApp, but there was a technical issue saving it in our system this time — it won't show up in \"My Orders\" for now. The shop has your full order details on WhatsApp and will take care of it.");
+  }
 
   cart = [];
   removeCoupon();
