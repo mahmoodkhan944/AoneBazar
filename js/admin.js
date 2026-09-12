@@ -2553,7 +2553,7 @@ function renderDeliveryAreasTable(list) {
   const body = document.getElementById("deliveryAreasBody");
 
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);">No delivery areas added yet</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);">No delivery areas added yet</td></tr>`;
     document.getElementById("deliveryAreasPagination").innerHTML = "";
     return;
   }
@@ -2564,6 +2564,7 @@ function renderDeliveryAreasTable(list) {
     <tr>
       <td class="cell-title">${a.area_name}</td>
       <td data-label="ETA">${a.eta_text}</td>
+      <td data-label="Delivery Charge">${a.delivery_charge != null ? "₹" + a.delivery_charge : `<span style="color:var(--ink-faint);">Site default</span>`}</td>
       <td data-label="Status"><span class="status-pill ${a.active ? 'DELIVERED' : 'CANCELLED'}">${a.active ? "Active" : "Off"}</span></td>
       <td>
         <div class="table-actions">
@@ -2586,13 +2587,15 @@ function goToDeliveryAreasPage(n) {
 async function addDeliveryArea() {
   const area_name = document.getElementById("areaNameInput").value.trim();
   const eta_text = document.getElementById("areaEtaInput").value.trim() || "30–60 min";
+  const chargeInput = document.getElementById("areaChargeInput").value.trim();
+  const delivery_charge = chargeInput === "" ? null : Number(chargeInput);
 
   if (!area_name) {
     alert("Enter an area / locality name");
     return;
   }
 
-  const { error } = await supabase.from("delivery_areas").insert({ area_name, eta_text });
+  const { error } = await supabase.from("delivery_areas").insert({ area_name, eta_text, delivery_charge });
 
   if (error) {
     alert("Could not add: " + error.message);
@@ -2601,6 +2604,7 @@ async function addDeliveryArea() {
 
   document.getElementById("areaNameInput").value = "";
   document.getElementById("areaEtaInput").value = "30–60 min";
+  document.getElementById("areaChargeInput").value = "";
 
   loadDeliveryAreas();
 }
@@ -2617,6 +2621,7 @@ function editDeliveryArea(a) {
   editingAreaId = a.id;
   document.getElementById("editAreaName").value = a.area_name;
   document.getElementById("editAreaEta").value = a.eta_text;
+  document.getElementById("editAreaCharge").value = a.delivery_charge != null ? a.delivery_charge : "";
   document.getElementById("editAreaModal").classList.remove("hidden");
 }
 
@@ -2627,6 +2632,8 @@ function closeAreaEdit() {
 async function updateDeliveryArea() {
   const area_name = document.getElementById("editAreaName").value.trim();
   const eta_text = document.getElementById("editAreaEta").value.trim() || "30–60 min";
+  const chargeInput = document.getElementById("editAreaCharge").value.trim();
+  const delivery_charge = chargeInput === "" ? null : Number(chargeInput);
 
   if (!area_name) {
     alert("Enter an area / locality name");
@@ -2635,7 +2642,7 @@ async function updateDeliveryArea() {
 
   const { error } = await supabase
     .from("delivery_areas")
-    .update({ area_name, eta_text })
+    .update({ area_name, eta_text, delivery_charge })
     .eq("id", editingAreaId);
 
   if (error) { alert("Could not update: " + error.message); return; }

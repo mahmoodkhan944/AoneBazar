@@ -31,7 +31,7 @@ async function loadDeliveryAreasCache() {
 
   const { data: rows, error } = await supabase
     .from("delivery_areas")
-    .select("area_name, eta_text")
+    .select("area_name, eta_text, delivery_charge")
     .eq("active", true);
 
   deliveryAreasCache = error ? [] : (rows || []);
@@ -270,8 +270,25 @@ function getDeliveryChargeAmount() {
     : DEFAULT_DELIVERY_CHARGE;
 }
 
-function calculateDeliveryCharge(goodsTotal) {
-  return goodsTotal >= getFreeDeliveryThreshold() ? 0 : getDeliveryChargeAmount();
+function calculateDeliveryCharge(goodsTotal, address) {
+  // The "free above ₹X" threshold is site-wide, same for every area —
+  // only the charge that applies BELOW that threshold can vary.
+  if (goodsTotal >= getFreeDeliveryThreshold()) return 0;
+
+  // Per-area charge — only usable once the areas list has actually
+  // loaded (it's fetched async elsewhere; see loadDeliveryAreasCache).
+  // A NULL charge on the matched area, or no address/match at all,
+  // falls back to the site-wide default so this never breaks the
+  // total before that data is ready.
+  if (address && deliveryAreasCache) {
+    const addressLower = address.toLowerCase();
+    const matchedArea = deliveryAreasCache.find(a => addressLower.includes(a.area_name.toLowerCase()));
+    if (matchedArea && matchedArea.delivery_charge !== null && matchedArea.delivery_charge !== undefined) {
+      return Number(matchedArea.delivery_charge);
+    }
+  }
+
+  return getDeliveryChargeAmount();
 }
 
 function updateMinOrderNotice() {
@@ -1821,6 +1838,11 @@ function openCart() {
   modal.classList.remove("hidden");
   updateMinOrderNotice();
   loadSavedAddresses();
+  // Fire-and-forget: gets the areas list (and their per-area delivery
+  // charges) cached early, so by the time an address is typed the
+  // live total already reflects the right charge instead of the
+  // site-wide default until checkout re-fetches it.
+  loadDeliveryAreasCache().then(updateCartTotals);
 
   renderCart();
 }
@@ -2013,7 +2035,7 @@ function updateCartTotals() {
   const goodsTotal = Math.max(0, subtotal - discount);
   const minOrder = getMinOrder();
   const belowMinimum = cart.length > 0 && goodsTotal < minOrder;
-  const deliveryCharge = cart.length > 0 ? calculateDeliveryCharge(goodsTotal) : 0;
+  const deliveryCharge = cart.length > 0 ? calculateDeliveryCharge(goodsTotal, customerAddress ? customerAddress.value.trim() : "") : 0;
   const total = goodsTotal + deliveryCharge;
 
   document.getElementById("cartSubtotal").innerText = subtotal;
@@ -2241,7 +2263,7 @@ async function placeOrder() {
     return;
   }
 
-  const deliveryCharge = calculateDeliveryCharge(goodsTotal);
+  const deliveryCharge = calculateDeliveryCharge(goodsTotal, address);
   const total = goodsTotal + deliveryCharge;
 
   const amountPaid = selectedPaymentOption === "full" ? total : Math.ceil(total / 2);
@@ -2510,7 +2532,7 @@ async function proceedToPayment() {
     return;
   }
 
-  const deliveryCharge = calculateDeliveryCharge(goodsTotal);
+  const deliveryCharge = calculateDeliveryCharge(goodsTotal, address);
   const total = goodsTotal + deliveryCharge;
 
   const upiId = (window.siteContent && window.siteContent.upi_id) || "";

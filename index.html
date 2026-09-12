@@ -345,7 +345,7 @@
           <option value="">+ Use a new address</option>
         </select>
         <input type="text" id="customerName" placeholder="Your Name" />
-        <textarea id="customerAddress" placeholder="Delivery Address"></textarea>
+        <textarea id="customerAddress" placeholder="Delivery Address" oninput="updateCartTotals()"></textarea>
         <label class="save-address-row">
           <input type="checkbox" id="saveAddressCheckbox" checked />
           Save this address for next time

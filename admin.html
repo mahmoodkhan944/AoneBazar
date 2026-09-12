@@ -548,6 +548,10 @@
               <label>Estimated delivery time</label>
               <input id="areaEtaInput" placeholder="e.g. 30–60 min" value="30–60 min" />
             </div>
+            <div>
+              <label>Delivery charge (₹, optional)</label>
+              <input id="areaChargeInput" type="number" placeholder="Leave blank for site default" />
+            </div>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="addDeliveryArea()">Add Area</button>
         </div>
@@ -559,7 +563,7 @@
           </p>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Area</th><th>ETA</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Area</th><th>ETA</th><th>Delivery Charge</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody id="deliveryAreasBody"></tbody>
             </table>
           </div>
@@ -975,6 +979,8 @@
       <input id="editAreaName" placeholder="e.g. Lahideeh" />
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Estimated delivery time</label>
       <input id="editAreaEta" placeholder="e.g. 30–60 min" />
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Delivery charge (₹, optional)</label>
+      <input id="editAreaCharge" type="number" placeholder="Leave blank for site default" />
       <button class="btn btn-primary" onclick="updateDeliveryArea()">Save</button>
     </div>
   </div>
