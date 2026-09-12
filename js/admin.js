@@ -408,7 +408,7 @@ async function saveOrderItemsEdit(orderId) {
 
 let newOrderCustomerId = null; // set by lookupCustomerByPhone() if a matching account is found; null is fine (order just won't show in that customer's "My Orders" until they have one)
 
-function openCreateOrderModal() {
+async function openCreateOrderModal() {
   document.getElementById("newOrderPhone").value = "";
   document.getElementById("newOrderName").value = "";
   document.getElementById("newOrderAddress").value = "";
@@ -418,6 +418,16 @@ function openCreateOrderModal() {
   document.getElementById("newOrderStatus").value = "NEW";
   document.getElementById("newOrderLookupResult").textContent = "";
   newOrderCustomerId = null;
+
+  // The product search below depends on allProductsCache — normally
+  // filled in by visiting the Products tab, which the admin may not
+  // have done yet this session. Fetch it directly here too so "Create
+  // Order" always has something to search, regardless of what's been
+  // visited already.
+  if (!allProductsCache || allProductsCache.length === 0) {
+    const { data: rows } = await supabase.from("products").select("*").order("name");
+    allProductsCache = rows || [];
+  }
 
   orderEditorItems = [];
   orderEditorContainerId = "newOrderItemsEditor";
@@ -846,35 +856,167 @@ function renderOrderEditorItems() {
     <div class="order-detail-item-row order-detail-total-row" style="margin-top:8px;">
       <span>Items Subtotal</span><span>₹${subtotal.toFixed(2)}</span>
     </div>
-    <div class="admin-form-grid" style="margin-top:12px;">
-      <input id="newItemName" placeholder="Product name" list="allProductNamesList" />
-      <input id="newItemPrice" type="number" placeholder="Price (per unit)" />
+    <div style="position:relative;margin-top:12px;">
+      <input id="newItemSearch" placeholder="Type a product name, e.g. oil…" autocomplete="off" oninput="onNewItemSearchInput()" onfocus="onNewItemSearchInput()" onblur="setTimeout(hideNewItemSuggestions, 150)" />
+      <div id="newItemSuggestions" class="store-search-suggestions hidden"></div>
+    </div>
+    <div id="newItemVariantWrap" class="hidden" style="margin-top:8px;">
+      <select id="newItemVariant" onchange="onNewItemVariantChange()"></select>
+    </div>
+    <div class="admin-form-grid" style="margin-top:8px;">
+      <input id="newItemPrice" type="number" placeholder="Price (auto-filled)" />
       <input id="newItemQty" type="number" placeholder="Qty" value="1" min="1" />
     </div>
-    <datalist id="allProductNamesList">
-      ${(allProductsCache || []).map(p => `<option value="${p.name}" data-price="${p.price}">`).join("")}
-    </datalist>
     <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addOrderEditorItem()">+ Add Item</button>
   `;
 
   updateNewOrderTotalPreview(); // no-op unless the Create Order modal's fields exist
+  updateNewOrderDeliveryChargeAuto(); // ditto
+}
+
+let newItemSelectedProductId = null;
+
+/** Shows up to 8 products whose name contains whatever's been typed
+ *  so far (e.g. "oil" → every product with "oil" anywhere in its
+ *  name) — a search, not a fixed pick-from-a-list dropdown, since
+ *  the catalog can be far too long to scroll through as one. */
+function onNewItemSearchInput() {
+  const input = document.getElementById("newItemSearch");
+  const box = document.getElementById("newItemSuggestions");
+  const q = input.value.trim().toLowerCase();
+
+  if (!q) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+
+  const matches = (allProductsCache || []).filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
+
+  if (matches.length === 0) {
+    box.innerHTML = `<div style="padding:10px;color:var(--ink-faint);font-size:0.85rem;">No matching products</div>`;
+    box.classList.remove("hidden");
+    return;
+  }
+
+  const STORE_LABELS = { supermarket: "AOne Bazaar", grocery: "AOne Kirana Store", cafe: "AOne Cafe" };
+  box.innerHTML = matches.map(p => `
+    <div class="store-search-suggestion-item" style="cursor:pointer;" onclick="selectNewItemProduct('${p.id}')">
+      <img src="${p.images && p.images[0] ? p.images[0] : ''}" alt="" />
+      <span>${p.name} <span style="color:var(--ink-faint);font-weight:500;">— ${STORE_LABELS[p.store] || p.store}</span></span>
+    </div>
+  `).join("");
+  box.classList.remove("hidden");
+}
+
+function hideNewItemSuggestions() {
+  const box = document.getElementById("newItemSuggestions");
+  if (box) box.classList.add("hidden");
+}
+
+/** Picking a suggestion fills in its base price right away, or — if
+ *  it has sizes/packs — swaps in a dropdown for those instead (each
+ *  one showing its own price), since the base price alone wouldn't
+ *  be accurate for those. */
+function selectNewItemProduct(productId) {
+  const product = (allProductsCache || []).find(p => p.id === productId);
+  if (!product) return;
+
+  newItemSelectedProductId = productId;
+  document.getElementById("newItemSearch").value = product.name;
+  hideNewItemSuggestions();
+
+  const variantWrap = document.getElementById("newItemVariantWrap");
+  const variantSelect = document.getElementById("newItemVariant");
+  const priceInput = document.getElementById("newItemPrice");
+
+  if (product.variants && product.variants.length > 0) {
+    variantSelect.innerHTML =
+      `<option value="">Select size/pack…</option>` +
+      product.variants.map((v, i) => `<option value="${i}">${v.label} — ₹${v.price}</option>`).join("");
+    variantWrap.classList.remove("hidden");
+    priceInput.value = "";
+  } else {
+    variantWrap.classList.add("hidden");
+    variantSelect.innerHTML = "";
+    priceInput.value = product.price;
+  }
+}
+
+function onNewItemVariantChange() {
+  const variantIndex = document.getElementById("newItemVariant").value;
+  const product = (allProductsCache || []).find(p => p.id === newItemSelectedProductId);
+  if (!product || variantIndex === "") return;
+
+  document.getElementById("newItemPrice").value = product.variants[Number(variantIndex)].price;
+}
+
+/** Same idea as the storefront's own delivery-charge logic (see
+ *  calculateDeliveryCharge in app.js) — free above the site-wide
+ *  threshold, otherwise whichever area matches the typed address (its
+ *  own charge if set, or the site default), reused here so the admin
+ *  doesn't have to work out and type the right number by hand. */
+let deliveryAreasCacheAdmin = null;
+
+async function getDeliveryChargeForAdmin(address, subtotal) {
+  const freeThreshold = Number(window.siteContent && window.siteContent.free_delivery_threshold) || 300;
+  if (subtotal >= freeThreshold) return 0;
+
+  if (!deliveryAreasCacheAdmin) {
+    const { data } = await supabase.from("delivery_areas").select("area_name, delivery_charge").eq("active", true);
+    deliveryAreasCacheAdmin = data || [];
+  }
+
+  const siteDefault = Number(window.siteContent && window.siteContent.delivery_charge);
+  const defaultCharge = siteDefault >= 0 && window.siteContent && window.siteContent.delivery_charge !== undefined ? siteDefault : 30;
+
+  if (address) {
+    const addressLower = address.toLowerCase();
+    const matchedArea = deliveryAreasCacheAdmin.find(a => addressLower.includes(a.area_name.toLowerCase()));
+    if (matchedArea && matchedArea.delivery_charge !== null && matchedArea.delivery_charge !== undefined) {
+      return Number(matchedArea.delivery_charge);
+    }
+  }
+
+  return defaultCharge;
+}
+
+async function updateNewOrderDeliveryChargeAuto() {
+  const addressEl = document.getElementById("newOrderAddress");
+  const chargeEl = document.getElementById("newOrderDeliveryCharge");
+  if (!addressEl || !chargeEl) return; // not in the Create Order modal (e.g. editing an existing order's items)
+
+  const subtotal = orderEditorSubtotal();
+  chargeEl.value = await getDeliveryChargeForAdmin(addressEl.value.trim(), subtotal);
+  updateNewOrderTotalPreview();
 }
 
 function addOrderEditorItem() {
-  const nameInput = document.getElementById("newItemName");
+  const variantSelect = document.getElementById("newItemVariant");
   const priceInput = document.getElementById("newItemPrice");
   const qtyInput = document.getElementById("newItemQty");
 
-  const name = nameInput.value.trim();
+  const product = (allProductsCache || []).find(p => p.id === newItemSelectedProductId);
+  if (!product) {
+    alert("Search and pick a product first");
+    return;
+  }
+
+  let name = product.name;
+  if (product.variants && product.variants.length > 0) {
+    if (variantSelect.value === "") {
+      alert("Select a size/pack for this product");
+      return;
+    }
+    name += ` (${product.variants[Number(variantSelect.value)].label})`;
+  }
+
   const price = Number(priceInput.value);
   const qty = Number(qtyInput.value) || 1;
 
-  if (!name || !price || price <= 0) {
-    alert("Enter a product name and a price greater than 0");
+  if (!price || price <= 0) {
+    alert("Price must be greater than 0");
     return;
   }
 
   orderEditorItems.push({ name, price, qty });
+  newItemSelectedProductId = null;
   renderOrderEditorItems();
 }
 

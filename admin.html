@@ -1038,14 +1038,14 @@
       <input id="newOrderName" placeholder="e.g. Mahmood Khan" />
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Delivery address</label>
-      <textarea id="newOrderAddress" rows="2" placeholder="Full delivery address"></textarea>
+      <textarea id="newOrderAddress" rows="2" placeholder="Full delivery address" oninput="updateNewOrderDeliveryChargeAuto()"></textarea>
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:14px 0 4px;">Items</label>
       <div id="newOrderItemsEditor"></div>
 
       <div class="admin-form-grid" style="margin-top:14px;">
         <div>
-          <label>Delivery charge (₹)</label>
+          <label>Delivery charge (₹) — auto, editable</label>
           <input id="newOrderDeliveryCharge" type="number" value="0" oninput="updateNewOrderTotalPreview()" />
         </div>
         <div>
