@@ -425,6 +425,28 @@ function openCreateOrderModal() {
   updateNewOrderTotalPreview();
 
   document.getElementById("createOrderModal").classList.remove("hidden");
+  populateCustomerPhonesList();
+}
+
+/** Fills the phone field's suggestion list with every customer on
+ *  file (phone + name), so the admin can start typing and pick from
+ *  a dropdown instead of having to already know the exact number. */
+async function populateCustomerPhonesList() {
+  const list = document.getElementById("allCustomerPhonesList");
+  if (!list) return;
+
+  const { data: rows, error } = await supabase
+    .from("profiles")
+    .select("phone, full_name")
+    .not("phone", "is", null)
+    .order("full_name");
+
+  if (error || !rows) return;
+
+  list.innerHTML = rows
+    .filter(r => r.phone)
+    .map(r => `<option value="${r.phone}">${r.full_name ? r.full_name : ""}</option>`)
+    .join("");
 }
 
 function closeCreateOrderModal() {

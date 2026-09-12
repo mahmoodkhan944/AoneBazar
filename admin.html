@@ -1027,10 +1027,11 @@
       </p>
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Customer phone</label>
-      <div style="display:flex;gap:8px;">
-        <input id="newOrderPhone" placeholder="e.g. 9235217667" style="flex:1;" />
-        <button type="button" class="btn btn-outline btn-sm" onclick="lookupCustomerByPhone()">Look Up</button>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <input id="newOrderPhone" placeholder="e.g. 9235217667" list="allCustomerPhonesList" onchange="lookupCustomerByPhone()" style="flex:1;min-width:0;" />
+        <button type="button" class="btn btn-outline btn-sm" style="width:auto;flex:0 0 auto;white-space:nowrap;" onclick="lookupCustomerByPhone()">Look Up</button>
       </div>
+      <datalist id="allCustomerPhonesList"></datalist>
       <p id="newOrderLookupResult" style="font-size:0.8rem;margin:4px 0 0;"></p>
 
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Customer name</label>
