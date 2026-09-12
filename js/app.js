@@ -2326,6 +2326,7 @@ async function placeOrder() {
   });
 
   let dbSaveFailed = !!error;
+  let lastInsertErrorMessage = error ? error.message : "";
 
   if (error) {
     console.warn("Order insert failed, retrying once with a fresh session:", error.message);
@@ -2360,7 +2361,14 @@ async function placeOrder() {
         status: "NEW"
       });
       dbSaveFailed = !!retryError;
-      if (retryError) console.error("Order insert retry also failed:", retryError.message);
+      if (retryError) {
+        lastInsertErrorMessage = retryError.message;
+        console.error("Order insert retry also failed:", retryError.message);
+      } else {
+        lastInsertErrorMessage = "";
+      }
+    } else if (retryAuthError) {
+      lastInsertErrorMessage = "Retry sign-in failed: " + retryAuthError.message;
     }
   }
 
@@ -2370,7 +2378,10 @@ async function placeOrder() {
     // the shop (right in the message, so they know to add it to the
     // system by hand) and to the customer (so they don't wrongly
     // assume it'll show up in "My Orders" when it currently won't).
-    message += `%0A%0A⚠️ *NOT SAVED IN SYSTEM* — please add this order manually.`;
+    // The raw error text rides along too (temporary, for
+    // diagnosis) — it's the only way to actually see it on a
+    // customer's phone, since nobody's watching their browser console.
+    message += `%0A%0A⚠️ *NOT SAVED IN SYSTEM* — please add this order manually.%0A(Error: ${encodeURIComponent(lastInsertErrorMessage).slice(0, 200)})`;
   } else if (appliedCoupon) {
     const { error: redeemError } = await supabase.rpc("redeem_coupon", { p_code: appliedCoupon.code });
     if (redeemError) console.warn("Coupon redeem failed:", redeemError.message);
