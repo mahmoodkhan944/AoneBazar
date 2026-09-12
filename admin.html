@@ -230,7 +230,10 @@
 
       <!-- ===== ORDERS ===== -->
       <section id="view-orders" class="admin-view">
-        <div class="admin-topbar"><h1>Orders</h1></div>
+        <div class="admin-topbar">
+          <h1>Orders</h1>
+          <button class="btn btn-primary btn-sm" onclick="openCreateOrderModal()">+ Create Order</button>
+        </div>
 
         <div class="admin-panel">
           <div class="admin-toolbar">
@@ -1011,6 +1014,61 @@
       <button onclick="closeOrderDetail()">×</button>
       <h3>Order Details</h3>
       <div id="orderDetailContent">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE ORDER MANUALLY ===== -->
+  <div id="createOrderModal" class="modal hidden">
+    <div class="modal-content order-detail-modal-content">
+      <button onclick="closeCreateOrderModal()">×</button>
+      <h3>Create Order</h3>
+      <p style="font-size:0.82rem;color:var(--ink-soft);margin-top:-8px;">
+        For recovering an order that didn't save, or taking one over the phone.
+      </p>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">Customer phone</label>
+      <div style="display:flex;gap:8px;">
+        <input id="newOrderPhone" placeholder="e.g. 9235217667" style="flex:1;" />
+        <button type="button" class="btn btn-outline btn-sm" onclick="lookupCustomerByPhone()">Look Up</button>
+      </div>
+      <p id="newOrderLookupResult" style="font-size:0.8rem;margin:4px 0 0;"></p>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Customer name</label>
+      <input id="newOrderName" placeholder="e.g. Mahmood Khan" />
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:12px 0 4px;">Delivery address</label>
+      <textarea id="newOrderAddress" rows="2" placeholder="Full delivery address"></textarea>
+
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--ink-soft);margin:14px 0 4px;">Items</label>
+      <div id="newOrderItemsEditor"></div>
+
+      <div class="admin-form-grid" style="margin-top:14px;">
+        <div>
+          <label>Delivery charge (₹)</label>
+          <input id="newOrderDeliveryCharge" type="number" value="0" oninput="updateNewOrderTotalPreview()" />
+        </div>
+        <div>
+          <label>Discount (₹)</label>
+          <input id="newOrderDiscount" type="number" value="0" oninput="updateNewOrderTotalPreview()" />
+        </div>
+        <div>
+          <label>Amount already paid (₹)</label>
+          <input id="newOrderAmountPaid" type="number" value="0" />
+        </div>
+        <div>
+          <label>Order status</label>
+          <select id="newOrderStatus">
+            <option value="NEW">Pending</option>
+            <option value="PROCESSING">Processing</option>
+            <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+            <option value="DELIVERED">Delivered</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="newOrderTotalPreview" style="font-weight:700;margin-top:12px;"></p>
+
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="submitCreateOrder()">Create Order</button>
     </div>
   </div>
 

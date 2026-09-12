@@ -288,6 +288,7 @@ async function openOrderDetailModal(orderId) {
   }
 
   const o = mapOrderRow(row);
+  currentOrderDetailData = o;
 
   const itemsHtml = (o.items || []).map(it => `
     <div class="order-detail-item-row">
@@ -311,8 +312,16 @@ async function openOrderDetailModal(orderId) {
     </div>
 
     <div class="order-detail-section">
-      <h4>Items</h4>
-      ${itemsHtml}
+      <div class="admin-panel-header-row" style="margin-bottom:8px;">
+        <h4 style="margin-bottom:0;">Items</h4>
+        <button class="admin-view-all-link" onclick="startEditOrderItems('${o.id}')">Edit Items</button>
+      </div>
+      <div id="orderItemsDisplay-${o.id}">${itemsHtml}</div>
+      <div id="orderItemsEditorWrap-${o.id}" class="hidden">
+        <div id="orderItemsEditor-${o.id}"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveOrderItemsEdit('${o.id}')">Save Item Changes</button>
+        <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="openOrderDetailModal('${o.id}')">Cancel</button>
+      </div>
     </div>
 
     <div class="order-detail-section order-detail-totals">
@@ -339,6 +348,180 @@ async function openOrderDetailModal(orderId) {
       <button class="danger" onclick="cancelOrderWithConfirm('${o.id}').then(() => openOrderDetailModal('${o.id}'))">Cancel Order</button>
     </div>
   `;
+}
+
+/** Switches the Items section of the order detail modal from a plain
+ *  read-only list into the shared items editor (see ORDER ITEMS
+ *  EDITOR above), pre-loaded with this order's current items. */
+function startEditOrderItems(orderId) {
+  const displayEl = document.getElementById(`orderItemsDisplay-${orderId}`);
+  const editorWrap = document.getElementById(`orderItemsEditorWrap-${orderId}`);
+  if (!displayEl || !editorWrap) return;
+
+  orderEditorItems = currentOrderDetailData ? currentOrderDetailData.items.map(it => ({ ...it })) : [];
+  orderEditorContainerId = `orderItemsEditor-${orderId}`;
+
+  displayEl.classList.add("hidden");
+  editorWrap.classList.remove("hidden");
+  renderOrderEditorItems();
+}
+
+/** Saves the edited items back to the order — recomputes subtotal
+ *  and total (subtotal − discount + delivery charge), keeping
+ *  whatever discount/delivery charge the order already had rather
+ *  than trying to re-derive a coupon or re-check the delivery area
+ *  from scratch. */
+async function saveOrderItemsEdit(orderId) {
+  if (orderEditorItems.length === 0) {
+    if (!(await customConfirm("This order will have no items left. Save anyway?", "Save"))) return;
+  }
+
+  const { data: row, error: fetchError } = await supabase.from("orders").select("discount, delivery_charge").eq("id", orderId).maybeSingle();
+  if (fetchError || !row) { alert("Could not load order to save changes"); return; }
+
+  const subtotal = orderEditorSubtotal();
+  const discount = row.discount || 0;
+  const deliveryCharge = row.delivery_charge || 0;
+  const total = Math.max(0, subtotal - discount) + deliveryCharge;
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ items: orderEditorItems, subtotal, total })
+    .eq("id", orderId);
+
+  if (error) { alert("Could not save item changes: " + error.message); return; }
+
+  orderEditorItems = [];
+  orderEditorContainerId = null;
+  openOrderDetailModal(orderId);
+  loadOrders();
+}
+
+/***********************
+    CREATE ORDER MANUALLY
+    For recovering an order that failed to save on the storefront, or
+    taking one over the phone. Needs its own admin-only insert rule
+    (see patch-admin-manage-orders.sql) since the normal "customer
+    inserts their own order" rule only allows customer_id = the
+    logged-in customer themselves, not an admin acting on their behalf.
+************************/
+
+let newOrderCustomerId = null; // set by lookupCustomerByPhone() if a matching account is found; null is fine (order just won't show in that customer's "My Orders" until they have one)
+
+function openCreateOrderModal() {
+  document.getElementById("newOrderPhone").value = "";
+  document.getElementById("newOrderName").value = "";
+  document.getElementById("newOrderAddress").value = "";
+  document.getElementById("newOrderDeliveryCharge").value = "0";
+  document.getElementById("newOrderDiscount").value = "0";
+  document.getElementById("newOrderAmountPaid").value = "0";
+  document.getElementById("newOrderStatus").value = "NEW";
+  document.getElementById("newOrderLookupResult").textContent = "";
+  newOrderCustomerId = null;
+
+  orderEditorItems = [];
+  orderEditorContainerId = "newOrderItemsEditor";
+  renderOrderEditorItems();
+  updateNewOrderTotalPreview();
+
+  document.getElementById("createOrderModal").classList.remove("hidden");
+}
+
+function closeCreateOrderModal() {
+  document.getElementById("createOrderModal").classList.add("hidden");
+  orderEditorContainerId = null;
+}
+
+/** Looks the phone number up in profiles — if found, the order gets
+ *  linked to that real account (so it shows in their "My Orders");
+ *  if not, the admin can still create the order, it just won't be
+ *  linked to any account until the customer signs up with that
+ *  number. */
+async function lookupCustomerByPhone() {
+  const phone = document.getElementById("newOrderPhone").value.trim();
+  const resultEl = document.getElementById("newOrderLookupResult");
+  if (!phone) { resultEl.textContent = ""; return; }
+
+  const digitsOnly = phone.replace(/\D/g, "");
+  const { data: rows, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, phone")
+    .or(`phone.eq.${phone},phone.eq.${digitsOnly},phone.eq.+91${digitsOnly},phone.eq.91${digitsOnly}`)
+    .limit(1);
+
+  if (error || !rows || rows.length === 0) {
+    newOrderCustomerId = null;
+    resultEl.innerHTML = `<span style="color:var(--marigold-700);">No account found for this number — order will be created without a linked account.</span>`;
+    return;
+  }
+
+  newOrderCustomerId = rows[0].id;
+  resultEl.innerHTML = `<span style="color:var(--green-700);">✓ Found account${rows[0].full_name ? `: ${rows[0].full_name}` : ""} — order will show in their "My Orders".</span>`;
+  if (rows[0].full_name && !document.getElementById("newOrderName").value) {
+    document.getElementById("newOrderName").value = rows[0].full_name;
+  }
+}
+
+function updateNewOrderTotalPreview() {
+  const subtotal = orderEditorSubtotal();
+  const deliveryCharge = Number(document.getElementById("newOrderDeliveryCharge")?.value) || 0;
+  const discount = Number(document.getElementById("newOrderDiscount")?.value) || 0;
+  const total = Math.max(0, subtotal - discount) + deliveryCharge;
+  const el = document.getElementById("newOrderTotalPreview");
+  if (el) el.textContent = `Subtotal ₹${subtotal.toFixed(2)} − Discount ₹${discount} + Delivery ₹${deliveryCharge} = Total ₹${total.toFixed(2)}`;
+}
+
+async function submitCreateOrder() {
+  const phone = document.getElementById("newOrderPhone").value.trim();
+  const name = document.getElementById("newOrderName").value.trim();
+  const address = document.getElementById("newOrderAddress").value.trim();
+  const deliveryCharge = Number(document.getElementById("newOrderDeliveryCharge").value) || 0;
+  const discount = Number(document.getElementById("newOrderDiscount").value) || 0;
+  const amountPaid = Number(document.getElementById("newOrderAmountPaid").value) || 0;
+  const status = document.getElementById("newOrderStatus").value;
+
+  if (!phone || !name || !address) {
+    alert("Enter the customer's phone, name, and delivery address");
+    return;
+  }
+  if (orderEditorItems.length === 0) {
+    alert("Add at least one item");
+    return;
+  }
+
+  const subtotal = orderEditorSubtotal();
+  const total = Math.max(0, subtotal - discount) + deliveryCharge;
+  const balanceDue = Math.max(0, total - amountPaid);
+  const id = "ORD" + Date.now();
+  const invoiceNo = "INV" + Date.now();
+
+  const { error } = await supabase.from("orders").insert({
+    id,
+    invoice_no: invoiceNo,
+    customer_id: newOrderCustomerId,
+    customer_phone: phone,
+    customer_name: name,
+    address,
+    items: orderEditorItems,
+    subtotal,
+    discount,
+    delivery_charge: deliveryCharge,
+    total,
+    payment: "COD",
+    payment_option: balanceDue > 0 ? "half" : "full",
+    amount_paid: amountPaid,
+    balance_due: balanceDue,
+    status
+  });
+
+  if (error) {
+    alert("Could not create order: " + error.message);
+    return;
+  }
+
+  alert("Order created" + (newOrderCustomerId ? "" : " (not linked to a customer account — they won't see it in \"My Orders\" unless they later log in with this exact phone number and you re-link it)."));
+  closeCreateOrderModal();
+  loadOrders();
 }
 
 function closeOrderDetail() {
@@ -604,6 +787,88 @@ function filterOrders() {
 async function cancelOrderWithConfirm(id) {
   if (!(await customConfirm("Cancel this order? This can't be undone from here.", "Cancel Order"))) return;
   await updateOrderStatus(id, "CANCELLED");
+}
+
+/***********************
+    ORDER ITEMS EDITOR
+    Shared by "Edit Items" on an existing order and "Create Order"
+    (manually adding one from scratch) — a plain working list of
+    {name, price, qty} rows, with add/remove/qty-edit and a running
+    subtotal, rendered into whichever container is currently using it.
+************************/
+
+let orderEditorItems = [];
+let orderEditorContainerId = null;
+let currentOrderDetailData = null;
+
+function renderOrderEditorItems() {
+  const containerId = orderEditorContainerId;
+  if (!containerId) return;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const rowsHtml = orderEditorItems.map((it, i) => `
+    <div class="order-detail-item-row" style="align-items:center;gap:8px;">
+      <span style="flex:1;">${it.name}</span>
+      <input type="number" min="1" value="${it.qty}" style="width:60px;" onchange="updateOrderEditorItemQty(${i}, this.value)" />
+      <span>× ₹${it.price} =</span>
+      <span style="min-width:60px;text-align:right;">₹${(it.price * it.qty).toFixed(2)}</span>
+      <button type="button" class="danger" style="padding:4px 10px;font-size:0.76rem;border-radius:999px;border:none;background:var(--danger-100);color:var(--danger-600);cursor:pointer;" onclick="removeOrderEditorItem(${i})">×</button>
+    </div>
+  `).join("");
+
+  const subtotal = orderEditorItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+
+  container.innerHTML = `
+    ${rowsHtml || `<p style="color:var(--ink-faint);font-size:0.85rem;">No items yet — add one below.</p>`}
+    <div class="order-detail-item-row order-detail-total-row" style="margin-top:8px;">
+      <span>Items Subtotal</span><span>₹${subtotal.toFixed(2)}</span>
+    </div>
+    <div class="admin-form-grid" style="margin-top:12px;">
+      <input id="newItemName" placeholder="Product name" list="allProductNamesList" />
+      <input id="newItemPrice" type="number" placeholder="Price (per unit)" />
+      <input id="newItemQty" type="number" placeholder="Qty" value="1" min="1" />
+    </div>
+    <datalist id="allProductNamesList">
+      ${(allProductsCache || []).map(p => `<option value="${p.name}" data-price="${p.price}">`).join("")}
+    </datalist>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addOrderEditorItem()">+ Add Item</button>
+  `;
+
+  updateNewOrderTotalPreview(); // no-op unless the Create Order modal's fields exist
+}
+
+function addOrderEditorItem() {
+  const nameInput = document.getElementById("newItemName");
+  const priceInput = document.getElementById("newItemPrice");
+  const qtyInput = document.getElementById("newItemQty");
+
+  const name = nameInput.value.trim();
+  const price = Number(priceInput.value);
+  const qty = Number(qtyInput.value) || 1;
+
+  if (!name || !price || price <= 0) {
+    alert("Enter a product name and a price greater than 0");
+    return;
+  }
+
+  orderEditorItems.push({ name, price, qty });
+  renderOrderEditorItems();
+}
+
+function updateOrderEditorItemQty(index, value) {
+  const qty = Math.max(1, Number(value) || 1);
+  orderEditorItems[index].qty = qty;
+  renderOrderEditorItems();
+}
+
+function removeOrderEditorItem(index) {
+  orderEditorItems.splice(index, 1);
+  renderOrderEditorItems();
+}
+
+function orderEditorSubtotal() {
+  return orderEditorItems.reduce((sum, it) => sum + it.price * it.qty, 0);
 }
 
 async function updateOrderStatus(id, newStatus) {
