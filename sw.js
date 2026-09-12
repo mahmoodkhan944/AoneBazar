@@ -7,7 +7,7 @@
 // and shows something even with a flaky connection — actual product
 // data always comes fresh from Supabase, never from this cache.
 
-const CACHE_NAME = "aone-bazaar-shell-v2";
+const CACHE_NAME = "aone-bazaar-shell-v3";
 
 const SHELL_FILES = [
   "/",
