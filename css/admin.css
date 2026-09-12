@@ -29,7 +29,7 @@ body.admin-body {
 }
 
 .admin-login-card img {
-  width: 52px;
+  width: 68px;
   margin: 0 auto 12px;
 }
 
@@ -80,7 +80,7 @@ body.admin-body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.admin-sidebar-brand img { width: 34px; }
+.admin-sidebar-brand img { width: 44px; }
 
 .admin-sidebar-brand div { line-height: 1.15; }
 

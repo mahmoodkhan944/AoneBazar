@@ -31,8 +31,8 @@
 }
 
 .brand img {
-  width: 42px;
-  height: 42px;
+  width: 54px;
+  height: 54px;
   object-fit: contain;
 }
 
@@ -1784,8 +1784,8 @@
 }
 
 .footer-logo {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.25);
   background: #fff;
@@ -2988,7 +2988,7 @@
 
   .brand-tagline { display: none; }
   .brand-name { font-size: 1rem; white-space: nowrap; }
-  .brand img { width: 34px; height: 34px; }
+  .brand img { width: 42px; height: 42px; }
   .site-header .container { gap: 6px; padding-left: 14px; padding-right: 14px; }
   .mobile-nav-toggle { width: 36px; height: 36px; }
 
