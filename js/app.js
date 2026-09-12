@@ -1073,9 +1073,11 @@ function renderProductGrid(items, emptyMessage) {
     productGrid.innerHTML += `
       <div class="product${outOfStock ? " product-out-of-stock" : ""}">
         <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
-        <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;position:relative;display:block;">
-          <img src="${p.images ? p.images[0] : p.img}">
-          ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
+        <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;display:block;">
+          <span style="position:relative;display:block;">
+            <img src="${p.images ? p.images[0] : p.img}">
+            ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
+          </span>
           <h4>${displayProductName(p)}</h4>
           <p id="price-${p.id}">${priceHtml}</p>
           <span id="rating-${p.id}">${ratingBadgeHtml(p)}</span>
@@ -1776,9 +1778,11 @@ function featuredProductCardHtml(p, opts) {
     <div class="featured-card">
       ${isNew ? `<span class="new-badge">NEW</span>` : ""}
       <span id="badge-${p.id}" class="discount-badge" style="${hasDiscount ? "" : "display:none;"}">-${discountPct}%</span>
-      <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;position:relative;display:block;">
-        <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
-        ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
+      <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit;display:block;">
+        <span style="position:relative;display:block;">
+          <img src="${p.images && p.images[0] ? p.images[0] : p.img || ''}">
+          ${p.deliver_to_all_extra_zones ? `<span class="extra-zone-icon" title="Also delivers to extra areas beyond our usual delivery zone"><i class="fa-solid fa-truck-fast"></i></span>` : ""}
+        </span>
         <h4>${displayProductName(p)}</h4>
         <p id="price-${p.id}">${hasDiscount ? `₹${initial.price} <span class="mrp-strike">₹${initialMrp}</span>` : `₹${initial.price}`}</p>
         ${ratingBadgeHtml(p)}
