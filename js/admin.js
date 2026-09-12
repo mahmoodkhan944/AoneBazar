@@ -935,13 +935,6 @@ async function downloadInvoiceById(id) {
   downloadInvoice(order);
 }
 
-function generateInvoiceNumber() {
-  let last = localStorage.getItem("lastInvoice") || "0";
-  last = parseInt(last) + 1;
-  localStorage.setItem("lastInvoice", last);
-  return "INV-" + String(last).padStart(4, "0");
-}
-
 async function downloadInvoice(order) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();

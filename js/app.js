@@ -2278,7 +2278,7 @@ async function placeOrder() {
   message += balanceDue > 0 ? `%0ABalance on delivery: ₹${balanceDue}` : `%0ABalance on delivery: ₹0 (Paid in full)`;
   message += `%0AAddress: ${address}`;
 
-  const invoiceNo = generateInvoiceNumber();
+  const invoiceNo = generateInvoiceNumber(id);
 
   // Upload the screenshot before saving the order, so the admin has
   // something to check against the order right away instead of
@@ -2685,14 +2685,17 @@ function backToCartForm() {
 }
 
 
-function generateInvoiceNumber() {
-
-  let last = localStorage.getItem("lastInvoice") || "0";
-  last = parseInt(last) + 1;
-
-  localStorage.setItem("lastInvoice", last);
-
-  return "INV-" + String(last).padStart(4, "0");
+/** Was a per-browser localStorage counter starting fresh at 0 for
+ *  every different customer's own device — meaning two different
+ *  first-time customers (or the same customer on a new device)
+ *  would both generate "INV-0001" and collide on the database's
+ *  unique invoice_no constraint, silently failing to save the order
+ *  entirely. Deriving it from the order's own id (already guaranteed
+ *  unique — see generateOrderID) instead makes it unique across every
+ *  customer and device with no shared counter needed at all. */
+function generateInvoiceNumber(orderId) {
+  const numericPart = String(orderId || "").replace(/\D/g, "").slice(-10) || String(Date.now());
+  return "INV-" + numericPart;
 }
 
 
