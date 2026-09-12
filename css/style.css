@@ -300,10 +300,17 @@
 }
 
 .delivery-check-wa-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-top: 10px;
+  width: 100% !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  line-height: 1.3;
+  text-align: center;
+  box-sizing: border-box !important;
   color: #25D366;
   border-color: #25D366;
 }
