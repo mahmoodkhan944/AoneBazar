@@ -1126,17 +1126,23 @@ function updateCardPrice(selectEl) {
   if (!v) return;
 
   const mrp = v.mrp || Number(selectEl.dataset.productMrp) || null;
-  const priceEl = document.getElementById("price-" + productId);
-  const badgeEl = document.getElementById("badge-" + productId);
+  // querySelectorAll rather than getElementById — the same product
+  // can legitimately show up more than once on one page (e.g. once
+  // in a "Best Deals"/"Trending" row and again further down in the
+  // main grid), and getElementById only ever updates the FIRST match
+  // in the page, silently leaving every other copy showing the old
+  // price even though its own dropdown was the one just changed.
+  const priceEls = document.querySelectorAll(`[id="price-${productId}"]`);
+  const badgeEls = document.querySelectorAll(`[id="badge-${productId}"]`);
   const hasDiscount = mrp && mrp > v.price;
 
-  if (priceEl) {
+  priceEls.forEach(priceEl => {
     priceEl.innerHTML = hasDiscount
       ? `₹${v.price} <span class="mrp-strike">₹${mrp}</span>`
       : `₹${v.price}`;
-  }
+  });
 
-  if (badgeEl) {
+  badgeEls.forEach(badgeEl => {
     if (hasDiscount) {
       const pct = Math.round(((mrp - v.price) / mrp) * 100);
       badgeEl.textContent = `-${pct}%`;
@@ -1144,7 +1150,7 @@ function updateCardPrice(selectEl) {
     } else {
       badgeEl.style.display = "none";
     }
-  }
+  });
 }
 
 /** Reads the <select> right before the clicked "Add to Cart" button
