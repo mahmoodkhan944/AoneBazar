@@ -2298,11 +2298,27 @@ async function updateProduct() {
 
   const updateData = { name, name_hi, description, description_hi, brand, price, mrp, store, category, images, variants, specs, featured_section, featured_order, deliver_to_all_extra_zones };
 
+  // Whatever was in the product's old image list but isn't in the
+  // new one — removed via the × button on an existing thumbnail
+  // above — is about to become unreferenced by anything; clean those
+  // specific files out of storage rather than leaving them behind
+  // forever just because the saved list moved on without them.
+  const { data: beforeUpdate } = await supabase.from("products").select("images").eq("id", editingProductId).maybeSingle();
+  const removedImageUrls = (beforeUpdate && beforeUpdate.images || []).filter(url => !images.includes(url));
+
   const { error } = await supabase.from("products").update(updateData).eq("id", editingProductId);
 
   if (error) {
     alert("Could not update product: " + error.message);
     return;
+  }
+
+  if (removedImageUrls.length > 0) {
+    const paths = removedImageUrls.map(url => getStoragePathFromUrl(url, "product-images")).filter(Boolean);
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from("product-images").remove(paths);
+      if (storageError) console.warn("Could not remove replaced product image(s) from storage:", storageError.message);
+    }
   }
 
   alert("Product updated");
@@ -2313,11 +2329,25 @@ async function updateProduct() {
 async function deleteProduct(id) {
   if (!(await customConfirm("Delete this product? This can't be undone.", "Delete"))) return;
 
+  // Grab the image paths before the row (and with it, the only
+  // record of which files belonged to this product) is gone —
+  // otherwise every deleted product just leaves its photos sitting
+  // in storage forever, quietly using up space for nothing.
+  const { data: existing } = await supabase.from("products").select("images").eq("id", id).maybeSingle();
+
   const { error } = await supabase.from("products").delete().eq("id", id);
 
   if (error) {
     alert("Could not delete: " + error.message);
     return;
+  }
+
+  if (existing && existing.images && existing.images.length > 0) {
+    const paths = existing.images.map(url => getStoragePathFromUrl(url, "product-images")).filter(Boolean);
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from("product-images").remove(paths);
+      if (storageError) console.warn("Could not remove product images from storage:", storageError.message);
+    }
   }
 
   loadProducts();
@@ -2636,8 +2666,27 @@ async function addCategory() {
 
 async function deleteCategory(id) {
   if (!(await customConfirm("Delete this category? Products already in it are unaffected. Any sub-categories under it will be deleted too.", "Delete"))) return;
+
+  // Sub-categories cascade-delete along with their parent (per the
+  // warning above) — their icons need cleaning up too, or they're
+  // just as orphaned in storage as the parent's own icon would be.
+  const [{ data: parent }, { data: subs }] = await Promise.all([
+    supabase.from("categories").select("icon_url").eq("id", id).maybeSingle(),
+    supabase.from("categories").select("icon_url").eq("parent_id", id)
+  ]);
+
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
+
+  const iconUrls = [parent && parent.icon_url, ...(subs || []).map(s => s.icon_url)].filter(Boolean);
+  if (iconUrls.length > 0) {
+    const paths = iconUrls.map(url => getStoragePathFromUrl(url, "category-icons")).filter(Boolean);
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from("category-icons").remove(paths);
+      if (storageError) console.warn("Could not remove category icon(s) from storage:", storageError.message);
+    }
+  }
+
   loadCategoriesView();
 }
 
@@ -2699,6 +2748,17 @@ async function updateCategory() {
   if (error) {
     alert(error.code === "23505" ? "A category with that name already exists in that store" : "Could not update: " + error.message);
     return;
+  }
+
+  // A genuinely new icon was uploaded (as opposed to keeping the
+  // existing one) — its predecessor is now replaced everywhere the
+  // category is shown, so it's just dead weight left in storage.
+  if (newIconUrl !== undefined && before && before.icon_url && before.icon_url !== newIconUrl) {
+    const path = getStoragePathFromUrl(before.icon_url, "category-icons");
+    if (path) {
+      const { error: storageError } = await supabase.storage.from("category-icons").remove([path]);
+      if (storageError) console.warn("Could not remove replaced category icon from storage:", storageError.message);
+    }
   }
 
   if (before && (before.name !== name || before.store !== store)) {
@@ -3145,8 +3205,20 @@ function goToReviewsPage(n) {
 
 async function deleteReview(id) {
   if (!(await customConfirm("Delete this review?", "Delete"))) return;
+
+  const { data: existing } = await supabase.from("reviews").select("photo_url").eq("id", id).maybeSingle();
+
   const { error } = await supabase.from("reviews").delete().eq("id", id);
   if (error) { alert("Could not delete: " + error.message); return; }
+
+  if (existing && existing.photo_url) {
+    const path = getStoragePathFromUrl(existing.photo_url, "review-photos");
+    if (path) {
+      const { error: storageError } = await supabase.storage.from("review-photos").remove([path]);
+      if (storageError) console.warn("Could not remove review photo from storage:", storageError.message);
+    }
+  }
+
   loadReviews();
 }
 

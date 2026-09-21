@@ -274,6 +274,19 @@ if (!window.__AONE_SUPABASE_READY__) {
       return data.publicUrl;
     };
 
+    // The reverse of getProductImageUrl (and every other bucket's
+    // getPublicUrl) — pulls just the file's path back out of a full
+    // public URL, so a delete can pass that path to storage.remove()
+    // instead of leaving the actual file behind when only the
+    // database row referencing it gets deleted.
+    window.getStoragePathFromUrl = function (url, bucket) {
+      if (!url) return null;
+      const marker = `/storage/v1/object/public/${bucket}/`;
+      const idx = url.indexOf(marker);
+      if (idx === -1) return null;
+      return decodeURIComponent(url.slice(idx + marker.length));
+    };
+
     /***********************************************************
        SITE CONTENT (mini CMS)
        Shared by every page (index, about, contact, product) so
