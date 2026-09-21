@@ -3420,6 +3420,24 @@ async function openMyOrders() {
   const myOrders = (rows || []).map(mapOrderRow);
   myOrdersCache = myOrders; // so the "Order Again" button can look the order back up
 
+  // Which of this customer's own products already have a review —
+  // checked once up front so the "Rate & Review" button can be
+  // swapped for a plain "✓ Reviewed" note instead of prompting again
+  // for something already done, every time this list reloads (it
+  // rebuilds from scratch each time the modal opens).
+  let myReviewedProductIds = new Set();
+  if (!currentSupabaseUser) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    currentSupabaseUser = sessionData.session ? sessionData.session.user : null;
+  }
+  if (currentSupabaseUser) {
+    const { data: myReviews } = await supabase
+      .from("reviews")
+      .select("product_id")
+      .eq("customer_id", currentSupabaseUser.id);
+    myReviewedProductIds = new Set((myReviews || []).map(r => r.product_id));
+  }
+
   box.innerHTML = "";
 
   if (myOrders.length === 0) {
@@ -3431,9 +3449,24 @@ async function openMyOrders() {
       let itemsHTML = "";
 
       o.items.forEach(p => {
+        // Reviewing only makes sense once the order has actually
+        // arrived, and only for items placed after order records
+        // started keeping each item's product id — older orders
+        // (or ones added manually by the admin) may not have it, so
+        // there's nothing to link a review to for those.
+        const canReview = o.status === "DELIVERED" && p.id;
+        const alreadyReviewed = p.id && myReviewedProductIds.has(p.id);
         itemsHTML += `
       <div class="order-item">
-        ${p.name} x${p.qty} — ₹${p.price * p.qty}
+        <div>${p.name} x${p.qty} — ₹${p.price * p.qty}</div>
+        ${alreadyReviewed
+          ? `<span class="order-item-reviewed-note"><i class="fa-solid fa-check"></i> Reviewed</span>`
+          : (canReview ? `
+              <button type="button" class="order-item-review-btn" data-product-id="${p.id}" data-product-name="${p.name.replace(/"/g, "&quot;")}" onclick="showReviewFormForOrderItem(this)">
+                <i class="fa-regular fa-star"></i> Rate &amp; Review
+              </button>
+            ` : "")
+        }
       </div>
     `;
       });
@@ -3740,6 +3773,81 @@ function closeWishlist() {
     REVIEWS
 ************************/
 
+/** Opens a small, self-contained review form right under the order
+ *  item it was clicked from — independent of the product detail
+ *  page's own review form (currentProduct/selectedStars/#starInput),
+ *  since several of these could be open on screen at once, one per
+ *  item, each for a different product. */
+function showReviewFormForOrderItem(btnEl) {
+  const productId = btnEl.dataset.productId;
+  const container = btnEl.closest(".order-item");
+
+  // Toggle: clicking again while its form is already open just closes it.
+  const existing = container.querySelector(".inline-review-form");
+  if (existing) { existing.remove(); btnEl.classList.remove("hidden"); return; }
+
+  const formHtml = `
+    <div class="inline-review-form" data-rating="0">
+      <div class="inline-star-input">
+        ${[1, 2, 3, 4, 5].map(n => `<span data-star="${n}" onclick="setInlineReviewStar(this, ${n})">★</span>`).join("")}
+      </div>
+      <textarea placeholder="Optional comment…" rows="2"></textarea>
+      <div class="inline-review-actions">
+        <button type="button" class="btn btn-primary btn-sm" onclick="submitInlineOrderReview(this, '${productId}')">Submit</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="cancelInlineOrderReview(this)">Cancel</button>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML("beforeend", formHtml);
+  btnEl.classList.add("hidden");
+}
+
+function setInlineReviewStar(starEl, n) {
+  const wrap = starEl.closest(".inline-review-form");
+  wrap.dataset.rating = n;
+  wrap.querySelectorAll("[data-star]").forEach(s => {
+    s.classList.toggle("filled", Number(s.dataset.star) <= n);
+  });
+}
+
+function cancelInlineOrderReview(btnEl) {
+  const wrap = btnEl.closest(".inline-review-form");
+  const reviewBtn = wrap.parentElement.querySelector(".order-item-review-btn");
+  wrap.remove();
+  if (reviewBtn) reviewBtn.classList.remove("hidden");
+}
+
+async function submitInlineOrderReview(btnEl, productId) {
+  const wrap = btnEl.closest(".inline-review-form");
+  const rating = Number(wrap.dataset.rating);
+
+  if (!rating) {
+    alert("Pick a star rating first");
+    return;
+  }
+
+  const fbUser = requireLogin();
+  if (!fbUser) return;
+
+  const user = JSON.parse(localStorage.getItem("user")) || {};
+  const comment = wrap.querySelector("textarea").value.trim();
+
+  const { error } = await supabase.from("reviews").upsert({
+    product_id: productId,
+    customer_id: fbUser.id,
+    customer_name: "Customer " + (user.phone ? user.phone.slice(-4) : ""),
+    rating,
+    comment: comment || null
+  }, { onConflict: "product_id,customer_id" });
+
+  if (error) {
+    alert("Could not submit review: " + error.message);
+    return;
+  }
+
+  wrap.innerHTML = `<p class="inline-review-thanks"><i class="fa-solid fa-check"></i> Thanks for your review!</p>`;
+}
+
 function resetStarInput() {
   selectedStars = 0;
   document.querySelectorAll("#starInput span").forEach(s => s.classList.remove("filled"));
@@ -3756,7 +3864,10 @@ document.addEventListener("click", e => {
 });
 
 async function loadReviews(productId) {
-  const avgEl = document.getElementById("avgRatingDisplay");
+  const numberEl = document.getElementById("avgRatingNumber");
+  const starsEl = document.getElementById("avgRatingStars");
+  const countEl = document.getElementById("reviewCountText");
+  const barsEl = document.getElementById("reviewSummaryBars");
   const listEl = document.getElementById("reviewsList");
   listEl.innerHTML = skeletonRowCardsHtml(2);
 
@@ -3768,27 +3879,68 @@ async function loadReviews(productId) {
 
   if (error) {
     listEl.innerHTML = "";
-    avgEl.textContent = "Could not load reviews";
+    countEl.textContent = "Could not load reviews";
     console.error(error);
     return;
   }
 
   if (!rows || rows.length === 0) {
-    avgEl.textContent = "No ratings yet — be the first to review";
+    numberEl.textContent = "—";
+    starsEl.innerHTML = starRowHtml(0);
+    countEl.textContent = "No ratings yet — be the first to review";
+    barsEl.innerHTML = "";
     listEl.innerHTML = "";
     return;
   }
 
-  const avg = (rows.reduce((s, r) => s + r.rating, 0) / rows.length).toFixed(1);
-  avgEl.innerHTML = `⭐ ${avg} <span style="color:var(--ink-faint)">(${rows.length} review${rows.length > 1 ? "s" : ""})</span>`;
+  const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length;
+
+  numberEl.textContent = avg.toFixed(1);
+  starsEl.innerHTML = starRowHtml(avg);
+  countEl.innerHTML = `${rows.length} rating${rows.length > 1 ? "s" : ""}`;
+
+  // The 5→1 star breakdown bars, Amazon/Flipkart-style — how many of
+  // this product's ratings fall at each star level, as a % of the
+  // highest single bucket so the busiest star level always reads as
+  // a full-width bar rather than everything looking sparse when the
+  // product only has a handful of reviews so far.
+  const counts = [5, 4, 3, 2, 1].map(star => rows.filter(r => r.rating === star).length);
+  const maxCount = Math.max(...counts, 1);
+  barsEl.innerHTML = counts.map((count, i) => {
+    const star = 5 - i;
+    const pct = Math.round((count / maxCount) * 100);
+    return `
+      <div class="rating-bar-row">
+        <span class="rating-bar-label">${star} <i class="fa-solid fa-star"></i></span>
+        <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${pct}%;"></div></div>
+        <span class="rating-bar-count">${count}</span>
+      </div>
+    `;
+  }).join("");
 
   listEl.innerHTML = rows.map(r => `
-    <div class="review-item">
-      <span class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span>
-      <span class="reviewer">${r.customer_name}</span>
-      ${r.comment ? `<p>${r.comment}</p>` : ""}
+    <div class="review-card">
+      <div class="review-card-header">
+        <span class="review-rating-badge">${r.rating} <i class="fa-solid fa-star"></i></span>
+        <span class="review-card-name">${r.customer_name}</span>
+        <span class="review-card-date">${new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+      </div>
+      ${r.comment ? `<p class="review-card-comment">${r.comment}</p>` : ""}
     </div>
   `).join("");
+}
+
+/** A row of filled/half/empty stars for a given average (e.g. 3.7 →
+ *  ★★★⯪☆) — shared by the summary box here and safe to reuse
+ *  anywhere else a plain numeric average needs to become stars. */
+function starRowHtml(avg) {
+  let html = "";
+  for (let i = 1; i <= 5; i++) {
+    if (avg >= i) html += `<i class="fa-solid fa-star"></i>`;
+    else if (avg >= i - 0.5) html += `<i class="fa-solid fa-star-half-stroke"></i>`;
+    else html += `<i class="fa-regular fa-star"></i>`;
+  }
+  return html;
 }
 
 async function submitReview() {

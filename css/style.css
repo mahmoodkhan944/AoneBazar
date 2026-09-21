@@ -1657,6 +1657,69 @@
 .order-items { margin: 6px 0; }
 .order-item { font-size: 0.85rem; color: var(--ink-soft); padding: 2px 0; }
 
+.order-item-review-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--marigold-700, #b45309);
+  background: var(--marigold-100, #fef3c7);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.order-item-review-btn:hover { filter: brightness(0.97); }
+
+.order-item-reviewed-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--green-700);
+}
+
+.inline-review-form {
+  margin: 8px 0 4px;
+  padding: 10px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.inline-star-input {
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.inline-star-input span { transition: color 0.1s; }
+.inline-star-input span.filled { color: var(--marigold-600); }
+
+.inline-review-form textarea {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+.inline-review-actions { display: flex; gap: 8px; }
+.inline-review-actions .btn { width: auto; padding: 6px 14px; font-size: 0.8rem; }
+
+.inline-review-thanks {
+  color: var(--green-700);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 /* ---------------- SIMPLE PAGES (about / contact) ---------------- */
 .page-hero {
   padding: 48px 0 30px;
@@ -2172,11 +2235,75 @@
   color: var(--ink-soft);
 }
 
-.review-summary {
-  font-size: 0.85rem;
-  color: var(--ink-soft);
+.review-summary-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: center;
   margin: 4px 0 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
+
+.review-summary-left {
+  flex: 0 0 auto;
+  text-align: center;
+  min-width: 100px;
+}
+
+.review-avg-number {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.review-avg-stars {
+  color: var(--marigold-600);
+  font-size: 1rem;
+  letter-spacing: 2px;
+  margin: 6px 0 4px;
+}
+
+.review-count-text {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.review-summary-bars {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rating-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+.rating-bar-label {
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.rating-bar-label i { font-size: 0.68rem; color: var(--marigold-600); }
+
+.rating-bar-track {
+  flex: 1;
+  height: 7px;
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.rating-bar-fill { height: 100%; background: var(--marigold-600); border-radius: 999px; }
+
+.rating-bar-count { flex: 0 0 20px; text-align: right; }
 
 .review-form {
   border-top: 1px solid var(--line);
@@ -2187,7 +2314,7 @@
 .star-input {
   font-size: 1.6rem;
   letter-spacing: 4px;
-  color: var(--line-strong);
+  color: var(--ink-faint);
   cursor: pointer;
   margin-bottom: 10px;
 }
@@ -2196,18 +2323,49 @@
 .reviews-list {
   border-top: 1px solid var(--line);
   margin-top: 16px;
-  padding-top: 12px;
+  padding-top: 4px;
 }
 
-.review-item {
-  padding: 10px 0;
+.review-card {
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 0.86rem;
 }
 
-.review-item .stars { color: var(--marigold-600); letter-spacing: 2px; }
-.review-item .reviewer { font-weight: 600; margin-left: 6px; }
-.review-item p { margin: 4px 0 0; font-size: 0.85rem; }
+.review-card-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.review-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--green-700);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.review-rating-badge i { font-size: 0.68rem; }
+
+.review-card-name { font-weight: 600; font-size: 0.86rem; }
+
+.review-card-date {
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  margin-left: auto;
+}
+
+.review-card-comment {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
 
 .coupon-row {
   display: flex;
