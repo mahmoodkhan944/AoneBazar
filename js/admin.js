@@ -3167,6 +3167,9 @@ async function loadSiteContentForm() {
   document.getElementById("cf_about_intro").value = content.about_intro || "";
   document.getElementById("cf_contact_phone").value = content.contact_phone || "";
   document.getElementById("cf_contact_whatsapp").value = content.contact_whatsapp || "";
+  document.getElementById("cf_contact_whatsapp_supermarket").value = content.contact_whatsapp_supermarket || "";
+  document.getElementById("cf_contact_whatsapp_grocery").value = content.contact_whatsapp_grocery || "";
+  document.getElementById("cf_contact_whatsapp_cafe").value = content.contact_whatsapp_cafe || "";
   document.getElementById("cf_contact_address").value = content.contact_address || "";
   document.getElementById("cf_contact_hours").value = content.contact_hours || "";
   document.getElementById("cf_contact_map_url").value = content.contact_map_url || "";
@@ -3194,6 +3197,9 @@ async function saveSiteContent() {
     about_intro: document.getElementById("cf_about_intro").value.trim(),
     contact_phone: document.getElementById("cf_contact_phone").value.trim(),
     contact_whatsapp: document.getElementById("cf_contact_whatsapp").value.trim(),
+    contact_whatsapp_supermarket: document.getElementById("cf_contact_whatsapp_supermarket").value.trim(),
+    contact_whatsapp_grocery: document.getElementById("cf_contact_whatsapp_grocery").value.trim(),
+    contact_whatsapp_cafe: document.getElementById("cf_contact_whatsapp_cafe").value.trim(),
     contact_address: document.getElementById("cf_contact_address").value.trim(),
     contact_hours: document.getElementById("cf_contact_hours").value.trim(),
     contact_map_url: document.getElementById("cf_contact_map_url").value.trim(),

@@ -652,10 +652,20 @@
           </p>
           <div class="admin-form-grid">
             <div><label>Phone (shown &amp; used for call links)</label><input id="cf_contact_phone" placeholder="+91 8009555567" /></div>
-            <div><label>WhatsApp number (digits only, with country code)</label><input id="cf_contact_whatsapp" placeholder="918009555567" /></div>
+            <div><label>WhatsApp number — master (digits only, with country code)</label><input id="cf_contact_whatsapp" placeholder="918009555567" /></div>
             <div><label>Address</label><input id="cf_contact_address" placeholder="Master Naseem Complex, Lahideeh Bazar, Azamgarh" /></div>
             <div><label>Business hours</label><input id="cf_contact_hours" placeholder="Open daily, 9 AM – 9 PM" /></div>
             <div><label>Google Maps link</label><input id="cf_contact_map_url" placeholder="https://maps.app.goo.gl/..." /></div>
+          </div>
+
+          <h4 style="margin:18px 0 4px;font-size:0.95rem;">Per-Store WhatsApp Numbers (optional)</h4>
+          <p style="font-size:0.82rem;color:var(--ink-soft);margin:0 0 10px;">
+            An order or enquiry only involving ONE store's products goes to that store's own number below, if set. Leave any of these blank to use the master number above for that store instead. An order mixing items from more than one store always goes to the master number, so a mixed order is never split or missed.
+          </p>
+          <div class="admin-form-grid">
+            <div><label>AOne Bazaar (Supermarket)</label><input id="cf_contact_whatsapp_supermarket" placeholder="Leave blank to use master number" /></div>
+            <div><label>AOne Kirana Store</label><input id="cf_contact_whatsapp_grocery" placeholder="Leave blank to use master number" /></div>
+            <div><label>AOne Cafe</label><input id="cf_contact_whatsapp_cafe" placeholder="Leave blank to use master number" /></div>
           </div>
         </div>
 

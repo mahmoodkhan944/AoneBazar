@@ -242,8 +242,29 @@ let cart = JSON.parse(localStorage.getItem("cart")) || [];
  *  number from — reads the admin's Contact Page setting once
  *  site_content has loaded, falling back to today's real number so
  *  nothing breaks on the very first paint before that finishes. */
-function getWhatsAppNumber() {
-  return (window.siteContent && window.siteContent.contact_whatsapp) || "918009555567";
+/** Picks which WhatsApp number an order/enquiry should go to:
+ *  - Every item in the cart from the same one store → that store's
+ *    own number (Admin → Site Content), if the admin has set one.
+ *  - Items from more than one store, an empty cart, or a store
+ *    without its own number set → the master number, so a mixed
+ *    order never silently goes missing by picking just one store's
+ *    number and leaving the other half unnoticed.
+ *  cartItems defaults to the live cart itself, so every existing
+ *  call site (delivery-check buttons, the floating WhatsApp button,
+ *  order placement) automatically stays correct without having to
+ *  pass anything in. */
+function getWhatsAppNumber(cartOverride) {
+  const master = (window.siteContent && window.siteContent.contact_whatsapp) || "918009555567";
+  const items = cartOverride || cart;
+
+  if (!items || items.length === 0) return master;
+
+  const stores = new Set(items.map(p => p.store).filter(Boolean));
+  if (stores.size !== 1) return master;
+
+  const storeKey = `contact_whatsapp_${[...stores][0]}`;
+  const storeNumber = window.siteContent && window.siteContent[storeKey];
+  return storeNumber || master;
 }
 
 // Defaults used until site_content has loaded (or if the admin
