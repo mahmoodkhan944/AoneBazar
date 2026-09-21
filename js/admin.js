@@ -3391,6 +3391,7 @@ async function bulkRecompressImages() {
   progressWrap.classList.remove("hidden");
   statusEl.textContent = "Gathering images…";
   progressFill.style.width = "0%";
+  document.getElementById("recompressFailedList").innerHTML = "";
 
   const [{ data: products }, { data: categories }, { data: reviews }] = await Promise.all([
     supabase.from("products").select("id, images"),
@@ -3420,6 +3421,7 @@ async function bulkRecompressImages() {
 
   const SKIP_UNDER_BYTES = 150 * 1024; // already small enough — not worth the round trip
   let done = 0, compressedCount = 0, skipped = 0, failed = 0, bytesSaved = 0;
+  const failedItems = [];
 
   for (const task of tasks) {
     done++;
@@ -3428,10 +3430,10 @@ async function bulkRecompressImages() {
 
     try {
       const path = getStoragePathFromUrl(task.url, task.bucket);
-      if (!path) { skipped++; continue; }
+      if (!path) { failed++; failedItems.push({ ...task, reason: "Couldn't work out its storage path from the URL" }); continue; }
 
       const response = await fetch(task.url);
-      if (!response.ok) { failed++; continue; }
+      if (!response.ok) { failed++; failedItems.push({ ...task, reason: `Download failed (HTTP ${response.status})` }); continue; }
       const blob = await response.blob();
       const originalSize = blob.size;
 
@@ -3447,16 +3449,38 @@ async function bulkRecompressImages() {
         .from(task.bucket)
         .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
 
-      if (error) { failed++; continue; }
+      if (error) { failed++; failedItems.push({ ...task, reason: error.message }); continue; }
 
       compressedCount++;
       bytesSaved += (originalSize - compressed.size);
     } catch (e) {
       failed++;
+      failedItems.push({ ...task, reason: e.message || "Unexpected error" });
     }
   }
 
   statusEl.innerHTML = `<strong>Done.</strong> Compressed ${compressedCount} of ${tasks.length} images, saving about ${(bytesSaved / (1024 * 1024)).toFixed(1)} MB. ${skipped} were already small enough to skip${failed > 0 ? `, ${failed} failed` : ""}.`;
+
+  if (failedItems.length > 0) {
+    const listEl = document.getElementById("recompressFailedList");
+    listEl.innerHTML = `
+      <h4 style="margin:14px 0 6px;font-size:0.9rem;">Failed (${failedItems.length}) — safe to try "Re-compress All" again, these are untouched and still at their original size</h4>
+      <div class="recompress-failed-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Bucket</th><th>Image</th><th>Reason</th></tr></thead>
+          <tbody>
+            ${failedItems.map(f => `
+              <tr>
+                <td data-label="Bucket">${f.bucket}</td>
+                <td data-label="Image"><a href="${f.url}" target="_blank" rel="noopener noreferrer">${f.url.split("/").pop()}</a></td>
+                <td data-label="Reason">${f.reason}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
 }
 
 /***********************

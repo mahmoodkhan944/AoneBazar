@@ -1451,3 +1451,7 @@ body.admin-body {
   border-radius: 999px;
   transition: width 0.2s ease;
 }
+
+.recompress-failed-table-wrap {
+  overflow-x: auto;
+}
