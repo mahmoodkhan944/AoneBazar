@@ -3086,7 +3086,7 @@ async function deleteDeliveryArea(id) {
 
 async function loadReviews() {
   const body = document.getElementById("reviewsBody");
-  body.innerHTML = `<tr><td colspan="6" style="text-align:center;">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading…</td></tr>`;
 
   const { data: rows, error } = await supabase
     .from("reviews")
@@ -3094,13 +3094,13 @@ async function loadReviews() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="6">Could not load reviews</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7">Could not load reviews</td></tr>`;
     console.error(error);
     return;
   }
 
   if (!rows || rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No reviews yet</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No reviews yet</td></tr>`;
     return;
   }
 
@@ -3116,7 +3116,7 @@ function renderReviewsTable(list) {
   const body = document.getElementById("reviewsBody");
 
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);">No reviews yet</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);">No reviews yet</td></tr>`;
     document.getElementById("reviewsPagination").innerHTML = "";
     return;
   }
@@ -3128,6 +3128,7 @@ function renderReviewsTable(list) {
       <td class="cell-title">${r.products ? r.products.name : "(deleted product)"}</td>
       <td data-label="Rating">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
       <td data-label="Comment">${r.comment || "—"}</td>
+      <td data-label="Photo">${r.photo_url ? `<a href="${r.photo_url}" target="_blank" rel="noopener noreferrer"><img src="${r.photo_url}" class="review-thumb" alt="Review photo" loading="lazy" /></a>` : "—"}</td>
       <td data-label="By">${r.customer_name}</td>
       <td data-label="Date">${new Date(r.created_at).toLocaleDateString()}</td>
       <td><button class="danger" onclick="deleteReview('${r.id}')">Delete</button></td>
