@@ -630,6 +630,21 @@
           <div id="storageCleanupSummary" style="font-size:0.9rem;color:var(--ink-soft);">Click "Scan for Orphaned Files" to check — this can take a little while on a large catalog.</div>
           <div id="storageCleanupResults"></div>
         </div>
+
+        <div class="admin-panel">
+          <h3>Re-compress Existing Images</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-6px;">
+            New uploads (product, category, review, payment screenshot) are already resized and compressed automatically before they reach storage. This does the same thing to everything uploaded before that — same product/category/review, same URL, just a smaller file — so it lowers Cached Egress on images you already have, not just future ones.
+          </p>
+          <p style="font-size:0.85rem;color:var(--marigold-700, #b45309);background:var(--marigold-100, #fef3c7);padding:8px 12px;border-radius:var(--radius-sm);">
+            <i class="fa-solid fa-triangle-exclamation"></i> Can take a while on a large catalog (each image is downloaded, compressed, then re-uploaded) — keep this tab open until it says it's done.
+          </p>
+          <button class="btn btn-primary btn-sm" onclick="bulkRecompressImages()">Re-compress All Existing Images</button>
+          <div id="recompressProgressWrap" class="hidden" style="margin-top:14px;">
+            <div class="recompress-progress-track"><div id="recompressProgressFill" class="recompress-progress-fill" style="width:0%;"></div></div>
+            <div id="recompressStatus" style="font-size:0.85rem;color:var(--ink-soft);margin-top:6px;"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ===== SITE CONTENT ===== -->

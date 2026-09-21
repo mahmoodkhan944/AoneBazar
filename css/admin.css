@@ -1438,3 +1438,16 @@ body.admin-body {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+.recompress-progress-track {
+  height: 10px;
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.recompress-progress-fill {
+  height: 100%;
+  background: var(--green-700);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}

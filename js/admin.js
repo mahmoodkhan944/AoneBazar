@@ -1875,12 +1875,13 @@ async function addProduct() {
   let imageURLs = [];
 
   for (const file of files) {
-    const ext = file.name.split(".").pop();
+    const compressed = await compressImageFile(file, { maxDimension: 1600, quality: 0.8 });
+    const ext = compressed.name.split(".").pop();
     const path = `${store}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from(PRODUCT_IMAGES_BUCKET)
-      .upload(path, file, { upsert: false });
+      .upload(path, compressed, { upsert: false });
 
     if (uploadError) {
       alert("Image upload failed: " + uploadError.message);
@@ -2278,12 +2279,13 @@ async function updateProduct() {
   const files = document.getElementById("editImage").files;
 
   for (const file of files) {
-    const ext = file.name.split(".").pop();
+    const compressed = await compressImageFile(file, { maxDimension: 1600, quality: 0.8 });
+    const ext = compressed.name.split(".").pop();
     const path = `edit/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from(PRODUCT_IMAGES_BUCKET)
-      .upload(path, file, { upsert: false });
+      .upload(path, compressed, { upsert: false });
 
     if (uploadError) {
       alert("Image upload failed: " + uploadError.message);
@@ -2616,10 +2618,14 @@ async function uploadCategoryIconIfSelected(inputId) {
   const file = input && input.files && input.files[0];
   if (!file) return undefined;
 
-  const fileExt = (file.name.split(".").pop() || "png").toLowerCase();
+  // Icons only ever display at a few dozen pixels across, so there's
+  // no reason to keep them anywhere near their original camera/
+  // screenshot resolution.
+  const compressed = await compressImageFile(file, { maxDimension: 400, quality: 0.8 });
+  const fileExt = (compressed.name.split(".").pop() || "png").toLowerCase();
   const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
-  const { error } = await supabase.storage.from("category-icons").upload(filePath, file);
+  const { error } = await supabase.storage.from("category-icons").upload(filePath, compressed);
   if (error) {
     alert("Could not upload icon, saving without it: " + error.message);
     return null;
@@ -3365,6 +3371,92 @@ async function deleteSelectedOrphanedFiles() {
   }
 
   scanForOrphanedFiles(); // re-scan so the list reflects what's actually left
+}
+
+/** Re-downloads, compresses (same compressImageFile used at upload
+ *  time — see supabase-client.js), and re-uploads every existing
+ *  product image, category icon, and review photo, overwriting each
+ *  one at its OWN existing storage path (upsert) — the URL never
+ *  changes, so no product/category/review row needs updating at
+ *  all, only the file sitting behind that URL gets smaller. */
+async function bulkRecompressImages() {
+  if (!(await customConfirm(
+    "This re-downloads, compresses, and re-uploads every product image, category icon, and review photo currently in storage. It can take a while for a large catalog, and shouldn't be interrupted partway — continue?",
+    "Start"
+  ))) return;
+
+  const progressWrap = document.getElementById("recompressProgressWrap");
+  const progressFill = document.getElementById("recompressProgressFill");
+  const statusEl = document.getElementById("recompressStatus");
+  progressWrap.classList.remove("hidden");
+  statusEl.textContent = "Gathering images…";
+  progressFill.style.width = "0%";
+
+  const [{ data: products }, { data: categories }, { data: reviews }] = await Promise.all([
+    supabase.from("products").select("id, images"),
+    supabase.from("categories").select("id, icon_url"),
+    supabase.from("reviews").select("id, photo_url")
+  ]);
+
+  // Same size targets used for new uploads (see supabase-client.js /
+  // admin.js upload call sites) — kept in sync so existing images
+  // end up compressed the same way a fresh upload would be.
+  const tasks = [];
+  (products || []).forEach(p => (p.images || []).forEach(url =>
+    tasks.push({ url, bucket: "product-images", maxDimension: 1600, quality: 0.8 })
+  ));
+  (categories || []).forEach(c => {
+    if (c.icon_url) tasks.push({ url: c.icon_url, bucket: "category-icons", maxDimension: 400, quality: 0.8 });
+  });
+  (reviews || []).forEach(r => {
+    if (r.photo_url) tasks.push({ url: r.photo_url, bucket: "review-photos", maxDimension: 1200, quality: 0.8 });
+  });
+
+  if (tasks.length === 0) {
+    statusEl.textContent = "Nothing to process — no product/category/review images found.";
+    progressFill.style.width = "100%";
+    return;
+  }
+
+  const SKIP_UNDER_BYTES = 150 * 1024; // already small enough — not worth the round trip
+  let done = 0, compressedCount = 0, skipped = 0, failed = 0, bytesSaved = 0;
+
+  for (const task of tasks) {
+    done++;
+    progressFill.style.width = `${Math.round((done / tasks.length) * 100)}%`;
+    statusEl.textContent = `Processing ${done}/${tasks.length} — ${compressedCount} compressed, ${skipped} already small, ${failed} failed — ${(bytesSaved / (1024 * 1024)).toFixed(1)} MB saved so far`;
+
+    try {
+      const path = getStoragePathFromUrl(task.url, task.bucket);
+      if (!path) { skipped++; continue; }
+
+      const response = await fetch(task.url);
+      if (!response.ok) { failed++; continue; }
+      const blob = await response.blob();
+      const originalSize = blob.size;
+
+      if (originalSize < SKIP_UNDER_BYTES) { skipped++; continue; }
+
+      const asFile = new File([blob], path.split("/").pop(), { type: blob.type || "image/jpeg" });
+      const compressed = await compressImageFile(asFile, { maxDimension: task.maxDimension, quality: task.quality });
+
+      // Not enough of an improvement to justify overwriting it.
+      if (compressed.size >= originalSize * 0.9) { skipped++; continue; }
+
+      const { error } = await supabase.storage
+        .from(task.bucket)
+        .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
+
+      if (error) { failed++; continue; }
+
+      compressedCount++;
+      bytesSaved += (originalSize - compressed.size);
+    } catch (e) {
+      failed++;
+    }
+  }
+
+  statusEl.innerHTML = `<strong>Done.</strong> Compressed ${compressedCount} of ${tasks.length} images, saving about ${(bytesSaved / (1024 * 1024)).toFixed(1)} MB. ${skipped} were already small enough to skip${failed > 0 ? `, ${failed} failed` : ""}.`;
 }
 
 /***********************

@@ -287,6 +287,77 @@ if (!window.__AONE_SUPABASE_READY__) {
       return decodeURIComponent(url.slice(idx + marker.length));
     };
 
+    // Resizes and re-compresses an image file entirely in the
+    // browser (Canvas), before it ever reaches Storage — an
+    // unedited phone photo is routinely 3-8 MB, and every one of
+    // those megabytes gets served again on every single page view
+    // that shows it, which is what actually drives Cached Egress
+    // usage up. Cutting it down here, once, at upload time, is far
+    // more effective than anything done after the fact.
+    // options.maxDimension caps the longer side in pixels;
+    // options.quality is the JPEG quality (0–1). Always resolves to
+    // *some* usable file — falls back to the original untouched if
+    // it's not an image, if compression fails for any reason, or if
+    // the "compressed" result would somehow end up larger (a very
+    // small source image, say).
+    window.compressImageFile = function (file, options = {}) {
+      const maxDimension = options.maxDimension || 1600;
+      const quality = options.quality || 0.8;
+
+      return new Promise(resolve => {
+        if (!file || !file.type || !file.type.startsWith("image/")) {
+          resolve(file);
+          return;
+        }
+        // Animated GIFs lose their animation if redrawn onto a
+        // canvas (only the first frame survives) — leave those alone.
+        if (file.type === "image/gif") {
+          resolve(file);
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round(height * (maxDimension / width));
+              width = maxDimension;
+            } else {
+              width = Math.round(width * (maxDimension / height));
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(blob => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file); // compression didn't actually help — keep the original
+              return;
+            }
+            const newName = file.name.replace(/\.\w+$/, "") + ".jpg";
+            resolve(new File([blob], newName, { type: "image/jpeg" }));
+          }, "image/jpeg", quality);
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(file); // couldn't even read it as an image — upload it as-is rather than block entirely
+        };
+
+        img.src = objectUrl;
+      });
+    };
+
     /***********************************************************
        SITE CONTENT (mini CMS)
        Shared by every page (index, about, contact, product) so

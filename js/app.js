@@ -2333,14 +2333,19 @@ async function placeOrder() {
 
   // Upload the screenshot before saving the order, so the admin has
   // something to check against the order right away instead of
-  // waiting on a separate WhatsApp attachment.
+  // waiting on a separate WhatsApp attachment. Compressed more
+  // gently than product/review photos (higher size cap, higher
+  // quality) since the transaction ID and amount in a UPI
+  // confirmation screenshot need to stay legible for the admin to
+  // actually verify the payment against.
   let paymentScreenshotUrl = null;
-  const fileExt = (selectedPaymentScreenshotFile.name.split(".").pop() || "jpg").toLowerCase();
+  const compressedScreenshot = await compressImageFile(selectedPaymentScreenshotFile, { maxDimension: 1400, quality: 0.85 });
+  const fileExt = (compressedScreenshot.name.split(".").pop() || "jpg").toLowerCase();
   const filePath = `${id}-${Date.now()}.${fileExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from("payment-screenshots")
-    .upload(filePath, selectedPaymentScreenshotFile);
+    .upload(filePath, compressedScreenshot);
 
   if (uploadError) {
     alert("Could not upload payment screenshot, please try again: " + uploadError.message);
@@ -3926,10 +3931,11 @@ function clearReviewPhoto() {
 async function uploadReviewPhoto(file) {
   if (!file) return null;
 
-  const fileExt = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const compressed = await compressImageFile(file, { maxDimension: 1200, quality: 0.8 });
+  const fileExt = (compressed.name.split(".").pop() || "jpg").toLowerCase();
   const filePath = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
 
-  const { error } = await supabase.storage.from("review-photos").upload(filePath, file);
+  const { error } = await supabase.storage.from("review-photos").upload(filePath, compressed);
   if (error) {
     alert("Could not upload the photo, saving your review without it: " + error.message);
     return null;
