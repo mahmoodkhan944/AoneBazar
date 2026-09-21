@@ -104,6 +104,7 @@ const VIEW_LOADERS = {
   "delivery-areas": loadDeliveryAreas,
   "extra-delivery-zones": loadExtraDeliveryZones,
   reviews: loadReviews,
+  "storage-cleanup": () => {}, // scanning is expensive — only runs when the admin explicitly clicks "Scan"
   content: loadSiteContentForm,
   users: loadUsers,
   reports: initReportsView
@@ -3220,6 +3221,150 @@ async function deleteReview(id) {
   }
 
   loadReviews();
+}
+
+/***********************
+    STORAGE CLEANUP
+    Finds files sitting in a bucket that nothing in the database
+    currently references — deleted long before storage cleanup was
+    added to each delete function, or an upload that got interrupted
+    before the row referencing it was ever saved.
+************************/
+
+/** Supabase's storage .list() caps out at 100 items per call — pages
+ *  through with offset until a shorter page confirms there's nothing
+ *  left, so this works correctly even on a bucket with thousands of
+ *  files, not just the first 100. */
+async function listAllFilesInBucket(bucket) {
+  const pageSize = 100;
+  let offset = 0;
+  let all = [];
+
+  while (true) {
+    const { data, error } = await supabase.storage.from(bucket).list("", { limit: pageSize, offset });
+    if (error) throw new Error(`${bucket}: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    // .list() also returns "folder" placeholder entries (no id) for
+    // any subfolder — these aren't real files to check, so skip them.
+    all = all.concat(data.filter(f => f.id));
+
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return all;
+}
+
+async function scanForOrphanedFiles() {
+  const summaryEl = document.getElementById("storageCleanupSummary");
+  const resultsEl = document.getElementById("storageCleanupResults");
+  summaryEl.textContent = "Scanning… this can take a little while.";
+  resultsEl.innerHTML = "";
+
+  const BUCKETS = ["product-images", "category-icons", "review-photos"];
+
+  try {
+    const [storageFiles, products, categories, reviews] = await Promise.all([
+      Promise.all(BUCKETS.map(async bucket => ({ bucket, files: await listAllFilesInBucket(bucket) }))),
+      supabase.from("products").select("images"),
+      supabase.from("categories").select("icon_url"),
+      supabase.from("reviews").select("photo_url")
+    ]);
+
+    // Every path currently referenced anywhere, grouped by which
+    // bucket it belongs to — a plain path (not a full URL) is a file
+    // that's actually in use and should never show up as orphaned.
+    const referencedByBucket = {
+      "product-images": new Set((products.data || []).flatMap(p => (p.images || []).map(url => getStoragePathFromUrl(url, "product-images")).filter(Boolean))),
+      "category-icons": new Set((categories.data || []).map(c => getStoragePathFromUrl(c.icon_url, "category-icons")).filter(Boolean)),
+      "review-photos": new Set((reviews.data || []).map(r => getStoragePathFromUrl(r.photo_url, "review-photos")).filter(Boolean))
+    };
+
+    let orphans = [];
+    storageFiles.forEach(({ bucket, files }) => {
+      files.forEach(f => {
+        if (!referencedByBucket[bucket].has(f.name)) {
+          orphans.push({ bucket, name: f.name, size: f.metadata && f.metadata.size, url: supabase.storage.from(bucket).getPublicUrl(f.name).data.publicUrl });
+        }
+      });
+    });
+
+    renderOrphanedFiles(orphans);
+  } catch (e) {
+    summaryEl.textContent = "Could not complete the scan: " + e.message;
+    console.error(e);
+  }
+}
+
+let currentOrphanedFiles = [];
+
+function renderOrphanedFiles(orphans) {
+  currentOrphanedFiles = orphans;
+  const summaryEl = document.getElementById("storageCleanupSummary");
+  const resultsEl = document.getElementById("storageCleanupResults");
+
+  if (orphans.length === 0) {
+    summaryEl.textContent = "✓ Nothing orphaned — every file in storage is still referenced somewhere.";
+    resultsEl.innerHTML = "";
+    return;
+  }
+
+  const totalBytes = orphans.reduce((sum, f) => sum + (f.size || 0), 0);
+  const sizeText = totalBytes > 1024 * 1024 ? `${(totalBytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(totalBytes / 1024)} KB`;
+
+  summaryEl.innerHTML = `Found <strong>${orphans.length}</strong> orphaned file${orphans.length > 1 ? "s" : ""} (about ${sizeText}) not linked to anything.`;
+
+  resultsEl.innerHTML = `
+    <div class="admin-panel-header-row" style="margin:14px 0 8px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+        <input type="checkbox" id="orphanSelectAll" onchange="toggleAllOrphanCheckboxes(this.checked)" style="width:auto;" /> Select all
+      </label>
+      <button class="btn btn-primary btn-sm" style="width:auto;" onclick="deleteSelectedOrphanedFiles()">Delete Selected</button>
+    </div>
+    <div class="orphan-file-grid">
+      ${orphans.map((f, i) => `
+        <div class="orphan-file-card">
+          <input type="checkbox" class="orphan-checkbox" data-index="${i}" style="position:absolute;top:6px;left:6px;width:auto;" />
+          <img src="${f.url}" alt="" loading="lazy" onerror="this.style.display='none'" />
+          <div class="orphan-file-meta">
+            <span title="${f.name}">${f.name}</span>
+            <span class="orphan-file-bucket">${f.bucket}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function toggleAllOrphanCheckboxes(checked) {
+  document.querySelectorAll(".orphan-checkbox").forEach(cb => { cb.checked = checked; });
+}
+
+async function deleteSelectedOrphanedFiles() {
+  const indices = Array.from(document.querySelectorAll(".orphan-checkbox:checked")).map(cb => Number(cb.dataset.index));
+  if (indices.length === 0) {
+    alert("Select at least one file first");
+    return;
+  }
+
+  if (!(await customConfirm(`Delete ${indices.length} file(s) permanently? This can't be undone.`, "Delete"))) return;
+
+  const toDelete = indices.map(i => currentOrphanedFiles[i]);
+  const byBucket = {};
+  toDelete.forEach(f => { (byBucket[f.bucket] = byBucket[f.bucket] || []).push(f.name); });
+
+  const errors = [];
+  for (const [bucket, names] of Object.entries(byBucket)) {
+    const { error } = await supabase.storage.from(bucket).remove(names);
+    if (error) errors.push(`${bucket}: ${error.message}`);
+  }
+
+  if (errors.length > 0) {
+    alert("Some files could not be deleted:\n" + errors.join("\n"));
+  }
+
+  scanForOrphanedFiles(); // re-scan so the list reflects what's actually left
 }
 
 /***********************

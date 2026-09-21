@@ -68,6 +68,9 @@
         <button class="admin-nav-item" data-view="reviews" onclick="showAdminView('reviews')">
           <i class="fa-solid fa-star"></i> Reviews
         </button>
+        <button class="admin-nav-item" data-view="storage-cleanup" onclick="showAdminView('storage-cleanup')">
+          <i class="fa-solid fa-broom"></i> Storage Cleanup
+        </button>
         <button class="admin-nav-item" data-view="content" onclick="showAdminView('content')">
           <i class="fa-solid fa-pen"></i> Site Content
         </button>
@@ -610,6 +613,22 @@
             </table>
           </div>
           <div id="reviewsPagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <!-- ===== STORAGE CLEANUP ===== -->
+      <section id="view-storage-cleanup" class="admin-view">
+        <div class="admin-topbar">
+          <h1>Storage Cleanup</h1>
+          <button class="btn btn-primary btn-sm" onclick="scanForOrphanedFiles()">Scan for Orphaned Files</button>
+        </div>
+        <p style="font-size:0.88rem;color:var(--ink-soft);max-width:680px;margin-top:-10px;">
+          Files sitting in storage that nothing currently links to — usually left behind by things deleted before this cleanup existed, or an upload that never got saved. Nothing is touched until you scan and then choose to delete.
+        </p>
+
+        <div class="admin-panel">
+          <div id="storageCleanupSummary" style="font-size:0.9rem;color:var(--ink-soft);">Click "Scan for Orphaned Files" to check — this can take a little while on a large catalog.</div>
+          <div id="storageCleanupResults"></div>
         </div>
       </section>
 
