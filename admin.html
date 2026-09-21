@@ -676,9 +676,19 @@
           </p>
           <div class="admin-form-grid">
             <div class="full">
-              <label>Your UPI ID</label>
+              <label>Master UPI ID</label>
               <input id="cf_upi_id" placeholder="e.g. aonebazaar@okhdfcbank" />
             </div>
+          </div>
+
+          <h4 style="margin:18px 0 4px;font-size:0.95rem;">Per-Store UPI IDs (optional)</h4>
+          <p style="font-size:0.82rem;color:var(--ink-soft);margin:0 0 10px;">
+            Same idea as the per-store WhatsApp numbers above — a cart made of only one store's items is paid into that store's own UPI ID below, if set. Leave any of these blank to use the master UPI ID above instead. A cart mixing items from more than one store always uses the master UPI ID, so the payment for a mixed order is never split between two accounts.
+          </p>
+          <div class="admin-form-grid">
+            <div><label>AOne Bazaar (Supermarket)</label><input id="cf_upi_id_supermarket" placeholder="Leave blank to use master UPI ID" /></div>
+            <div><label>AOne Kirana Store</label><input id="cf_upi_id_grocery" placeholder="Leave blank to use master UPI ID" /></div>
+            <div><label>AOne Cafe</label><input id="cf_upi_id_cafe" placeholder="Leave blank to use master UPI ID" /></div>
           </div>
         </div>
 

@@ -3174,6 +3174,9 @@ async function loadSiteContentForm() {
   document.getElementById("cf_contact_hours").value = content.contact_hours || "";
   document.getElementById("cf_contact_map_url").value = content.contact_map_url || "";
   document.getElementById("cf_upi_id").value = content.upi_id || "";
+  document.getElementById("cf_upi_id_supermarket").value = content.upi_id_supermarket || "";
+  document.getElementById("cf_upi_id_grocery").value = content.upi_id_grocery || "";
+  document.getElementById("cf_upi_id_cafe").value = content.upi_id_cafe || "";
   document.getElementById("cf_min_order").value = content.min_order || "100";
   document.getElementById("cf_delivery_charge").value = content.delivery_charge || "30";
   document.getElementById("cf_free_delivery_threshold").value = content.free_delivery_threshold || "300";
@@ -3204,6 +3207,9 @@ async function saveSiteContent() {
     contact_hours: document.getElementById("cf_contact_hours").value.trim(),
     contact_map_url: document.getElementById("cf_contact_map_url").value.trim(),
     upi_id: document.getElementById("cf_upi_id").value.trim(),
+    upi_id_supermarket: document.getElementById("cf_upi_id_supermarket").value.trim(),
+    upi_id_grocery: document.getElementById("cf_upi_id_grocery").value.trim(),
+    upi_id_cafe: document.getElementById("cf_upi_id_cafe").value.trim(),
     min_order: document.getElementById("cf_min_order").value.trim() || "100",
     delivery_charge: document.getElementById("cf_delivery_charge").value.trim() || "30",
     free_delivery_threshold: document.getElementById("cf_free_delivery_threshold").value.trim() || "300",

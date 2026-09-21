@@ -267,6 +267,26 @@ function getWhatsAppNumber(cartOverride) {
   return storeNumber || master;
 }
 
+/** Same idea as getWhatsAppNumber() — a cart made of only one
+ *  store's items pays into that store's own UPI ID (Admin → Site
+ *  Content), if the admin has set one; a mixed-store cart, an empty
+ *  cart, or a store without its own UPI set all fall back to the
+ *  master UPI ID, so a mixed order's payment never gets split
+ *  between two different UPI accounts. */
+function getUpiId(cartOverride) {
+  const master = (window.siteContent && window.siteContent.upi_id) || "";
+  const items = cartOverride || cart;
+
+  if (!items || items.length === 0) return master;
+
+  const stores = new Set(items.map(p => p.store).filter(Boolean));
+  if (stores.size !== 1) return master;
+
+  const storeKey = `upi_id_${[...stores][0]}`;
+  const storeUpi = window.siteContent && window.siteContent[storeKey];
+  return storeUpi || master;
+}
+
 // Defaults used until site_content has loaded (or if the admin
 // hasn't set these yet) — the live values come from window.siteContent,
 // editable from Admin → Site Content → "Minimum Order & Delivery Charges".
@@ -2626,7 +2646,7 @@ async function proceedToPayment() {
   const deliveryCharge = calculateDeliveryCharge(goodsTotal, address);
   const total = goodsTotal + deliveryCharge;
 
-  const upiId = (window.siteContent && window.siteContent.upi_id) || "";
+  const upiId = getUpiId();
 
   if (!upiId) {
     alert("Online payment isn't set up on this site yet — please contact the shop directly (WhatsApp) to place this order.");
@@ -2667,12 +2687,20 @@ function choosePaymentOption(option) {
 }
 
 function updatePaymentQr() {
-  const upiId = (window.siteContent && window.siteContent.upi_id) || "";
+  const upiId = getUpiId();
   const amount = selectedPaymentOption === "full"
     ? currentPayableTotal
     : Math.ceil(currentPayableTotal / 2);
 
-  const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("AOne Bazaar")}&am=${amount}&cu=INR`;
+  // Matches whichever store the UPI ID itself belongs to, so what
+  // the customer sees as the payee name in their UPI app lines up
+  // with the account actually being paid, rather than always saying
+  // "AOne Bazaar" even when paying into, say, the Cafe's own UPI ID.
+  const STORE_LABELS = { supermarket: "AOne Bazaar", grocery: "AOne Kirana Store", cafe: "AOne Cafe" };
+  const stores = new Set(cart.map(p => p.store).filter(Boolean));
+  const payeeName = stores.size === 1 ? (STORE_LABELS[[...stores][0]] || "AOne Bazaar") : "AOne Bazaar";
+
+  const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
   document.getElementById("upiQrImage").src =
     `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
 }
