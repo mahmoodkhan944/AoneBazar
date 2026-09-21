@@ -3792,6 +3792,14 @@ function showReviewFormForOrderItem(btnEl) {
         ${[1, 2, 3, 4, 5].map(n => `<span data-star="${n}" onclick="setInlineReviewStar(this, ${n})">★</span>`).join("")}
       </div>
       <textarea placeholder="Optional comment…" rows="2"></textarea>
+      <label class="inline-review-photo-btn">
+        <i class="fa-solid fa-camera"></i> Add a photo (optional)
+        <input type="file" accept="image/*" hidden onchange="onInlineReviewPhotoSelected(this)" />
+      </label>
+      <div class="inline-review-photo-preview-wrap hidden">
+        <img alt="" />
+        <button type="button" onclick="clearInlineReviewPhoto(this)" aria-label="Remove photo">×</button>
+      </div>
       <div class="inline-review-actions">
         <button type="button" class="btn btn-primary btn-sm" onclick="submitInlineOrderReview(this, '${productId}')">Submit</button>
         <button type="button" class="btn btn-outline btn-sm" onclick="cancelInlineOrderReview(this)">Cancel</button>
@@ -3800,6 +3808,32 @@ function showReviewFormForOrderItem(btnEl) {
   `;
   container.insertAdjacentHTML("beforeend", formHtml);
   btnEl.classList.add("hidden");
+}
+
+function onInlineReviewPhotoSelected(inputEl) {
+  const wrap = inputEl.closest(".inline-review-form");
+  const file = inputEl.files[0];
+  if (!file) return;
+
+  wrap._selectedPhotoFile = file; // kept on the element itself — simplest way to scope per-form state without a global map
+
+  const previewWrap = wrap.querySelector(".inline-review-photo-preview-wrap");
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewWrap.querySelector("img").src = e.target.result;
+    previewWrap.classList.remove("hidden");
+    wrap.querySelector(".inline-review-photo-btn").classList.add("hidden");
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearInlineReviewPhoto(btnEl) {
+  const wrap = btnEl.closest(".inline-review-form");
+  wrap._selectedPhotoFile = null;
+  wrap.querySelector(".inline-review-photo-preview-wrap").classList.add("hidden");
+  wrap.querySelector(".inline-review-photo-btn").classList.remove("hidden");
+  const input = wrap.querySelector('input[type="file"]');
+  if (input) input.value = "";
 }
 
 function setInlineReviewStar(starEl, n) {
@@ -3831,13 +3865,15 @@ async function submitInlineOrderReview(btnEl, productId) {
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
   const comment = wrap.querySelector("textarea").value.trim();
+  const photoUrl = await uploadReviewPhoto(wrap._selectedPhotoFile);
 
   const { error } = await supabase.from("reviews").upsert({
     product_id: productId,
     customer_id: fbUser.id,
     customer_name: "Customer " + (user.phone ? user.phone.slice(-4) : ""),
     rating,
-    comment: comment || null
+    comment: comment || null,
+    photo_url: photoUrl
   }, { onConflict: "product_id,customer_id" });
 
   if (error) {
@@ -3852,6 +3888,55 @@ function resetStarInput() {
   selectedStars = 0;
   document.querySelectorAll("#starInput span").forEach(s => s.classList.remove("filled"));
   document.getElementById("reviewComment").value = "";
+  clearReviewPhoto();
+}
+
+let selectedReviewPhotoFile = null;
+
+function onReviewPhotoSelected() {
+  const input = document.getElementById("reviewPhotoInput");
+  const file = input.files[0];
+  if (!file) return;
+
+  selectedReviewPhotoFile = file;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("reviewPhotoPreview").src = e.target.result;
+    document.getElementById("reviewPhotoPreviewWrap").classList.remove("hidden");
+    document.getElementById("reviewPhotoLabel").classList.add("hidden");
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearReviewPhoto() {
+  selectedReviewPhotoFile = null;
+  const input = document.getElementById("reviewPhotoInput");
+  if (input) input.value = "";
+  const previewWrap = document.getElementById("reviewPhotoPreviewWrap");
+  const label = document.getElementById("reviewPhotoLabel");
+  if (previewWrap) previewWrap.classList.add("hidden");
+  if (label) label.classList.remove("hidden");
+}
+
+/** Shared by both review entry points (the product page's own form,
+ *  and the inline one on a delivered order in "My Orders") — uploads
+ *  to the review-photos bucket and returns the public URL, or null
+ *  if no file was actually given (a purely optional attachment). */
+async function uploadReviewPhoto(file) {
+  if (!file) return null;
+
+  const fileExt = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const filePath = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+
+  const { error } = await supabase.storage.from("review-photos").upload(filePath, file);
+  if (error) {
+    alert("Could not upload the photo, saving your review without it: " + error.message);
+    return null;
+  }
+
+  const { data: urlData } = supabase.storage.from("review-photos").getPublicUrl(filePath);
+  return urlData.publicUrl;
 }
 
 document.addEventListener("click", e => {
@@ -3926,6 +4011,7 @@ async function loadReviews(productId) {
         <span class="review-card-date">${new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
       </div>
       ${r.comment ? `<p class="review-card-comment">${r.comment}</p>` : ""}
+      ${r.photo_url ? `<a href="${r.photo_url}" target="_blank" rel="noopener noreferrer"><img src="${r.photo_url}" class="review-card-photo" alt="Customer photo" loading="lazy" /></a>` : ""}
     </div>
   `).join("");
 }
@@ -3956,13 +4042,15 @@ async function submitReview() {
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
   const comment = document.getElementById("reviewComment").value.trim();
+  const photoUrl = await uploadReviewPhoto(selectedReviewPhotoFile);
 
   const { error } = await supabase.from("reviews").upsert({
     product_id: currentProduct.id,
     customer_id: fbUser.id,
     customer_name: "Customer " + (user.phone ? user.phone.slice(-4) : ""),
     rating: selectedStars,
-    comment: comment || null
+    comment: comment || null,
+    photo_url: photoUrl
   }, { onConflict: "product_id,customer_id" });
 
   if (error) {

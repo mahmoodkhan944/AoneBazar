@@ -2367,6 +2367,95 @@
   line-height: 1.5;
 }
 
+.review-card-photo {
+  display: block;
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  border: 1px solid var(--line);
+}
+
+.review-photo-picker { margin: 10px 0; }
+
+.review-photo-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--green-700);
+  cursor: pointer;
+}
+
+.review-photo-preview-wrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 6px;
+}
+.review-photo-preview-wrap img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  display: block;
+}
+.review-photo-preview-wrap button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger-600, #c0392b);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.inline-review-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--green-700);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.inline-review-photo-preview-wrap {
+  position: relative;
+  display: inline-block;
+  margin: 0 0 8px;
+}
+.inline-review-photo-preview-wrap img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  display: block;
+}
+.inline-review-photo-preview-wrap button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger-600, #c0392b);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .coupon-row {
   display: flex;
   gap: 8px;
