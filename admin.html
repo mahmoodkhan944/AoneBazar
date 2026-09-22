@@ -68,6 +68,9 @@
         <button class="admin-nav-item" data-view="reviews" onclick="showAdminView('reviews')">
           <i class="fa-solid fa-star"></i> Reviews
         </button>
+        <button class="admin-nav-item" data-view="qna" onclick="showAdminView('qna')">
+          <i class="fa-regular fa-circle-question"></i> Product Q&amp;A
+        </button>
         <button class="admin-nav-item" data-view="storage-cleanup" onclick="showAdminView('storage-cleanup')">
           <i class="fa-solid fa-broom"></i> Storage Cleanup
         </button>
@@ -235,7 +238,10 @@
       <section id="view-orders" class="admin-view">
         <div class="admin-topbar">
           <h1>Orders</h1>
-          <button class="btn btn-primary btn-sm" onclick="openCreateOrderModal()">+ Create Order</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline btn-sm" onclick="exportOrdersToCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+            <button class="btn btn-primary btn-sm" onclick="openCreateOrderModal()">+ Create Order</button>
+          </div>
         </div>
 
         <div class="admin-panel">
@@ -258,7 +264,10 @@
       <section id="view-products" class="admin-view">
         <div class="admin-topbar">
           <h1>Products</h1>
-          <button class="btn btn-primary btn-sm" onclick="toggleProductForm()">+ Add Product</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline btn-sm" onclick="exportProductsToCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+            <button class="btn btn-primary btn-sm" onclick="toggleProductForm()">+ Add Product</button>
+          </div>
         </div>
 
         <div class="admin-panel hidden" id="productFormPanel">
@@ -617,6 +626,14 @@
       </section>
 
       <!-- ===== STORAGE CLEANUP ===== -->
+      <!-- ===== PRODUCT Q&A ===== -->
+      <section id="view-qna" class="admin-view">
+        <div class="admin-topbar"><h1>Product Q&amp;A</h1></div>
+        <div class="admin-panel">
+          <div id="adminQnaList">Loading…</div>
+        </div>
+      </section>
+
       <section id="view-storage-cleanup" class="admin-view">
         <div class="admin-topbar">
           <h1>Storage Cleanup</h1>

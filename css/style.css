@@ -1381,6 +1381,20 @@
   accent-color: var(--green-700);
 }
 
+.delivery-slot-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 4px 0 6px;
+}
+
+.order-delivery-slot {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 6px 0;
+}
+
 .place-order-btn {
   margin: 6px 22px 22px;
   background: var(--marigold-600);
@@ -3392,4 +3406,57 @@
   .product, .category-tile, .cards .card, .featured-card, .shimmer {
     animation: none !important;
   }
+}
+/* ---------------- PRODUCT Q&A ---------------- */
+.qna-section {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.qna-ask-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.qna-ask-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.qna-list { display: flex; flex-direction: column; gap: 12px; }
+
+.qna-item {
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.qna-question {
+  font-size: 0.86rem;
+  font-weight: 600;
+  display: flex;
+  gap: 6px;
+}
+.qna-question i { color: var(--green-700); margin-top: 3px; flex: 0 0 auto; }
+
+.qna-answer {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  margin: 6px 0 0 20px;
+}
+.qna-answer i { color: var(--marigold-600); margin-right: 4px; }
+
+.qna-pending {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin: 6px 0 0 20px;
+  font-style: italic;
+}
+
+.fuzzy-search-note {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: -6px 0 12px;
 }

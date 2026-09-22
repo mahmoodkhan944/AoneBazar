@@ -29,6 +29,35 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Helps Google understand this is a local grocery/kirana/cafe
+       business (name, address, hours, phone) — shows up in local
+       search and Google Maps results, not just plain web search. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "GroceryStore",
+    "name": "AOne Bazaar",
+    "image": "https://aonebazar.co.in/images/logo512.png",
+    "url": "https://aonebazar.co.in/",
+    "telephone": "+918009555567",
+    "priceRange": "₹₹",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Master Naseem Complex, Lahideeh Bazar",
+      "addressLocality": "Azamgarh",
+      "addressRegion": "Uttar Pradesh",
+      "postalCode": "276305",
+      "addressCountry": "IN"
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      "opens": "09:00",
+      "closes": "21:00"
+    }
+  }
+  </script>
 </head>
 <body>
 
@@ -288,6 +317,7 @@
               <option value="rating">Rating — High to Low</option>
             </select>
           </div>
+          <p id="fuzzySearchNote" class="fuzzy-search-note hidden"></p>
           <div id="productGrid" class="products"></div>
           <div id="storeProductsPagination" class="pagination"></div>
         </div>
@@ -350,6 +380,8 @@
           <input type="checkbox" id="saveAddressCheckbox" checked />
           Save this address for next time
         </label>
+        <label class="delivery-slot-label">Preferred delivery time</label>
+        <select id="deliverySlot"></select>
       </div>
 
       <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹100 · Free delivery above ₹300 (₹30 delivery charge below that)</p>
@@ -538,6 +570,9 @@
         </button>
         <button class="footer-share-btn hidden" data-install-app-btn onclick="installAoneBazaarApp()" style="margin-top:8px;">
           <i class="fa-solid fa-download"></i> Install App
+        </button>
+        <button class="footer-share-btn" id="enablePushBtn" onclick="enablePushNotifications()" style="margin-top:8px;">
+          <i class="fa-solid fa-bell"></i> Enable Order Updates
         </button>
       </div>
     </div>

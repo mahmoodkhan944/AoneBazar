@@ -74,3 +74,37 @@ self.addEventListener("fetch", event => {
       .catch(() => caches.match(req))
   );
 });
+
+// ---------------- WEB PUSH ----------------
+// Shows a system notification for whatever the Edge Function sent
+// (see supabase/functions/send-push) — order status updates mainly,
+// as a WhatsApp-independent alternative.
+self.addEventListener("push", event => {
+  let data = { title: "AOne Bazaar", body: "You have an update" };
+  try { data = event.data.json(); } catch (e) { /* plain-text push, keep the default */ }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "AOne Bazaar", {
+      body: data.body || "",
+      icon: "images/logo192.png",
+      badge: "images/logo192.png",
+      data: { url: data.url || "/index.html" }
+    })
+  );
+});
+
+// Tapping the notification focuses an already-open tab if there is
+// one, rather than always opening a brand new one.
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/index.html";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url.includes(targetUrl) && "focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});

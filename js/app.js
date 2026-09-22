@@ -855,6 +855,47 @@ function filterByBrand() {
   renderProductGrid(matches, `No products from ${brand} in this category`);
 }
 
+/** Classic edit-distance (insertions/deletions/substitutions) between
+ *  two strings — how "different" they are, character by character.
+ *  Used to catch near-misses like "chaval" vs "chawal" that a plain
+ *  substring search would just show zero results for. */
+function levenshteinDistance(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/** Only kicks in once a plain substring search comes back empty —
+ *  checks the typed word against every word in every product name
+ *  and keeps whichever products have a close-enough word (allowing
+ *  more typos the longer the word is, since one wrong letter in a
+ *  4-letter word is a bigger miss than one wrong letter in a
+ *  10-letter word). Returns products sorted by how close the match
+ *  was, closest first. */
+function fuzzySearchProducts(items, query) {
+  const maxDistance = query.length <= 4 ? 1 : query.length <= 8 ? 2 : 3;
+
+  const scored = items
+    .map(p => {
+      const words = p.name.toLowerCase().split(/\s+/);
+      const bestDistance = Math.min(...words.map(w => levenshteinDistance(query, w)));
+      return { product: p, distance: bestDistance };
+    })
+    .filter(s => s.distance <= maxDistance)
+    .sort((a, b) => a.distance - b.distance);
+
+  return scored.map(s => s.product);
+}
+
 function searchStoreProducts() {
   const q = (document.getElementById("storeSearch")?.value || "").trim().toLowerCase();
 
@@ -866,13 +907,30 @@ function searchStoreProducts() {
 
   // Search across every category in the current store, not just the active one.
   const allItems = allStoreProductsSorted(data[currentStore]);
-  const matches = allItems.filter(p => p.name.toLowerCase().includes(q));
+  let matches = allItems.filter(p => p.name.toLowerCase().includes(q));
+  let usedFuzzy = false;
+
+  if (matches.length === 0) {
+    matches = fuzzySearchProducts(allItems, q);
+    usedFuzzy = matches.length > 0;
+  }
 
   renderStoreSearchSuggestions(matches, q);
 
   document.querySelectorAll(".category-tile").forEach(t => t.classList.remove("active"));
   storeProductsPage = 1;
-  renderProductGrid(matches, `No products match "${q}"`);
+
+  const emptyMessage = `No products match "${q}"`;
+  renderProductGrid(matches, emptyMessage);
+
+  // A small note above the grid instead of silently substituting
+  // results — the shopper should know these are "close" matches to
+  // what they typed, not exact ones.
+  const noteEl = document.getElementById("fuzzySearchNote");
+  if (noteEl) {
+    noteEl.textContent = usedFuzzy ? `Showing results close to "${q}"` : "";
+    noteEl.classList.toggle("hidden", !usedFuzzy);
+  }
 }
 
 /** A short dropdown of matching product names right under the store
@@ -1067,6 +1125,16 @@ function applyPriceRangeFilter() {
 function renderProductGrid(items, emptyMessage) {
   currentStoreProductsList = items;
   productGrid.innerHTML = "";
+
+  // Any caller other than searchStoreProducts() itself is a plain
+  // (non-fuzzy) view of the grid — clears a fuzzy-match note left
+  // over from a previous search so it doesn't linger once the
+  // shopper picks a category or clears the search box. Immediately
+  // re-set to "on" right after this call, from inside
+  // searchStoreProducts() itself, when a fuzzy match is genuinely
+  // being shown this time.
+  const fuzzyNoteEl = document.getElementById("fuzzySearchNote");
+  if (fuzzyNoteEl) fuzzyNoteEl.classList.add("hidden");
 
   const displayItems = applyPriceFilter(items);
   const priceFilterActive = currentPriceMin !== null || currentPriceMax !== null;
@@ -1877,6 +1945,45 @@ function pickVariantAndAdd(index) {
 /***********************
     CART
 ************************/
+/** Builds the "Preferred delivery time" dropdown fresh each time the
+ *  cart opens — 2-hour windows across the store's 9 AM–9 PM hours,
+ *  skipping any slot for today that's already started or is too
+ *  soon to realistically prep and deliver into (under an hour out),
+ *  so the list only ever shows times that are actually still
+ *  possible today, plus the same slots again for tomorrow. */
+function populateDeliverySlots() {
+  const select = document.getElementById("deliverySlot");
+  if (!select) return;
+
+  const SLOT_HOURS = [[9, 11], [11, 13], [13, 15], [15, 17], [17, 19], [19, 21]];
+  const now = new Date();
+
+  const formatHour = h => {
+    const period = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12} ${period}`;
+  };
+
+  const todayOptions = SLOT_HOURS
+    .filter(([startHour]) => {
+      const slotStart = new Date(now);
+      slotStart.setHours(startHour, 0, 0, 0);
+      return slotStart.getTime() - now.getTime() > 60 * 60 * 1000; // at least an hour of lead time
+    })
+    .map(([start, end]) => `<option value="Today, ${formatHour(start)}–${formatHour(end)}">Today, ${formatHour(start)}–${formatHour(end)}</option>`)
+    .join("");
+
+  const tomorrowOptions = SLOT_HOURS
+    .map(([start, end]) => `<option value="Tomorrow, ${formatHour(start)}–${formatHour(end)}">Tomorrow, ${formatHour(start)}–${formatHour(end)}</option>`)
+    .join("");
+
+  select.innerHTML = `
+    <option value="">As soon as possible</option>
+    ${todayOptions ? `<optgroup label="Today">${todayOptions}</optgroup>` : ""}
+    <optgroup label="Tomorrow">${tomorrowOptions}</optgroup>
+  `;
+}
+
 function openCart() {
 
   const modal = document.getElementById("cartModal");
@@ -1889,6 +1996,7 @@ function openCart() {
   modal.classList.remove("hidden");
   updateMinOrderNotice();
   loadSavedAddresses();
+  populateDeliverySlots();
   // Fire-and-forget: gets the areas list (and their per-area delivery
   // charges) cached early, so by the time an address is typed the
   // live total already reflects the right charge instead of the
@@ -2360,6 +2468,10 @@ async function placeOrder() {
   // screenshot's link goes straight into the message, one tap away.
   message += `%0APayment Screenshot: ${paymentScreenshotUrl}`;
 
+  const deliverySlotEl = document.getElementById("deliverySlot");
+  const deliverySlot = deliverySlotEl ? deliverySlotEl.value : "";
+  if (deliverySlot) message += `%0APreferred delivery time: ${deliverySlot}`;
+
   const { error } = await supabase.from("orders").insert({
     id,
     invoice_no: invoiceNo,
@@ -2372,6 +2484,7 @@ async function placeOrder() {
     coupon_code: appliedCoupon ? appliedCoupon.code : null,
     discount,
     delivery_charge: deliveryCharge,
+    delivery_slot: deliverySlot || null,
     total,
     payment: "COD",
     payment_option: selectedPaymentOption,
@@ -2408,6 +2521,7 @@ async function placeOrder() {
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         discount,
         delivery_charge: deliveryCharge,
+        delivery_slot: deliverySlot || null,
         total,
         payment: "COD",
         payment_option: selectedPaymentOption,
@@ -3036,6 +3150,32 @@ async function loadProductPage() {
     metaDesc.setAttribute("content", `${p.name} — ₹${p.price} at AOne Bazaar, Lahideeh-Azamgarh. Order online, pay on delivery.`);
   }
 
+  // Lets Google show this as a proper product result (price,
+  // availability, image) rather than a plain blue link — injected
+  // here rather than baked into product.html's own <head> since the
+  // actual product data only exists once this fetch resolves.
+  const existingLd = document.getElementById("productStructuredData");
+  if (existingLd) existingLd.remove();
+  const ldScript = document.createElement("script");
+  ldScript.type = "application/ld+json";
+  ldScript.id = "productStructuredData";
+  ldScript.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": p.name,
+    "image": p.images && p.images[0] ? p.images[0] : undefined,
+    "description": p.description || p.name,
+    "sku": p.id,
+    "offers": {
+      "@type": "Offer",
+      "url": `https://aonebazar.co.in/product.html?id=${p.id}`,
+      "priceCurrency": "INR",
+      "price": p.price,
+      "availability": p.in_stock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock"
+    }
+  });
+  document.head.appendChild(ldScript);
+
   const backLink = document.getElementById("backToStoreLink");
   if (backLink) backLink.href = `index.html?store=${p.store}`;
 
@@ -3144,6 +3284,7 @@ async function loadProductPage() {
   setTimeout(enableMagnifier, 200);
   resetStarInput();
   loadReviews(p.id);
+  loadProductQuestions(p.id);
   loadRelatedProducts(p);
   trackRecentlyViewed(p.id);
   loadRecentlyViewed(p.id);
@@ -3392,6 +3533,7 @@ function mapOrderRow(row) {
     items: row.items || [],
     total: row.total,
     status: row.status,
+    deliverySlot: row.delivery_slot,
     date: new Date(row.created_at).toLocaleString()
   };
 }
@@ -3489,6 +3631,8 @@ async function openMyOrders() {
       <div class="order-items">
         ${itemsHTML}
       </div>
+
+      ${o.deliverySlot ? `<div class="order-delivery-slot"><i class="fa-regular fa-clock"></i> ${o.deliverySlot}</div>` : ""}
 
       <div class="order-date">
         ${o.date}
@@ -3651,6 +3795,7 @@ function updateCartBar() {
 }
 saveCart(); // also runs updateCartBar() internally now
 checkAbandonedCartReminder();
+checkExistingPushSubscription();
 
 function goHome() {
   // The logo and "Home" link are a hard reset, not "one step back" —
@@ -3670,6 +3815,87 @@ function goHome() {
     top: 0,
     behavior: "smooth"
   });
+}
+
+/***********************
+    WEB PUSH NOTIFICATIONS
+    Alternative to WhatsApp for order-status updates — the customer
+    opts in once per device/browser; the actual SENDING happens
+    server-side via a Supabase Edge Function (see
+    supabase/functions/send-push), triggered by the admin panel when
+    an order's status changes.
+************************/
+
+// Public key only — safe to embed client-side (the matching private
+// key lives solely in the Edge Function's environment, never here).
+const VAPID_PUBLIC_KEY = "BC6MXL7JZJZB4nZaaxCrEsUTHIrI8iXJTOtRC4t85BKDnZJq9l7Qr1OkLKhre_cknobEFHCoVvn-rx9ZJF9UQHQ";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+function updatePushButtonState(enabled) {
+  const btn = document.getElementById("enablePushBtn");
+  if (!btn) return;
+  btn.innerHTML = enabled
+    ? `<i class="fa-solid fa-bell"></i> Order Updates On`
+    : `<i class="fa-solid fa-bell"></i> Enable Order Updates`;
+}
+
+/** Checked once on page load (not just after clicking the button) so
+ *  the button already reads "On" for someone who enabled this on a
+ *  previous visit, rather than looking like it needs clicking again. */
+async function checkExistingPushSubscription() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    updatePushButtonState(!!subscription && Notification.permission === "granted");
+  } catch (e) { /* not fatal — button just stays in its default state */ }
+}
+
+async function enablePushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    alert("Notifications aren't supported in this browser.");
+    return;
+  }
+
+  const fbUser = requireLogin();
+  if (!fbUser) return;
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    alert("Notifications permission wasn't granted — you can turn it on later from the browser's site settings.");
+    return;
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+  }
+
+  const subJson = subscription.toJSON();
+  const { error } = await supabase.from("push_subscriptions").upsert({
+    customer_id: fbUser.id,
+    endpoint: subJson.endpoint,
+    p256dh: subJson.keys.p256dh,
+    auth_key: subJson.keys.auth
+  }, { onConflict: "endpoint" });
+
+  if (error) {
+    alert("Could not save your notification subscription: " + error.message);
+    return;
+  }
+
+  updatePushButtonState(true);
+  alert("Order update notifications are now on for this device.");
 }
 
 /***********************
@@ -4033,6 +4259,74 @@ function starRowHtml(avg) {
     else html += `<i class="fa-regular fa-star"></i>`;
   }
   return html;
+}
+
+/***********************
+    PRODUCT Q&A
+************************/
+
+async function loadProductQuestions(productId) {
+  const listEl = document.getElementById("qnaList");
+  if (!listEl) return;
+  listEl.innerHTML = `<p style="font-size:0.85rem;color:var(--ink-faint);">Loading…</p>`;
+
+  const { data: rows, error } = await supabase
+    .from("product_questions")
+    .select("*")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    listEl.innerHTML = "";
+    console.error(error);
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    listEl.innerHTML = `<p style="font-size:0.85rem;color:var(--ink-faint);">No questions yet — be the first to ask.</p>`;
+    return;
+  }
+
+  listEl.innerHTML = rows.map(q => `
+    <div class="qna-item">
+      <div class="qna-question"><i class="fa-regular fa-circle-question"></i> ${q.question}</div>
+      ${q.answer
+        ? `<div class="qna-answer"><i class="fa-solid fa-reply"></i> <strong>AOne Bazaar:</strong> ${q.answer}</div>`
+        : `<div class="qna-pending">Not answered yet</div>`
+      }
+    </div>
+  `).join("");
+}
+
+async function submitProductQuestion() {
+  if (!currentProduct) return;
+
+  const input = document.getElementById("newQuestionInput");
+  const question = input.value.trim();
+  if (!question) {
+    alert("Type your question first");
+    return;
+  }
+
+  const fbUser = requireLogin();
+  if (!fbUser) return;
+
+  const user = JSON.parse(localStorage.getItem("user")) || {};
+
+  const { error } = await supabase.from("product_questions").insert({
+    product_id: currentProduct.id,
+    customer_id: fbUser.id,
+    customer_name: "Customer " + (user.phone ? user.phone.slice(-4) : ""),
+    question
+  });
+
+  if (error) {
+    alert("Could not submit your question: " + error.message);
+    return;
+  }
+
+  input.value = "";
+  loadProductQuestions(currentProduct.id);
 }
 
 async function submitReview() {

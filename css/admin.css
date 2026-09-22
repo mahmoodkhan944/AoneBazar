@@ -1455,3 +1455,27 @@ body.admin-body {
 .recompress-failed-table-wrap {
   overflow-x: auto;
 }
+
+/* ---------------- PRODUCT Q&A (admin) ---------------- */
+.admin-qna-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.admin-qna-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.admin-qna-question {
+  font-size: 0.88rem;
+  margin: 0 0 8px;
+}
+.admin-qna-answer-row {
+  display: flex;
+  gap: 8px;
+}
+.admin-qna-answer-row input {
+  flex: 1;
+  min-width: 0;
+}

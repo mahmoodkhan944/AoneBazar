@@ -173,6 +173,15 @@
           </div>
 
           <div id="reviewsList" class="reviews-list"></div>
+
+          <div class="qna-section">
+            <h3 style="font-family:var(--font-display);font-size:1.15rem;margin-bottom:10px;">Questions &amp; Answers</h3>
+            <div class="qna-ask-row">
+              <input type="text" id="newQuestionInput" placeholder="Ask a question about this product…" />
+              <button class="btn btn-outline btn-sm" onclick="submitProductQuestion()">Ask</button>
+            </div>
+            <div id="qnaList" class="qna-list"></div>
+          </div>
         </div>
       </div>
 
@@ -243,6 +252,8 @@
           <input type="checkbox" id="saveAddressCheckbox" checked />
           Save this address for next time
         </label>
+        <label class="delivery-slot-label">Preferred delivery time</label>
+        <select id="deliverySlot"></select>
       </div>
 
       <p id="minOrderNotice" style="padding:0 22px;font-size:0.8rem;color:var(--ink-faint);">Minimum order ₹100 · Free delivery above ₹300 (₹30 delivery charge below that)</p>
@@ -383,6 +394,9 @@
         <p class="footer-follow-note">Stay connected for the latest offers, new products and updates!</p>
         <button class="footer-share-btn hidden" data-install-app-btn onclick="installAoneBazaarApp()" style="margin-top:12px;">
           <i class="fa-solid fa-download"></i> Install App
+        </button>
+        <button class="footer-share-btn" id="enablePushBtn" onclick="enablePushNotifications()" style="margin-top:8px;">
+          <i class="fa-solid fa-bell"></i> Enable Order Updates
         </button>
       </div>
     </div>

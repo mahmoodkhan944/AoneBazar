@@ -104,6 +104,7 @@ const VIEW_LOADERS = {
   "delivery-areas": loadDeliveryAreas,
   "extra-delivery-zones": loadExtraDeliveryZones,
   reviews: loadReviews,
+  qna: loadAdminQuestions,
   "storage-cleanup": () => {}, // scanning is expensive — only runs when the admin explicitly clicks "Scan"
   content: loadSiteContentForm,
   users: loadUsers,
@@ -310,6 +311,7 @@ async function openOrderDetailModal(orderId) {
     <div class="order-detail-section">
       <h4>Customer</h4>
       <p>${o.name}<br>${o.phone}<br>${o.address || ""}</p>
+      ${o.deliverySlot ? `<p style="margin-top:6px;"><i class="fa-regular fa-clock"></i> <strong>Preferred delivery:</strong> ${o.deliverySlot}</p>` : ""}
     </div>
 
     <div class="order-detail-section">
@@ -718,6 +720,7 @@ function mapOrderRow(row) {
   return {
     id: row.id,
     invoiceNo: row.invoice_no,
+    customerId: row.customer_id,
     name: row.customer_name,
     phone: row.customer_phone,
     address: row.address,
@@ -732,6 +735,7 @@ function mapOrderRow(row) {
     amountPaid: row.amount_paid,
     balanceDue: row.balance_due,
     paymentScreenshotUrl: row.payment_screenshot_url || null,
+    deliverySlot: row.delivery_slot || null,
     date: new Date(row.created_at).toLocaleString()
   };
 }
@@ -1053,7 +1057,38 @@ async function updateOrderStatus(id, newStatus) {
 
   renderOrdersTable(cachedOrders);
 
-  if (order) notifyCustomerOnWhatsApp(order, newStatus);
+  if (order) {
+    notifyCustomerOnWhatsApp(order, newStatus);
+    sendOrderStatusPush(order, newStatus);
+  }
+}
+
+/** Fire-and-forget call to the send-push Edge Function (see
+ *  supabase/functions/send-push) — silently does nothing if that
+ *  function hasn't been deployed yet, or if this customer never
+ *  enabled notifications, so it's safe to leave this wired in even
+ *  before the Edge Function is set up. */
+function sendOrderStatusPush(order, status) {
+  if (!order.customerId) return;
+
+  const PUSH_MESSAGES = {
+    PROCESSING: "Your order is now being prepared.",
+    OUT_FOR_DELIVERY: "Your order is out for delivery!",
+    DELIVERED: "Your order has been delivered. Thank you for shopping with us!",
+    CANCELLED: "Your order has been cancelled."
+  };
+
+  const body = PUSH_MESSAGES[status];
+  if (!body) return;
+
+  supabase.functions.invoke("send-push", {
+    body: {
+      customer_id: order.customerId,
+      title: `AOne Bazaar — Order ${order.id}`,
+      body,
+      url: "/index.html"
+    }
+  }).catch(e => console.warn("Push notification not sent (Edge Function may not be deployed yet):", e.message));
 }
 
 /** Opens a pre-filled WhatsApp message to the customer whenever the
@@ -3227,6 +3262,147 @@ async function deleteReview(id) {
   }
 
   loadReviews();
+}
+
+/***********************
+    PRODUCT Q&A (admin)
+************************/
+
+/***********************
+    CSV EXPORT
+************************/
+
+/** Turns an array of plain objects into a downloadable CSV — quotes
+ *  every field and escapes embedded quotes/commas/newlines so a
+ *  comment or address containing a comma doesn't silently shift
+ *  every column after it, then triggers the browser's normal file
+ *  download (works the same as clicking a real download link). */
+function downloadAsCsv(filename, rows) {
+  if (!rows || rows.length === 0) {
+    alert("Nothing to export");
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+  const escapeCell = val => `"${String(val === null || val === undefined ? "" : val).replace(/"/g, '""')}"`;
+
+  const csvLines = [
+    headers.map(escapeCell).join(","),
+    ...rows.map(row => headers.map(h => escapeCell(row[h])).join(","))
+  ];
+
+  // A UTF-8 BOM up front so Excel (which otherwise guesses the
+  // wrong encoding) renders ₹ and Hindi text correctly instead of
+  // as garbled characters.
+  const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportOrdersToCsv() {
+  const rows = currentOrdersList.map(o => ({
+    "Order ID": o.id,
+    "Date": o.date,
+    "Customer Name": o.name,
+    "Phone": o.phone,
+    "Address": o.address,
+    "Items": (o.items || []).map(it => `${it.name} x${it.qty}`).join("; "),
+    "Subtotal": o.subtotal,
+    "Discount": o.discount,
+    "Delivery Charge": o.deliveryCharge,
+    "Total": o.total,
+    "Amount Paid": o.amountPaid,
+    "Balance Due": o.balanceDue,
+    "Delivery Slot": o.deliverySlot || "",
+    "Status": o.status
+  }));
+
+  downloadAsCsv(`orders-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+}
+
+function exportProductsToCsv() {
+  const rows = allProductsCache.map(p => ({
+    "Name": p.name,
+    "Name (Hindi)": p.name_hi || "",
+    "Store": p.store,
+    "Category": p.category,
+    "Brand": p.brand || "",
+    "Price": p.price,
+    "MRP": p.mrp || "",
+    "In Stock": p.in_stock ? "Yes" : "No",
+    "Variants": (p.variants || []).map(v => `${v.label}: ₹${v.price}`).join("; ")
+  }));
+
+  downloadAsCsv(`products-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+}
+
+async function loadAdminQuestions() {
+  const listEl = document.getElementById("adminQnaList");
+  listEl.innerHTML = "Loading…";
+
+  const { data: rows, error } = await supabase
+    .from("product_questions")
+    .select("*, products(name)")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    listEl.innerHTML = "Could not load questions";
+    console.error(error);
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    listEl.innerHTML = `<p style="color:var(--ink-faint);">No questions yet</p>`;
+    return;
+  }
+
+  // Unanswered ones first, so the admin sees what needs a reply
+  // without having to scroll past everything already answered.
+  rows.sort((a, b) => (a.answer ? 1 : 0) - (b.answer ? 1 : 0));
+
+  listEl.innerHTML = rows.map(q => `
+    <div class="admin-qna-item">
+      <div class="admin-qna-header">
+        <span class="cell-title">${q.products ? q.products.name : "(deleted product)"}</span>
+        <span class="status-pill ${q.answer ? "DELIVERED" : "NEW"}">${q.answer ? "Answered" : "Pending"}</span>
+      </div>
+      <p class="admin-qna-question"><i class="fa-regular fa-circle-question"></i> ${q.question} <span style="color:var(--ink-faint);font-weight:400;">— ${q.customer_name}</span></p>
+      <div class="admin-qna-answer-row">
+        <input type="text" id="qna-answer-${q.id}" placeholder="Type your answer…" value="${(q.answer || "").replace(/"/g, "&quot;")}" />
+        <button class="btn btn-primary btn-sm" style="width:auto;" onclick="answerProductQuestion('${q.id}')">Save</button>
+        <button class="danger" onclick="deleteProductQuestion('${q.id}')">Delete</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function answerProductQuestion(id) {
+  const answer = document.getElementById(`qna-answer-${id}`).value.trim();
+  if (!answer) {
+    alert("Type an answer first");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("product_questions")
+    .update({ answer, answered_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) { alert("Could not save answer: " + error.message); return; }
+  loadAdminQuestions();
+}
+
+async function deleteProductQuestion(id) {
+  if (!(await customConfirm("Delete this question?", "Delete"))) return;
+  const { error } = await supabase.from("product_questions").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  loadAdminQuestions();
 }
 
 /***********************
