@@ -1171,16 +1171,16 @@ function notifyCustomerOnWhatsApp(order, status) {
   const templates = {
     PROCESSING: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) is now being prepared. We'll message you again once it's out for delivery. 🛍️
 
-नमस्ते ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) अब तैयार किया जा रहा है। डिलीवरी के लिए निकलते ही हम आपको फिर से मैसेज करेंगे। 🛍️`,
+हाय ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) अब तैयार किया जा रहा है। डिलीवरी के लिए निकलते ही हम आपको फिर से मैसेज करेंगे। 🛍️`,
     OUT_FOR_DELIVERY: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) is out for delivery and should reach you shortly. 🛵
 
-नमस्ते ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) डिलीवरी के लिए निकल चुका है और जल्द ही आप तक पहुंच जाएगा। 🛵`,
+हाय ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) डिलीवरी के लिए निकल चुका है और जल्द ही आप तक पहुंच जाएगा। 🛵`,
     DELIVERED: `Hi ${order.name}! Your AOne Bazaar order ${order.id} (₹${order.total}) has been delivered. Thank you for shopping with us — see you again soon! 🙏
 
-नमस्ते ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) डिलीवर हो चुका है। हमारे साथ खरीदारी करने के लिए धन्यवाद — फिर मिलेंगे! 🙏`,
+हाय ${order.name}! आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) डिलीवर हो चुका है। हमारे साथ खरीदारी करने के लिए धन्यवाद — फिर मिलेंगे! 🙏`,
     CANCELLED: `Hi ${order.name}, your AOne Bazaar order ${order.id} (₹${order.total}) has been cancelled. If this wasn't expected, please reply here and we'll sort it out right away.
 
-नमस्ते ${order.name}, आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) रद्द कर दिया गया है। अगर ये आपकी जानकारी में नहीं था, तो कृपया यहीं रिप्लाई करें, हम तुरंत सुलझा देंगे।`
+हाय ${order.name}, आपका AOne Bazaar ऑर्डर ${order.id} (₹${order.total}) रद्द कर दिया गया है। अगर ये आपकी जानकारी में नहीं था, तो कृपया यहीं रिप्लाई करें, हम तुरंत सुलझा देंगे।`
   };
 
   const message = templates[status];
