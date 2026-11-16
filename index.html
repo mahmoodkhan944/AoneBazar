@@ -159,6 +159,17 @@
         </div>
       </div>
 
+      <div class="global-search-wrap">
+        <i class="fa-solid fa-magnifying-glass gs-icon"></i>
+        <input type="search" id="globalSearchInput" class="input-pill gs-input"
+          placeholder="Search all products — atta, oil, coffee…"
+          autocomplete="off"
+          onfocus="runGlobalSearch()"
+          oninput="onGlobalSearchInput()"
+          onkeydown="onGlobalSearchKey(event)" />
+        <div id="globalSearchResults" class="global-search-results hidden"></div>
+      </div>
+
       <div class="delivery-check-box">
         <p class="delivery-check-label">📍 Enter your location to check delivery</p>
         <div class="delivery-check-row">
@@ -599,5 +610,6 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/app.js"></script>
   <script src="js/cashfree.js"></script>
+  <script src="js/global-search.js"></script>
 </body>
 </html>
