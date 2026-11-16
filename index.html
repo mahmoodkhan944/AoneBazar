@@ -408,6 +408,12 @@
           </button>
         </div>
         <p style="font-size:0.82rem;margin-top:10px;" id="paymentChoiceNote">Pay the remaining amount on delivery.</p>
+        <div id="cashfreeBlock">
+        <button type="button" class="place-order-btn" id="cashfreePayBtn" onclick="payOnlineWithCashfree()" style="margin:12px 0 4px;"><i class="fa-solid fa-credit-card"></i> Pay Online (UPI / Card / Netbanking)</button>
+        <p style="font-size:0.75rem;color:var(--ink-faint);">Instant confirmation — no screenshot needed.</p>
+        </div>
+        <div id="upiManualBlock">
+          <p id="paymentOrDivider" style="font-size:0.8rem;margin:14px 0 4px;color:var(--ink-faint);">— or pay manually via UPI QR —</p>
         <img id="upiQrImage" alt="UPI QR code" style="width:180px;height:180px;margin:10px auto;border-radius:8px;border:1px solid var(--line);" />
         <div>
           <button type="button" class="btn btn-outline btn-sm" onclick="downloadQrCode()">
@@ -425,6 +431,7 @@
           <input type="file" id="paymentScreenshotInput" accept="image/*" onchange="handlePaymentScreenshotSelected(this)" hidden />
           <img id="paymentScreenshotPreview" class="payment-screenshot-preview hidden" alt="Payment screenshot preview" />
           <div id="paymentScreenshotWarning" class="hidden"></div>
+        </div>
         </div>
 
         <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="backToCartForm()">⬅ Back</button>
@@ -591,5 +598,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/cashfree.js"></script>
 </body>
 </html>

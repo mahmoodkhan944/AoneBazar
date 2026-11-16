@@ -2767,7 +2767,7 @@ async function proceedToPayment() {
 
   const upiId = getUpiId();
 
-  if (!upiId) {
+  if (!isUpiPaymentOn() && !isCashfreePaymentOn()) {
     alert("Online payment isn't set up on this site yet — please contact the shop directly (WhatsApp) to place this order.");
     return;
   }
@@ -2777,7 +2777,8 @@ async function proceedToPayment() {
 
   document.getElementById("halfAmountLabel").innerText = "₹" + Math.ceil(total / 2);
   document.getElementById("fullAmountLabel").innerText = "₹" + total;
-  document.getElementById("upiIdLabel").innerText = upiId;
+  document.getElementById("upiIdLabel").innerText = upiId || "";
+  applyPaymentMethodVisibility();
 
   document.getElementById("chooseHalfBtn").classList.add("active");
   document.getElementById("chooseFullBtn").classList.remove("active");
@@ -2788,9 +2789,25 @@ async function proceedToPayment() {
   document.getElementById("minOrderNotice").classList.add("hidden");
   document.getElementById("proceedToPaymentBtn").classList.add("hidden");
   document.getElementById("paymentStep").classList.remove("hidden");
-  document.getElementById("confirmOrderBtn").classList.remove("hidden");
+  document.getElementById("confirmOrderBtn").classList.toggle("hidden", !isUpiPaymentOn());
   hideDeliveryCheckoutWarning();
   resetPaymentScreenshotPicker();
+}
+
+/** Admin → Site Content → Payment Methods decides which ones show.
+ *  Missing setting = ON (so nothing changes until the admin turns one off). */
+function isCashfreePaymentOn() {
+  return !!window.CASHFREE_ENABLED && !(window.siteContent && window.siteContent.pay_cashfree_enabled === "0");
+}
+function isUpiPaymentOn() {
+  return !!getUpiId() && !(window.siteContent && window.siteContent.pay_upi_enabled === "0");
+}
+function applyPaymentMethodVisibility() {
+  const cf = isCashfreePaymentOn(), upi = isUpiPaymentOn();
+  const set = (id, show) => { const el = document.getElementById(id); if (el) el.classList.toggle("hidden", !show); };
+  set("cashfreeBlock", cf);
+  set("upiManualBlock", upi);
+  set("paymentOrDivider", cf && upi);
 }
 
 function choosePaymentOption(option) {
@@ -2807,6 +2824,7 @@ function choosePaymentOption(option) {
 
 function updatePaymentQr() {
   const upiId = getUpiId();
+  if (!upiId) return;
   const amount = selectedPaymentOption === "full"
     ? currentPayableTotal
     : Math.ceil(currentPayableTotal / 2);

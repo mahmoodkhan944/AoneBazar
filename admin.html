@@ -722,6 +722,23 @@
         </div>
 
         <div class="admin-panel">
+          <h3>Payment Methods (which ones customers see)</h3>
+          <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
+            Choose what appears at checkout. Turn on both to let customers pick, or only one. At least one should stay on.
+          </p>
+          <div class="admin-form-grid">
+            <div>
+              <label>Online Payment (Cashfree — UPI/Card/Netbanking)</label>
+              <select id="cf_pay_cashfree_enabled"><option value="1">ON — show</option><option value="0">OFF — hide</option></select>
+            </div>
+            <div>
+              <label>Manual UPI QR + Screenshot</label>
+              <select id="cf_pay_upi_enabled"><option value="1">ON — show</option><option value="0">OFF — hide</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
           <h3>Checkout — UPI Half-Payment</h3>
           <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:-8px;">
             Every order requires the customer to pay half (or the full amount) via UPI at checkout (a QR code is generated from this UPI ID) before their order is sent to you on WhatsApp — they pay the rest on delivery.

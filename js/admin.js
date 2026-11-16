@@ -3683,6 +3683,8 @@ async function loadSiteContentForm() {
   document.getElementById("cf_contact_address").value = content.contact_address || "";
   document.getElementById("cf_contact_hours").value = content.contact_hours || "";
   document.getElementById("cf_contact_map_url").value = content.contact_map_url || "";
+  document.getElementById("cf_pay_cashfree_enabled").value = content.pay_cashfree_enabled === "0" ? "0" : "1";
+  document.getElementById("cf_pay_upi_enabled").value = content.pay_upi_enabled === "0" ? "0" : "1";
   document.getElementById("cf_upi_id").value = content.upi_id || "";
   document.getElementById("cf_upi_id_supermarket").value = content.upi_id_supermarket || "";
   document.getElementById("cf_upi_id_grocery").value = content.upi_id_grocery || "";
@@ -3716,6 +3718,8 @@ async function saveSiteContent() {
     contact_address: document.getElementById("cf_contact_address").value.trim(),
     contact_hours: document.getElementById("cf_contact_hours").value.trim(),
     contact_map_url: document.getElementById("cf_contact_map_url").value.trim(),
+    pay_cashfree_enabled: document.getElementById("cf_pay_cashfree_enabled").value,
+    pay_upi_enabled: document.getElementById("cf_pay_upi_enabled").value,
     upi_id: document.getElementById("cf_upi_id").value.trim(),
     upi_id_supermarket: document.getElementById("cf_upi_id_supermarket").value.trim(),
     upi_id_grocery: document.getElementById("cf_upi_id_grocery").value.trim(),
