@@ -167,6 +167,18 @@ async function loadDashboard() {
   document.getElementById("statTotalCustomers").innerText = stats.total_customers || 0;
   document.getElementById("statTotalProducts").innerText = stats.total_products || 0;
   document.getElementById("statActiveOffers").innerText = stats.active_offers || 0;
+  const rupee = n => "₹" + Math.round(n || 0).toLocaleString("en-IN");
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+  setText("statOnlineReceived", rupee(stats.online_received));
+  setText("statCodReceived", rupee(stats.cod_received));
+  setText("statCodPending", rupee(stats.cod_pending));
+  setText("statPayTotal", rupee(stats.total_revenue));
+  const unsplit = Number(stats.total_revenue || 0) - Number(stats.online_received || 0) - Number(stats.cod_received || 0) - Number(stats.cod_pending || 0);
+  const unsplitEl = document.getElementById("statPayUnsplit");
+  if (unsplitEl) {
+    unsplitEl.classList.toggle("hidden", unsplit < 1);
+    unsplitEl.innerText = `₹${Math.round(unsplit).toLocaleString("en-IN")} is from older orders placed before online/cash payments were tracked separately.`;
+  }
 
   // "vs last month" — current total against what it stood at the
   // start of this month, i.e. real growth, not a guessed number.
@@ -575,18 +587,25 @@ function paymentBreakdownHtml(o) {
   const amountPaid = o.amount_paid ?? o.amountPaid;
   const paymentOption = o.payment_option ?? o.paymentOption;
   const balanceDue = o.balance_due ?? o.balanceDue;
+  const codCollected = o.cod_collected ?? o.codCollected ?? 0;
 
   if (amountPaid == null) {
     return `<span style="color:var(--ink-faint);font-size:0.8rem;">—</span>`;
   }
 
   const optionLabel = paymentOption === "full" ? "Full" : "Half";
-  const paidPart = `${optionLabel} — ₹${amountPaid} paid`;
-  const duePart = balanceDue > 0
-    ? `<span style="color:var(--marigold-700, #b8860b);">₹${balanceDue} due</span>`
-    : `<span style="color:var(--green-700);">fully paid</span>`;
+  const paidPart = `${optionLabel} — ₹${amountPaid} online`;
 
-  return `<div style="font-size:0.82rem;">${paidPart}<br>${duePart}</div>`;
+  let restPart;
+  if (codCollected > 0) {
+    restPart = `<span style="color:var(--green-700);">+ ₹${codCollected} cash on delivery (collected)</span>`;
+  } else if (balanceDue > 0) {
+    restPart = `<span style="color:var(--marigold-700, #b8860b);">₹${balanceDue} cash on delivery (pending)</span>`;
+  } else {
+    restPart = `<span style="color:var(--green-700);">fully paid</span>`;
+  }
+
+  return `<div style="font-size:0.82rem;">${paidPart}<br>${restPart}</div>`;
 }
 
 function renderOrdersChart(days) {
@@ -735,6 +754,7 @@ function mapOrderRow(row) {
     paymentOption: row.payment_option || null,
     amountPaid: row.amount_paid,
     balanceDue: row.balance_due,
+    codCollected: row.cod_collected || 0,
     paymentScreenshotUrl: row.payment_screenshot_url || null,
     deliverySlot: row.delivery_slot || null,
     date: new Date(row.created_at).toLocaleString()
@@ -1090,8 +1110,20 @@ async function updateOrderStatus(id, newStatus) {
 
   const order = cachedOrders.find(o => o.id === id);
 
+  // Mirrors the database trigger (patch-payment-split.sql): once
+  // delivered, the remaining balance counts as cash collected on
+  // delivery; moving back out of Delivered reverses that.
   cachedOrders = cachedOrders.map(o => {
-    if (o.id === id) o.status = newStatus;
+    if (o.id === id) {
+      const wasDelivered = o.status === "DELIVERED";
+      o.status = newStatus;
+      const rest = Math.max(0, Number(o.total) - Number(o.amountPaid || 0));
+      if (newStatus === "DELIVERED" && !wasDelivered && o.amountPaid != null) {
+        o.codCollected = rest; o.balanceDue = 0;
+      } else if (newStatus !== "DELIVERED" && wasDelivered && o.amountPaid != null) {
+        o.codCollected = 0; o.balanceDue = rest;
+      }
+    }
     return o;
   });
 
@@ -1337,7 +1369,7 @@ async function downloadInvoice(order) {
     doc.setTextColor(...INK_SOFT);
     doc.text("PAYMENT", sx1 - 2, y + 7);
 
-    const optionLabel = order.paymentOption === "full" ? "Full (UPI)" : "Half (UPI)";
+    const optionLabel = order.paymentOption === "full" ? "Full (online)" : "Half (online)";
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...INK);
@@ -1350,7 +1382,12 @@ async function downloadInvoice(order) {
       doc.text("Rs. " + order.balanceDue, sx2 - 4, y + 19, { align: "right" });
     } else {
       doc.setTextColor(...GREEN);
-      doc.text("Fully paid — nothing due", sx1 - 2, y + 19);
+      if (order.codCollected > 0) {
+        doc.text("Cash on delivery (collected)", sx1 - 2, y + 19);
+        doc.text("Rs. " + order.codCollected, sx2 - 4, y + 19, { align: "right" });
+      } else {
+        doc.text("Fully paid — nothing due", sx1 - 2, y + 19);
+      }
     }
 
     if (order.paymentScreenshotUrl) {
@@ -3359,6 +3396,7 @@ function exportOrdersToCsv() {
     "Total": o.total,
     "Amount Paid": o.amountPaid,
     "Balance Due": o.balanceDue,
+    "COD Collected": o.codCollected || 0,
     "Delivery Slot": o.deliverySlot || "",
     "Status": o.status
   }));

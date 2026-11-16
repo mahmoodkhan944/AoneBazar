@@ -157,6 +157,17 @@
           </div>
         </div>
 
+        <div class="admin-panel" id="paymentSummaryPanel">
+          <h3>Payment Summary <span class="admin-panel-subtitle">Cancelled orders excluded</span></h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;">
+            <div><div class="label">Total Amount</div><div class="value" id="statPayTotal">₹0</div></div>
+            <div><div class="label">Received Online</div><div class="value" id="statOnlineReceived" style="color:var(--green-700);">₹0</div></div>
+            <div><div class="label">Cash on Delivery — Collected</div><div class="value" id="statCodReceived" style="color:var(--green-700);">₹0</div></div>
+            <div><div class="label">Cash on Delivery — Pending</div><div class="value" id="statCodPending" style="color:var(--marigold-700, #b8860b);">₹0</div></div>
+          </div>
+          <p id="statPayUnsplit" class="hidden" style="font-size:0.8rem;color:var(--ink-faint);margin:12px 0 0;"></p>
+        </div>
+
         <div class="stat-card stat-card-mini" title="Counts installs from Chrome/Edge/Android — iOS Safari has no way to report 'Add to Home Screen' installs, so iPhone installs aren't included here.">
           <div class="stat-icon amber"><i class="fa-solid fa-mobile-screen-button"></i></div>
           <div><div class="value" id="statAppInstalls">0</div><div class="label">App Installs</div></div>
