@@ -349,6 +349,7 @@ async function openOrderDetailModal(orderId) {
       <button onclick="updateOrderStatus('${o.id}','DELIVERED').then(() => openOrderDetailModal('${o.id}'))">Delivered</button>
       <button onclick='downloadInvoiceById("${o.id}")'>Invoice</button>
       <button class="danger" onclick="cancelOrderWithConfirm('${o.id}').then(() => openOrderDetailModal('${o.id}'))">Cancel Order</button>
+      <button class="danger" onclick="deleteOrderWithConfirm('${o.id}').then(ok => { if (ok) closeOrderDetail(); })">Delete Order</button>
     </div>
   `;
 }
@@ -795,6 +796,7 @@ function renderOrdersTable(list) {
           <button onclick="updateOrderStatus('${o.id}','DELIVERED')">Delivered</button>
           <button onclick='downloadInvoiceById("${o.id}")'>Invoice</button>
           <button class="danger" onclick="cancelOrderWithConfirm('${o.id}')">Cancel</button>
+          <button class="danger" onclick="deleteOrderWithConfirm('${o.id}')">Delete</button>
         </div>
       </td>
     </tr>
@@ -815,6 +817,44 @@ function filterOrders() {
   );
   ordersPage = 1;
   renderOrdersTable(filtered);
+}
+
+/** Permanently deletes an order from the database AND its payment
+ *  screenshot from Storage. Asks first (hard to undo). */
+async function deleteOrderWithConfirm(id) {
+  const order = cachedOrders.find(o => o.id === id);
+  const warn = order && order.amountPaid > 0
+    ? `\n\nNote: ₹${order.amountPaid} was recorded as paid on this order. Deleting does NOT refund anything.`
+    : "";
+  if (!(await customConfirm(`Permanently delete order ${id}? The order and its payment screenshot will be removed from the database. This can't be undone.${warn}`, "Delete Order"))) return false;
+
+  // Grab the screenshot URL first — once the row is gone there's
+  // no record of which file belonged to it.
+  const { data: existing } = await supabase.from("orders").select("payment_screenshot_url").eq("id", id).maybeSingle();
+
+  // .select() so we can tell if RLS silently blocked the delete (0 rows).
+  const { data: deleted, error } = await supabase.from("orders").delete().eq("id", id).select("id");
+
+  if (error) {
+    alert("Could not delete order: " + error.message);
+    return false;
+  }
+  if (!deleted || deleted.length === 0) {
+    alert("Order was not deleted — the database blocked it. Run patch-delete-orders.sql in Supabase SQL Editor first.");
+    return false;
+  }
+
+  if (existing && existing.payment_screenshot_url) {
+    const path = getStoragePathFromUrl(existing.payment_screenshot_url, "payment-screenshots");
+    if (path) {
+      const { error: storageError } = await supabase.storage.from("payment-screenshots").remove([path]);
+      if (storageError) console.warn("Could not remove payment screenshot from storage:", storageError.message);
+    }
+  }
+
+  cachedOrders = cachedOrders.filter(o => o.id !== id);
+  renderOrdersTable(cachedOrders);
+  return true;
 }
 
 /** Cancelling asks first (unlike the other status buttons) since
